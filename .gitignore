@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Local data
+data/full/
+data/prepared/
+
+# Training artifacts
+runs/
+checkpoints/
+outputs/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+
+# Secrets
+.env
+*.env
+
+# Temporary
+tmp/
+temp/eval_sets/
+
+current_structure.txt
+
+eval_sets/
+

@@ -1,0 +1,3 @@
+# Local dev machine only (x86_64 + RTX 4060, driver CUDA 13.3). Do NOT reuse on GH200 (ARM64) — handoff pitfall 19.12.
+torch==<version pip resolved>+cu130
+torchvision==<matching version>+cu130

@@ -1,0 +1,128 @@
+================================================================================
+POSE-CONTROLNET ASPECT-RATIO / BUCKET ANALYSIS
+================================================================================
+
+Data root: C:\Users\Adhit Simhadri\Desktop\Krea-2-Pose-ControlNet\data\full
+Images analyzed: 17,495
+
+IMPORTANT: Bucket schemes below are candidates only.
+They have NOT been selected as the final training scheme.
+
+GLOBAL ASPECT-RATIO STATISTICS
+--------------------------------------------------------------------------------
+min_aspect_ratio                   : 0.1210
+max_aspect_ratio                   : 3.3028
+mean_aspect_ratio                  : 1.0098
+median_aspect_ratio                : 0.8043
+p10_aspect_ratio                   : 0.5912
+p25_aspect_ratio                   : 0.6720
+p75_aspect_ratio                   : 1.4124
+p90_aspect_ratio                   : 1.5033
+extreme_portrait_count             : 978
+extreme_landscape_count            : 113
+
+EXTREME ASPECT-RATIO COUNTS
+--------------------------------------------------------------------------------
+AR < 0.50: 978
+AR > 2.00: 113
+
+================================================================================
+SCHEME: conservative_9
+================================================================================
+
+Number of buckets: 11
+Images assigned: 17,495
+Low-utilization buckets: 1
+Images with crop > 20%: 53 (0.30%)
+Mean cropped area: 6.58%
+Median cropped area: 6.83%
+P90 cropped area: 10.22%
+
+Bucket                 AR     Count     Share   Mean Crop    P90 Crop
+--------------------------------------------------------------------------------
+512x2048            0.250       121     0.69%      17.50%      28.50%
+576x1536            0.375       154     0.88%       6.65%      13.21%
+640x1344            0.476     1,018     5.82%       4.35%       9.28%
+768x1280            0.600     3,303    18.88%       8.30%      10.28%
+896x1152            0.778     4,797    27.42%       5.50%       9.85%
+1024x1024           1.000     1,518     8.68%       3.75%      10.60%
+1152x896            1.286     2,520    14.40%       5.05%       9.68%
+1280x768            1.667     3,819    21.83%       8.80%      10.22%
+1344x640            2.100       210     1.20%       6.40%      10.71%
+1536x576            2.667        34     0.19%       7.99%      10.40%
+2048x512            4.000         1     0.01%      17.43%      17.43%
+
+LOW-UTILIZATION BUCKETS
+  2048x512: 1 images
+
+================================================================================
+SCHEME: balanced_13
+================================================================================
+
+Number of buckets: 15
+Images assigned: 17,495
+Low-utilization buckets: 2
+Images with crop > 20%: 53 (0.30%)
+Mean cropped area: 3.66%
+Median cropped area: 3.17%
+P90 cropped area: 6.40%
+
+Bucket                 AR     Count     Share   Mean Crop    P90 Crop
+--------------------------------------------------------------------------------
+512x2048            0.250       106     0.61%      18.02%      29.07%
+576x1792            0.321        65     0.37%       6.97%      11.40%
+640x1536            0.417       220     1.26%       5.51%       8.75%
+704x1408            0.500       990     5.66%       3.98%       7.55%
+768x1280            0.600       876     5.01%       4.14%       6.54%
+832x1216            0.684     3,834    21.91%       2.93%       4.77%
+896x1152            0.778     3,302    18.87%       3.86%       6.65%
+1024x1024           1.000     1,518     8.68%       3.75%      10.60%
+1152x896            1.286     1,965    11.23%       3.90%       6.08%
+1216x832            1.462     3,340    19.09%       2.71%       3.91%
+1280x768            1.667       885     5.06%       5.02%       6.33%
+1408x704            2.000       333     1.90%       5.36%       7.69%
+1536x640            2.400        56     0.32%       4.00%       8.19%
+1792x576            3.111         5     0.03%       3.76%       6.18%
+2048x512            4.000         0     0.00%         N/A         N/A
+
+LOW-UTILIZATION BUCKETS
+  1792x576: 5 images
+  2048x512: 0 images
+
+================================================================================
+SCHEME: core_9
+================================================================================
+
+Number of buckets: 9
+Images assigned: 17,495
+Low-utilization buckets: 0
+Images with crop > 20%: 119 (0.68%)
+Mean cropped area: 6.74%
+Median cropped area: 6.85%
+P90 cropped area: 10.26%
+
+Bucket                 AR     Count     Share   Mean Crop    P90 Crop
+--------------------------------------------------------------------------------
+576x1536            0.375       275     1.57%      21.86%      50.58%
+640x1344            0.476     1,018     5.82%       4.35%       9.28%
+768x1280            0.600     3,303    18.88%       8.30%      10.28%
+896x1152            0.778     4,797    27.42%       5.50%       9.85%
+1024x1024           1.000     1,518     8.68%       3.75%      10.60%
+1152x896            1.286     2,520    14.40%       5.05%       9.68%
+1280x768            1.667     3,819    21.83%       8.80%      10.22%
+1344x640            2.100       210     1.20%       6.40%      10.71%
+1536x576            2.667        35     0.20%       8.31%      10.76%
+
+LOW-UTILIZATION BUCKETS
+  None
+
+================================================================================
+INTERPRETATION
+================================================================================
+
+Use bucket utilization and crop statistics together.
+A bucket scheme with many tiny buckets may preserve aspect ratio well but produce poor batching efficiency.
+A very small number of buckets may improve batching efficiency but introduce excessive cropping.
+For Pose-ControlNet, inspect high-crop cases visually because cropping a hand, foot, head, or entire person can damage the conditioning relationship.
+
+The next step after this report should be to choose a final bucket scheme and then test the exact RGB/control geometric transform on representative examples.
