@@ -14,13 +14,30 @@ from pose_controlnet.dataset_index import EXPECTED_SPLIT_COUNTS, ManifestRecord,
 from pose_controlnet.text_encoder import PoseTextConditioner
 
 
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 METADATA_NAME = "text_conditioning.json"
 DEFAULT_SHARD_SAMPLES = 64
 
 
 class TextConditioningError(ValueError):
     pass
+
+
+def compact_valid_conditioning(contexts: torch.Tensor, masks: torch.Tensor, index: int) -> dict[str, torch.Tensor]:
+    """Extract one conditioning sequence by boolean validity, never by length.
+
+    `PoseTextConditioner` returns batch-right-padded sequences.  Selecting valid
+    positions is the canonical archive representation and preserves suffix tokens
+    even when an older caller has padding between a prompt and its suffix.
+    """
+    if contexts.ndim != 4 or masks.ndim != 2 or contexts.shape[:2] != masks.shape:
+        raise TextConditioningError("Conditioner returned incompatible context/mask shapes")
+    if not 0 <= index < contexts.shape[0]:
+        raise TextConditioningError(f"Conditioning index out of range: {index}")
+    valid = masks[index].to(torch.bool)
+    if not valid.any().item():
+        raise TextConditioningError(f"Conditioning entry {index} has no valid tokens")
+    return {"context": contexts[index][valid], "mask": valid[valid]}
 
 
 def _atomic_torch_save(path: Path, payload: dict[str, Any]) -> None:
@@ -71,7 +88,7 @@ def _validate_entry(entry: Any, *, path: Path | str, expected_stem: str | None =
         raise TextConditioningError(f"Context must be rank-3 BF16 in {path}:{stem}")
     if not isinstance(mask, torch.Tensor) or mask.dtype != torch.bool or mask.ndim != 1 or mask.shape[0] != context.shape[0]:
         raise TextConditioningError(f"Invalid boolean mask in {path}:{stem}")
-    if context.shape[0] < 1 or not mask.any().item() or not torch.isfinite(context).all().item():
+    if context.shape[0] < 1 or not mask.all().item() or not torch.isfinite(context).all().item():
         raise TextConditioningError(f"Empty or non-finite conditioning in {path}:{stem}")
     observed = tuple(context.shape[1:])
     if dimensions is not None and observed != dimensions:
@@ -142,15 +159,14 @@ def prepare_text_conditioning(*, dataset_root: str | Path | None, latent_root: s
             entries = []
             for index, record in enumerate(chunk):
                 # Only valid tokens are persisted; collate restores right-padding dynamically.
-                length = int(masks[index].sum().item())
-                entry = {"stem": record.stem, "context": contexts[index, :length].detach().cpu().contiguous(),
-                         "mask": masks[index, :length].detach().cpu().to(torch.bool).contiguous()}
+                entry = {key: value.detach().cpu().to(torch.bfloat16 if key == "context" else torch.bool).contiguous()
+                         for key, value in compact_valid_conditioning(contexts, masks, index).items()}
                 _, dimensions = _validate_entry(entry, path=path, expected_stem=record.stem, dimensions=dimensions)
                 entries.append(entry)
             _atomic_torch_save(path, {"format_version": FORMAT_VERSION, "split": split, "samples": entries})
     unconditional_context, unconditional_mask = encoder([""])
-    unconditional = {"context": unconditional_context[0, :int(unconditional_mask[0].sum().item())].detach().cpu().to(torch.bfloat16).contiguous(),
-                     "mask": unconditional_mask[0, :int(unconditional_mask[0].sum().item())].detach().cpu().to(torch.bool).contiguous()}
+    unconditional = {key: value.detach().cpu().to(torch.bfloat16 if key == "context" else torch.bool).contiguous()
+                     for key, value in compact_valid_conditioning(unconditional_context, unconditional_mask, 0).items()}
     _, dimensions = _validate_entry({"stem": "__unconditional__", **unconditional}, path=root / "unconditional.pt", dimensions=dimensions)
     _atomic_torch_save(root / "unconditional.pt", {"format_version": FORMAT_VERSION, **unconditional})
     verify_text_conditioning(dataset_root=dataset_root, latent_root=latent_root, output_root=root)
@@ -180,6 +196,8 @@ def verify_text_conditioning(*, dataset_root: str | Path | None, latent_root: st
         expected = [record.stem for record in records]
         if observed != expected or len(observed) != len(set(observed)): raise TextConditioningError(f"Missing, duplicate, or misordered {split} text conditioning stems")
     payload = torch.load(root / "unconditional.pt", map_location="cpu", weights_only=False)
+    if payload.get("format_version") != FORMAT_VERSION:
+        raise TextConditioningError(f"Malformed unconditional archive {root / 'unconditional.pt'}")
     _, unconditional_dimensions = _validate_entry({"stem": "__unconditional__", "context": payload.get("context"), "mask": payload.get("mask")}, path=root / "unconditional.pt", dimensions=dimensions)
     if dimensions is None: dimensions = unconditional_dimensions
     return dict(counts)
@@ -187,7 +205,8 @@ def verify_text_conditioning(*, dataset_root: str | Path | None, latent_root: st
 
 @torch.no_grad()
 def smoke_online_cached_equivalence(*, dataset_root: str | Path, output_root: str | Path,
-                                    device: str = "cuda", samples_per_split: int = 2) -> dict[str, float]:
+                                    device: str = "cuda", samples_per_split: int = 2,
+                                    stems: Sequence[str] | None = None) -> dict[str, float]:
     """Hard smoke: cached BF16 tensors must be byte-identical to fresh Qwen output.
 
     Each prompt is encoded independently because cached records retain only valid
@@ -197,22 +216,31 @@ def smoke_online_cached_equivalence(*, dataset_root: str | Path, output_root: st
     validation = validate_posebridge_snapshot(dataset_root)
     encoder = PoseTextConditioner(device=device, dtype=torch.bfloat16)
     maximum_difference = 0.0; checked = 0
+    requested = set(stems or ())
+    found: set[str] = set()
     for split, records in validation.records_by_split.items():
         cached = CachedTextConditioning(output_root, split)
-        for record in records[:samples_per_split]:
+        selected = [record for record in records if record.stem in requested] if requested else records[:samples_per_split]
+        for record in selected:
+            found.add(record.stem)
             online_context, online_mask = encoder([record.text])
-            length = int(online_mask[0].sum().item())
             entry = cached.get(record.stem)
             if online_context.dtype != entry["context"].dtype or online_mask.dtype != entry["mask"].dtype:
                 raise TextConditioningError(f"Online/cached dtype mismatch for {record.stem}")
-            if not torch.equal(online_mask[0, :length].cpu(), entry["mask"]):
+            online_entry = compact_valid_conditioning(online_context, online_mask, 0)
+            if not torch.equal(online_entry["mask"].cpu(), entry["mask"]):
                 raise TextConditioningError(f"Online/cached mask mismatch for {record.stem}")
-            online = online_context[0, :length].cpu()
+            online = online_entry["context"].cpu()
             if online.shape != entry["context"].shape: raise TextConditioningError(f"Online/cached shape mismatch for {record.stem}")
+            if not torch.equal(online, entry["context"]):
+                difference = (online.float() - entry["context"].float()).abs().max().item()
+                raise TextConditioningError(f"Online/cached value mismatch for {record.stem}: max_abs_diff={difference}")
             difference = (online.float() - entry["context"].float()).abs().max().item()
             maximum_difference = max(maximum_difference, difference)
             if difference != 0.0: raise TextConditioningError(f"Online/cached value mismatch for {record.stem}: max_abs_diff={difference}")
             checked += 1
+    missing = requested - found
+    if missing: raise TextConditioningError(f"Requested stems absent from immutable manifests: {sorted(missing)}")
     return {"checked": checked, "max_abs_difference": maximum_difference}
 
 
@@ -226,12 +254,16 @@ class CachedTextConditioning:
         self.index: dict[str, tuple[Path, int]] = {}
         for path in sorted((self.root / split).glob(f"{split}-*.pt")):
             payload = torch.load(path, map_location="cpu", weights_only=False)
+            if payload.get("format_version") != FORMAT_VERSION or payload.get("split") != split:
+                raise TextConditioningError(f"Malformed text archive {path}")
             for offset, entry in enumerate(payload.get("samples", [])):
                 stem, _ = _validate_entry(entry, path=path, dimensions=self.dimensions)
                 if stem in self.index: raise TextConditioningError(f"Duplicate cached stem {stem}")
                 self.index[stem] = (path, offset)
         self._cached_path: Path | None = None; self._cached_samples: list[dict] | None = None
         uncond = torch.load(self.root / "unconditional.pt", map_location="cpu", weights_only=False)
+        if uncond.get("format_version") != FORMAT_VERSION:
+            raise TextConditioningError(f"Malformed unconditional archive {self.root / 'unconditional.pt'}")
         _validate_entry({"stem": "__unconditional__", "context": uncond.get("context"), "mask": uncond.get("mask")}, path=self.root / "unconditional.pt", dimensions=self.dimensions)
         self.unconditional = {"context": uncond["context"], "mask": uncond["mask"]}
 

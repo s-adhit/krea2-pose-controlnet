@@ -16,12 +16,15 @@ def main() -> None:
     parser.add_argument("--online-equivalence", action="store_true")
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--samples-per-split", type=int, default=2)
+    parser.add_argument("--stem", action="append", default=[], help="Specific immutable stem to check; repeatable")
     args = parser.parse_args()
     try:
         result = {"counts": verify_text_conditioning(dataset_root=args.dataset_root, latent_root=args.latent_root, output_root=args.output_root)}
         if args.online_equivalence:
-            if args.dataset_root is None: parser.error("--online-equivalence requires --dataset-root")
-            result["equivalence"] = smoke_online_cached_equivalence(dataset_root=args.dataset_root, output_root=args.output_root, device=args.device, samples_per_split=args.samples_per_split)
+            dataset_root = args.dataset_root
+            if dataset_root is None:
+                dataset_root = Path(json.loads((args.latent_root / "shards.json").read_text(encoding="utf-8"))["dataset_root"])
+            result["equivalence"] = smoke_online_cached_equivalence(dataset_root=dataset_root, output_root=args.output_root, device=args.device, samples_per_split=args.samples_per_split, stems=args.stem or None)
     except TextConditioningError as exc: parser.error(str(exc))
     print(json.dumps({"status": "PASS", **result}, indent=2))
 
