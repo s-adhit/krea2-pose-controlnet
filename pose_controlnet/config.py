@@ -52,6 +52,8 @@ class TrainConfig:
     metrics_jsonl_path: str = "runs/metrics.jsonl"
     hf_repo_id: str = ""
     hf_push_every_seconds: int = 3600
+    # Zero keeps the existing wall-clock-only HF mirror behavior.
+    hf_mirror_every_steps: int = 0
 
     # eval
     eval_steps: int = 8

@@ -207,6 +207,11 @@ def _diagnostic_grad_norms(model: torch.nn.Module) -> tuple[dict[str, float], di
     return control, lora
 
 
+def step_mirror_requested(global_step: int, every_steps: int) -> bool:
+    """Whether an exact completed local checkpoint is required on HF at this step."""
+    return every_steps > 0 and global_step > 0 and global_step % every_steps == 0
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--raw-ckpt", default="/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors")
@@ -236,6 +241,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hf-repo-id", default="", help="private HF model repo for full checkpoint mirroring")
     parser.add_argument("--hf-mirror-every-seconds", type=float, default=3600,
                         help="wall-clock full-checkpoint mirror cadence (default: 3600)")
+    parser.add_argument("--hf-mirror-every-steps", type=int, default=0,
+                        help="mirror each exact saved checkpoint divisible by N; 0 disables (default: 0)")
     parser.add_argument("--wandb-mode", default="online")
     parser.add_argument("--no-wandb", action="store_true")
     args = parser.parse_args()
@@ -247,6 +254,13 @@ def parse_args() -> argparse.Namespace:
     if args.gradient_checkpointing_blocks is not None and not 0 <= args.gradient_checkpointing_blocks <= 28:
         parser.error("--gradient-checkpointing-blocks must be in [0, 28]")
     if args.hf_mirror_every_seconds < 0: parser.error("--hf-mirror-every-seconds must be non-negative")
+    if args.hf_mirror_every_steps < 0: parser.error("--hf-mirror-every-steps must be non-negative")
+    if args.save_every < 1: parser.error("--save-every must be positive")
+    if args.hf_mirror_every_steps:
+        if not args.hf_repo_id:
+            parser.error("--hf-mirror-every-steps requires --hf-repo-id")
+        if args.hf_mirror_every_steps % args.save_every:
+            parser.error("--hf-mirror-every-steps must be divisible by --save-every so exact local checkpoints exist")
     return args
 
 
@@ -264,7 +278,8 @@ def config_from_args(args: argparse.Namespace) -> TrainConfig:
                        gradient_checkpointing_blocks=gradient_checkpointing_blocks,
                        wandb_enabled=not args.no_wandb, wandb_mode=args.wandb_mode,
                        metrics_jsonl_path=str(Path(args.checkpoint_dir) / args.run_name / "metrics.jsonl"),
-                       hf_repo_id=args.hf_repo_id, hf_push_every_seconds=args.hf_mirror_every_seconds)
+                       hf_repo_id=args.hf_repo_id, hf_push_every_seconds=args.hf_mirror_every_seconds,
+                       hf_mirror_every_steps=args.hf_mirror_every_steps)
 
 
 def main() -> None:
@@ -354,6 +369,8 @@ def main() -> None:
                 save_training_state(path, {"model": trainable_state_dict(model), "optimizer": optimizer.state_dict(), "scheduler": scheduler.state_dict(), "global_step": global_step, "epoch": epoch, "batch_position": batch_position, "rng": _capture_rng(), "flow_generator_state": generator.get_state(), "config": asdict(cfg)})
                 last_checkpoint_time = time.monotonic()
                 telemetry.log_checkpoint(checkpoint_step=global_step, checkpoint_time=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), step=global_step)
+                if step_mirror_requested(global_step, cfg.hf_mirror_every_steps):
+                    mirror.submit(path, reason="step")
                 mirror.maybe_submit(path)
     finally:
         mirror.stop()

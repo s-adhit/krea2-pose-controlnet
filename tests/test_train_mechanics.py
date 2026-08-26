@@ -1,6 +1,7 @@
 import json
 import shutil
 import tempfile
+import threading
 import unittest
 import sys
 from pathlib import Path
@@ -149,6 +150,82 @@ class TrainMechanicsTest(unittest.TestCase):
                                                 api=api, sleep=sleeps.append)
             self.assertFalse(mirror._upload(path)); self.assertEqual(api.uploads, 3)
             self.assertEqual(sleeps, [5.0, 10.0]); self.assertIn("offline", mirror.last_error)
+
+    def test_step_mirror_cli_defaults_and_validation(self):
+        base = ["train.py", "--run-name", "x", "--max-steps", "100", "--microbatch-size", "1", "--gradient-accumulation-steps", "32"]
+        with patch.object(sys, "argv", base):
+            args = train.parse_args()
+        self.assertEqual(args.hf_mirror_every_steps, 0)
+        valid = base + ["--save-every", "25", "--hf-repo-id", "user/private", "--hf-mirror-every-steps", "100"]
+        with patch.object(sys, "argv", valid):
+            self.assertEqual(train.config_from_args(train.parse_args()).hf_mirror_every_steps, 100)
+        for extra in (["--hf-mirror-every-steps", "-1"],
+                      ["--save-every", "25", "--hf-repo-id", "user/private", "--hf-mirror-every-steps", "90"],
+                      ["--save-every", "25", "--hf-mirror-every-steps", "100"]):
+            with patch.object(sys, "argv", base + extra):
+                with self.assertRaises(SystemExit):
+                    train.parse_args()
+
+    def test_step_mirror_selects_exact_resumed_cadence_only(self):
+        selected = [step for step in range(501, 1501) if train.step_mirror_requested(step, 100)]
+        self.assertEqual(selected, list(range(600, 1501, 100)))
+        self.assertFalse(any(train.step_mirror_requested(step, 100) for step in (525, 550, 575)))
+
+    def test_hf_mirror_queues_exact_paths_while_upload_is_in_flight(self):
+        class BlockingApi:
+            def __init__(self):
+                self.files, self.started, self.release = {}, threading.Event(), threading.Event()
+                self.checkpoint_uploads = []
+            def create_repo(self, *args, **kwargs): pass
+            def upload_file(self, *, path_or_fileobj, path_in_repo, **kwargs):
+                if path_in_repo.endswith(".pt"):
+                    self.checkpoint_uploads.append(path_in_repo); self.started.set(); self.release.wait(2)
+                self.files[path_in_repo] = (Path(path_or_fileobj).read_bytes() if isinstance(path_or_fileobj, str)
+                                            else path_or_fileobj.read())
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); api = BlockingApi()
+            first = save_training_state(root / "step_000600.pt", self.full_state(600))
+            second = save_training_state(root / "step_000700.pt", self.full_state(700))
+            mirror = HFTrainingCheckpointMirror(repo_id="user/private", run_name="run", api=api)
+            mirror.start(); self.assertTrue(mirror.submit(first, reason="step")); self.assertTrue(api.started.wait(1))
+            self.assertTrue(mirror.submit(second, reason="step")); api.release.set(); mirror.stop()
+            self.assertEqual(api.checkpoint_uploads, ["run/full/step_000600.pt", "run/full/step_000700.pt"])
+            self.assertIn("run/full/step_000600.pt.complete.json", api.files)
+            self.assertIn("run/full/step_000700.pt.complete.json", api.files)
+
+    def test_hf_mirror_deduplicates_timed_and_step_requests_after_success(self):
+        class MemoryApi:
+            def __init__(self): self.files, self.checkpoint_uploads = {}, 0
+            def create_repo(self, *args, **kwargs): pass
+            def upload_file(self, *, path_or_fileobj, path_in_repo, **kwargs):
+                if path_in_repo.endswith(".pt"): self.checkpoint_uploads += 1
+                self.files[path_in_repo] = (Path(path_or_fileobj).read_bytes() if isinstance(path_or_fileobj, str)
+                                            else path_or_fileobj.read())
+        with tempfile.TemporaryDirectory() as temporary:
+            checkpoint = save_training_state(Path(temporary) / "step_000100.pt", self.full_state(100))
+            api = MemoryApi(); mirror = HFTrainingCheckpointMirror(repo_id="user/private", run_name="run", interval_seconds=0, api=api)
+            self.assertTrue(mirror._upload(checkpoint, "step"))
+            self.assertFalse(mirror.maybe_submit(checkpoint))
+            self.assertFalse(mirror.submit(checkpoint, reason="step"))
+            self.assertEqual(api.checkpoint_uploads, 1)
+
+    def test_final_step_timed_and_step_mirror_requests_are_deduplicated(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            checkpoint = save_training_state(Path(temporary) / "step_001500.pt", self.full_state(1500))
+            mirror = HFTrainingCheckpointMirror(repo_id="user/private", run_name="run", interval_seconds=0)
+            self.assertTrue(mirror.submit(checkpoint, reason="step"))
+            self.assertFalse(mirror.maybe_submit(checkpoint))
+
+    def test_queued_checkpoint_is_protected_from_local_retention(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            requested = save_training_state(root / "step_000600.pt", self.full_state(600))
+            save_training_state(root / "step_000625.pt", self.full_state(625))
+            save_training_state(root / "step_000650.pt", self.full_state(650))
+            mirror = HFTrainingCheckpointMirror(repo_id="user/private", run_name="run")
+            self.assertTrue(mirror.submit(requested, reason="step"))
+            mirror.prune_local(root)
+            self.assertTrue(requested.exists())
 
     def test_hf_mirror_and_auto_recovery_prefer_local_then_valid_remote(self):
         class MemoryApi:

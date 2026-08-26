@@ -79,8 +79,9 @@ def newest_valid_local_checkpoint(run_dir: str | Path) -> Path | None:
     return None
 
 
-def prune_local_full_checkpoints(run_dir: str | Path, keep_last: int = 2) -> None:
-    """Retain at least the two newest deserialize-valid local full checkpoints."""
+def prune_local_full_checkpoints(run_dir: str | Path, keep_last: int = 2,
+                                 protected_paths: set[Path] | None = None) -> None:
+    """Retain newest valid checkpoints without deleting pending mirror sources."""
     if keep_last < 2:
         raise ValueError("keep_last must preserve at least two local checkpoints")
     valid = []
@@ -90,7 +91,10 @@ def prune_local_full_checkpoints(run_dir: str | Path, keep_last: int = 2) -> Non
             valid.append(candidate)
         except ValueError:
             continue
+    protected = {Path(path) for path in (protected_paths or set())}
     for stale in valid[keep_last:]:
+        if stale in protected:
+            continue
         try:
             stale.unlink()
         except OSError:
@@ -126,7 +130,9 @@ class HFTrainingCheckpointMirror:
         self.repo_id, self.run_name = repo_id, run_name
         self.interval_seconds, self.max_attempts = interval_seconds, max_attempts
         self.retry_base_seconds, self.telemetry, self._api, self._sleep = retry_base_seconds, telemetry, api, sleep
-        self._pending: queue.Queue[Path | None] = queue.Queue(); self._queued: set[Path] = set(); self._lock = threading.Lock()
+        self._pending: queue.Queue[tuple[Path, str] | None] = queue.Queue()
+        self._queued: set[Path] = set(); self._completed: set[Path] = set(); self._reasons: dict[Path, str] = {}
+        self._lock = threading.Lock()
         self._thread: threading.Thread | None = None; self._last_submission = float("-inf")
         self.last_success_time: float | None = None; self.last_success_step: int | None = None; self.last_error: str | None = None
 
@@ -134,16 +140,56 @@ class HFTrainingCheckpointMirror:
         if not self.repo_id or self._thread is not None: return
         self._thread = threading.Thread(target=self._worker, name="hf-checkpoint-mirror", daemon=True); self._thread.start()
 
-    def maybe_submit(self, checkpoint: str | Path) -> bool:
-        path = Path(checkpoint)
-        try: load_training_state(path)
+    def _validated_path(self, checkpoint: str | Path, *, require_step_identity: bool = False) -> Path | None:
+        path = Path(checkpoint).resolve()
+        try:
+            state = load_training_state(path)
         except ValueError as error:
-            self._record(False, None, f"local validation failed: {error}"); return False
+            self._record(False, None, f"local validation failed: {error}", None)
+            return None
+        expected_name = f"step_{state['global_step']:06d}.pt"
+        if require_step_identity and path.name != expected_name:
+            self._record(False, state["global_step"],
+                         f"local checkpoint identity mismatch: expected {expected_name}, got {path.name}", None)
+            return None
+        return path
+
+    def submit(self, checkpoint: str | Path, *, reason: str) -> bool:
+        """Queue this exact validated checkpoint without replacing pending work."""
+        if not self.repo_id:
+            return False
+        path = self._validated_path(checkpoint, require_step_identity=True)
+        if path is None:
+            return False
+        with self._lock:
+            if path in self._queued or path in self._completed:
+                return False
+            self._queued.add(path)
+            self._reasons[path] = reason
+        self._pending.put((path, reason))
+        return True
+
+    def maybe_submit(self, checkpoint: str | Path) -> bool:
+        """Preserve the legacy wall-clock mirror cadence."""
+        if not self.repo_id:
+            return False
+        path = self._validated_path(checkpoint)
+        if path is None:
+            return False
         now = time.monotonic()
         with self._lock:
-            if now - self._last_submission < self.interval_seconds or path in self._queued: return False
+            if (now - self._last_submission < self.interval_seconds or path in self._queued
+                    or path in self._completed):
+                return False
             self._last_submission = now; self._queued.add(path)
-        self._pending.put(path); return True
+            self._reasons[path] = "timed"
+        self._pending.put((path, "timed")); return True
+
+    def prune_local(self, run_dir: str | Path) -> None:
+        """Apply normal retention while preserving queued/in-flight upload sources."""
+        with self._lock:
+            protected = set(self._queued)
+        prune_local_full_checkpoints(run_dir, protected_paths=protected)
 
     def _remote_paths(self, checkpoint: Path) -> tuple[str, str]:
         prefix = f"{self.run_name}/full"; remote = f"{prefix}/{checkpoint.name}"
@@ -155,11 +201,11 @@ class HFTrainingCheckpointMirror:
             self._api = HfApi()
         return self._api
 
-    def _upload(self, checkpoint: Path) -> bool:
+    def _upload(self, checkpoint: Path, reason: str | None = None) -> bool:
         """Synchronous primitive for the background worker and focused tests."""
         try: state, checksum = load_training_state(checkpoint), _sha256(checkpoint)
         except ValueError as error:
-            self._record(False, None, f"local validation failed: {error}"); return False
+            self._record(False, None, f"local validation failed: {error}", reason); return False
         remote_checkpoint, marker_path = self._remote_paths(checkpoint); error_text = ""
         for attempt in range(self.max_attempts):
             try:
@@ -171,27 +217,33 @@ class HFTrainingCheckpointMirror:
                 api.upload_file(path_or_fileobj=io.BytesIO(marker), path_in_repo=marker_path, repo_id=self.repo_id,
                                 repo_type="model", commit_message=f"Mark full checkpoint step {state['global_step']} complete")
                 self.last_success_time, self.last_success_step, self.last_error = time.monotonic(), state["global_step"], None
-                prune_local_full_checkpoints(checkpoint.parent)
-                self._record(True, state["global_step"], None); return True
+                with self._lock:
+                    self._completed.add(checkpoint)
+                self.prune_local(checkpoint.parent)
+                self._record(True, state["global_step"], None, reason); return True
             except Exception as error:
                 error_text = _safe_error(error)
                 if attempt + 1 < self.max_attempts: self._sleep(self.retry_base_seconds * (2 ** attempt))
-        self._record(False, state["global_step"], error_text); return False
+        self._record(False, state["global_step"], error_text, reason); return False
 
-    def _record(self, success: bool, step: int | None, error: str | None) -> None:
+    def _record(self, success: bool, step: int | None, error: str | None, reason: str | None) -> None:
         self.last_error = error
         if self.telemetry is not None:
             age = 0.0 if self.last_success_time is None else max(0.0, time.monotonic() - self.last_success_time)
             self.telemetry.log_hf_upload(success=success, uploaded_checkpoint_step=step,
-                                         remote_checkpoint_age_seconds=age, error_status=error, step=step or 0)
+                                         remote_checkpoint_age_seconds=age, error_status=error,
+                                         mirror_reason=reason, step=step or 0)
 
     def _worker(self) -> None:
         while True:
-            checkpoint = self._pending.get()
-            if checkpoint is None: return
-            try: self._upload(checkpoint)
+            request = self._pending.get()
+            if request is None: return
+            checkpoint, reason = request
+            try: self._upload(checkpoint, reason)
             finally:
-                with self._lock: self._queued.discard(checkpoint)
+                with self._lock:
+                    self._queued.discard(checkpoint)
+                    self._reasons.pop(checkpoint, None)
 
     def stop(self) -> None:
         if self._thread is not None:
