@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import tempfile
+import time
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -143,26 +144,50 @@ def prepare_shards(
     }
     expected_counts = {split: len(records) for split, records in records_by_split.items()}
     output = Path(output_root).expanduser().resolve()
-    _write_metadata(output, dataset_root=validation.records_by_split["train"][0].rgb_path.parents[2],
-                    expected_counts=expected_counts, shard_samples=shard_samples,
-                    complete=max_samples_per_split is None)
-    vae = load_krea_vae(device)
+    # A process may fail before it writes its first shard.  Publish only an
+    # explicitly incomplete manifest until every physical archive is validated.
+    _write_metadata(
+        output,
+        dataset_root=Path(dataset_root).expanduser().resolve(),
+        expected_counts=expected_counts,
+        shard_samples=shard_samples,
+        complete=False,
+    )
+    _remove_stale_temporary_files(output)
+    vae: Any | None = None
     for split, records in records_by_split.items():
+        reporter = _ProgressReporter(split=split, total=len(records))
         for shard_number, chunk in enumerate(_chunks(records, shard_samples)):
             path = shard_path(output, split, shard_number)
             stems = [record.stem for record in chunk]
             if path.is_file():
                 try:
                     validate_shard_file(path, expected_split=split, expected_stems=stems)
+                    reporter.advance(len(chunk), shard_number, force=True, reused=True)
                     continue
                 except ShardError:
                     # A final-named corrupt shard is never accepted; replace it atomically.
                     pass
-            samples = [
-                make_sample(record, encode_preprocessed_pair(vae, preprocess_pair(record), device=device))
-                for record in chunk
-            ]
+            samples = []
+            if vae is None:
+                vae = load_krea_vae(device)
+            for record in chunk:
+                samples.append(
+                    make_sample(record, encode_preprocessed_pair(vae, preprocess_pair(record), device=device))
+                )
+                reporter.advance(1, shard_number)
             write_shard_atomically(path, split, samples)
+            reporter.report(shard_number, force=True)
+    actual_counts = validate_shard_set(output, records_by_split, shard_samples=shard_samples)
+    if actual_counts != expected_counts:
+        raise ShardError(f"Completed shard counts differ: expected {expected_counts}, got {actual_counts}")
+    _write_metadata(
+        output,
+        dataset_root=Path(dataset_root).expanduser().resolve(),
+        expected_counts=expected_counts,
+        shard_samples=shard_samples,
+        complete=max_samples_per_split is None,
+    )
     return expected_counts
 
 
@@ -175,6 +200,7 @@ def _write_metadata(output: Path, *, dataset_root: Path, expected_counts: Mappin
         "expected_counts": dict(expected_counts),
         "shard_samples": shard_samples,
         "complete": complete,
+        "total_samples": sum(expected_counts.values()),
     }
     _atomic_json(output / METADATA_FILE_NAME, metadata)
 
@@ -201,6 +227,102 @@ def _fsync_directory(path: Path) -> None:
         os.fsync(descriptor)
     finally:
         os.close(descriptor)
+
+
+def validate_shard_set(
+    output_root: str | Path, records_by_split: Mapping[str, Sequence[ManifestRecord]], *, shard_samples: int,
+) -> dict[str, int]:
+    """Validate every planned final shard and exact aggregate membership.
+
+    Metadata is deliberately not an input here: recovery treats physical,
+    deterministic shard ranges as the source of truth.
+    """
+    root = Path(output_root).expanduser().resolve()
+    if shard_samples < 1:
+        raise ShardError("shard_samples must be at least 1")
+    planned: dict[Path, tuple[str, list[str]]] = {}
+    expected_stems: dict[str, list[str]] = {}
+    for split, records in records_by_split.items():
+        stems = [record.stem for record in records]
+        if len(stems) != len(set(stems)):
+            raise ShardError(f"Duplicate planned manifest samples in split {split}")
+        expected_stems[split] = stems
+        for shard_number, chunk in enumerate(_chunks(records, shard_samples)):
+            path = shard_path(root, split, shard_number)
+            planned[path] = (split, [record.stem for record in chunk])
+
+    actual_paths = set(root.glob("*/*.pt"))
+    planned_paths = set(planned)
+    missing_paths = sorted(planned_paths - actual_paths)
+    extra_paths = sorted(actual_paths - planned_paths)
+    if missing_paths or extra_paths:
+        raise ShardError(
+            "Shard file set does not match the required deterministic plan: "
+            f"missing={[str(path) for path in missing_paths[:3]]}, "
+            f"extra={[str(path) for path in extra_paths[:3]]}"
+        )
+
+    observed: dict[str, list[str]] = {split: [] for split in records_by_split}
+    for path, (split, stems) in planned.items():
+        observed[split].extend(validate_shard_file(path, expected_split=split, expected_stems=stems))
+    all_stems: list[str] = []
+    for split, stems in observed.items():
+        if len(stems) != len(set(stems)):
+            raise ShardError(f"Duplicate samples in split {split}")
+        if stems != expected_stems[split]:
+            raise ShardError(f"Wrong or missing aggregate sample membership in split {split}")
+        all_stems.extend(stems)
+    if len(all_stems) != len(set(all_stems)):
+        raise ShardError("Duplicate samples across splits")
+    return {split: len(stems) for split, stems in observed.items()}
+
+
+def _remove_stale_temporary_files(output: Path) -> None:
+    """Remove only same-directory temporary files created by our atomic writers."""
+    for directory in (output, *(output / split for split in EXPECTED_SPLIT_COUNTS)):
+        if directory.is_dir():
+            for temporary in directory.glob(".*.tmp"):
+                if temporary.is_file():
+                    temporary.unlink()
+
+
+class _ProgressReporter:
+    """Bounded, live per-split preprocessing progress for long host runs."""
+
+    def __init__(self, *, split: str, total: int) -> None:
+        self.split = split
+        self.total = total
+        self.completed = 0
+        self.started = time.monotonic()
+        self.last_report = self.started
+
+    def advance(self, count: int, shard_number: int, *, force: bool = False, reused: bool = False) -> None:
+        self.completed += count
+        self.report(shard_number, force=force, reused=reused)
+
+    def report(self, shard_number: int, *, force: bool = False, reused: bool = False) -> None:
+        now = time.monotonic()
+        if not force and now - self.last_report < 5.0:
+            return
+        elapsed = max(now - self.started, 1e-6)
+        rate = self.completed / elapsed
+        remaining = (self.total - self.completed) / rate if rate else float("inf")
+        eta = _format_duration(remaining)
+        suffix = " (reused)" if reused else ""
+        print(
+            f"[{self.split}] {self.completed}/{self.total} samples | shard {shard_number} | "
+            f"{rate:.2f} samples/s | elapsed {_format_duration(elapsed)} | ETA {eta}{suffix}",
+            flush=True,
+        )
+        self.last_report = now
+
+
+def _format_duration(seconds: float) -> str:
+    if seconds == float("inf"):
+        return "unknown"
+    minutes, seconds = divmod(round(seconds), 60)
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
 def _chunks(records: Sequence[ManifestRecord], size: int) -> Iterable[Sequence[ManifestRecord]]:

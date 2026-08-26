@@ -4,14 +4,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections import Counter
 from pathlib import Path
 from typing import Any
 
 # Direct ``python scripts/verify_shards.py`` execution needs the repository root.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from prepare_shards import METADATA_FILE_NAME, SHARD_FORMAT_VERSION, ShardError, validate_shard_file
+from prepare_shards import METADATA_FILE_NAME, SHARD_FORMAT_VERSION, ShardError, validate_shard_set
 from pose_controlnet.dataset_index import EXPECTED_SPLIT_COUNTS, DatasetIndexError, validate_posebridge_snapshot
 
 
@@ -19,37 +18,23 @@ def verify_shards(*, dataset_root: str | Path, output_root: str | Path, allow_pa
     root = Path(output_root).expanduser().resolve()
     metadata = _load_metadata(root)
     validation = validate_posebridge_snapshot(dataset_root)
-    expected_counts = dict(EXPECTED_SPLIT_COUNTS) if not allow_partial else metadata["expected_counts"]
+    metadata_counts = metadata["expected_counts"]
     if not allow_partial and metadata.get("complete") is not True:
         raise ShardError("Shard set is marked incomplete; full verification requires a complete set")
-    if set(expected_counts) != set(EXPECTED_SPLIT_COUNTS):
-        raise ShardError("Malformed metadata: expected_counts must name all immutable splits")
-    expected_stems = {split: [record.stem for record in records] for split, records in validation.records_by_split.items()}
-    observed: dict[str, list[str]] = {split: [] for split in EXPECTED_SPLIT_COUNTS}
-    shard_files = sorted(root.glob("*/*.pt"))
-    if not shard_files:
-        raise ShardError(f"No shard files found beneath {root}")
-    for path in shard_files:
-        split = path.parent.name
-        if split not in observed:
-            raise ShardError(f"Malformed shard location outside immutable split directories: {path}")
-        observed[split].extend(validate_shard_file(path, expected_split=split))
-    for split, stems in observed.items():
-        duplicates = [stem for stem, count in Counter(stems).items() if count > 1]
-        if duplicates:
-            raise ShardError(f"Duplicate samples in split {split}: {duplicates[:3]}")
-        wanted = expected_stems[split][:expected_counts[split]] if allow_partial else expected_stems[split]
-        if stems != wanted:
-            missing = sorted(set(wanted) - set(stems))
-            extra = sorted(set(stems) - set(wanted))
-            raise ShardError(f"Wrong/missing samples for {split}: missing={missing[:3]}, extra={extra[:3]}")
-        if len(stems) != expected_counts[split]:
-            raise ShardError(f"Wrong total for {split}: expected {expected_counts[split]}, got {len(stems)}")
-    total = sum(len(stems) for stems in observed.values())
-    expected_total = sum(expected_counts.values())
-    if total != expected_total:
-        raise ShardError(f"Wrong total count: expected {expected_total}, got {total}")
-    return {split: len(stems) for split, stems in observed.items()}
+    if not allow_partial and metadata_counts != dict(EXPECTED_SPLIT_COUNTS):
+        raise ShardError("Complete metadata counts do not match immutable split counts")
+    records_by_split = {
+        split: records[:metadata_counts[split]] if allow_partial else records
+        for split, records in validation.records_by_split.items()
+    }
+    observed = validate_shard_set(
+        root, records_by_split, shard_samples=metadata["shard_samples"]
+    )
+    if observed != metadata_counts:
+        raise ShardError(f"Metadata/physical count mismatch: metadata={metadata_counts}, actual={observed}")
+    if sum(observed.values()) != metadata["total_samples"]:
+        raise ShardError("Metadata/physical total mismatch")
+    return observed
 
 
 def _load_metadata(root: Path) -> dict[str, Any]:
@@ -61,8 +46,17 @@ def _load_metadata(root: Path) -> dict[str, Any]:
     if not isinstance(value, dict) or value.get("format_version") != SHARD_FORMAT_VERSION:
         raise ShardError(f"Malformed shard metadata {path}")
     counts = value.get("expected_counts")
-    if not isinstance(counts, dict) or any(not isinstance(v, int) or v < 1 for v in counts.values()):
+    if not isinstance(counts, dict) or set(counts) != set(EXPECTED_SPLIT_COUNTS) or any(
+        not isinstance(v, int) or v < 1 or v > EXPECTED_SPLIT_COUNTS[split]
+        for split, v in counts.items()
+    ):
         raise ShardError(f"Malformed shard metadata {path}: expected_counts")
+    if not isinstance(value.get("complete"), bool):
+        raise ShardError(f"Malformed shard metadata {path}: complete")
+    if not isinstance(value.get("shard_samples"), int) or value["shard_samples"] < 1:
+        raise ShardError(f"Malformed shard metadata {path}: shard_samples")
+    if value.get("total_samples") != sum(counts.values()):
+        raise ShardError(f"Malformed shard metadata {path}: total_samples")
     return value
 
 
