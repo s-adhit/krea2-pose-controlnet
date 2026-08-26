@@ -50,6 +50,35 @@ class TrainMechanicsTest(unittest.TestCase):
         self.assertTrue(clip.called and step.called)
         self.assertLess(clip.call_args_list[0][0][1], 1.0)
 
+    def test_diagnostic_gradients_are_captured_before_optimizer_clears_them(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.first = torch.nn.Linear(4, 2, bias=False)
+                self.adapter = torch.nn.Module()
+                self.adapter.A = torch.nn.Parameter(torch.ones(2, 2))
+                self.adapter.B = torch.nn.Parameter(torch.ones(2, 2))
+
+        model = Model()
+        for parameter in model.parameters():
+            parameter.grad = torch.ones_like(parameter)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+        scheduler = train.OptimizerStepWarmup(optimizer, 1)
+        captured = {}
+
+        def capture() -> None:
+            captured["control"], captured["lora"] = train._diagnostic_grad_norms(model)
+
+        train.optimizer_update(optimizer, scheduler, list(model.parameters()), 100.0, before_step=capture)
+
+        self.assertGreater(captured["control"]["full"], 0.0)
+        self.assertGreater(captured["control"]["control_half"], 0.0)
+        self.assertEqual(set(captured["lora"]), {"adapter.A", "adapter.B"})
+        self.assertTrue(all(norm > 0.0 for norm in captured["lora"].values()))
+        cleared_control, cleared_lora = train._diagnostic_grad_norms(model)
+        self.assertEqual(cleared_control, {"full": 0.0, "control_half": 0.0})
+        self.assertEqual(cleared_lora, {})
+
     def test_order_and_caption_dropout_are_reproducible(self):
         records = [("a", 0, (4, 4)), ("a", 1, (4, 4)), ("b", 0, (8, 4)), ("b", 1, (8, 4))]
         plan = train.DeterministicBucketBatches(records, 2, 42)

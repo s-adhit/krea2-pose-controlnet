@@ -12,7 +12,7 @@ import signal
 import time
 from dataclasses import asdict
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 import numpy as np
 import torch
@@ -76,11 +76,14 @@ def build_optimizer(model: torch.nn.Module, cfg: TrainConfig) -> torch.optim.Ada
 
 
 def optimizer_update(optimizer: torch.optim.Optimizer, scheduler: OptimizerStepWarmup,
-                     parameters: list[torch.nn.Parameter], max_grad_norm: float) -> float:
+                     parameters: list[torch.nn.Parameter], max_grad_norm: float,
+                     before_step: Callable[[], None] | None = None) -> float:
     """The sole optimizer boundary: clip, update, schedule, then clear grads."""
     grad_norm = float(torch.nn.utils.clip_grad_norm_(parameters, max_grad_norm))
     if not math.isfinite(grad_norm):
         raise FloatingPointError("Non-finite global gradient norm")
+    if before_step is not None:
+        before_step()
     optimizer.step()
     scheduler.step()
     optimizer.zero_grad(set_to_none=True)
@@ -295,13 +298,21 @@ def main() -> None:
                     batch["prompts"] = apply_caption_dropout(batch["prompts"], cfg.caption_dropout, cfg.seed, dropout_index)
                 with torch.autocast("cuda", dtype=torch.bfloat16): loss, last_diag = _flow_loss(model, conditioner, batch, cfg, device, generator, gradient_checkpointing_blocks=cfg.gradient_checkpointing_blocks)
                 (loss / cfg.gradient_accumulation_steps).backward()
-            grad_norm = optimizer_update(optimizer, scheduler, trainable_params(model), cfg.max_grad_norm)
+            diagnostics_due = last_diag is not None and (global_step + 1) % cfg.diagnostics_every == 0
+            control_norms = lora_norms = None
+            def capture_diagnostics() -> None:
+                nonlocal control_norms, lora_norms
+                control_norms, lora_norms = _diagnostic_grad_norms(model)
+            grad_norm = optimizer_update(
+                optimizer, scheduler, trainable_params(model), cfg.max_grad_norm,
+                before_step=capture_diagnostics if diagnostics_due else None,
+            )
             global_step += 1
             elapsed = time.monotonic() - start; samples = effective_batch_size(cfg.microbatch_size, cfg.gradient_accumulation_steps)
             telemetry.log_train(loss=float(loss.item()), learning_rate=optimizer.param_groups[0]["lr"], global_grad_norm=grad_norm, sec_per_step=elapsed, samples_per_second=samples / elapsed, step=global_step)
             telemetry.log_cuda_memory(allocated_bytes=torch.cuda.memory_allocated(), reserved_bytes=torch.cuda.memory_reserved(), peak_allocated_bytes=torch.cuda.max_memory_allocated(), step=global_step)
-            if last_diag and global_step % cfg.diagnostics_every == 0:
-                control_norms, lora_norms = _diagnostic_grad_norms(model); telemetry.log_control_diagnostics(**last_diag, control_input_grad_norms=control_norms, lora_grad_norms=lora_norms, step=global_step)
+            if diagnostics_due:
+                telemetry.log_control_diagnostics(**last_diag, control_input_grad_norms=control_norms, lora_grad_norms=lora_norms, step=global_step)
             if global_step % cfg.val_every == 0 or global_step == cfg.max_steps:
                 val_batches = (collate([val_data[index] for index in group]) for group in val_plan.for_epoch(0)[:cfg.validation_batches])
                 telemetry.log_validation_flow_loss(validate_flow_loss(model, conditioner, val_batches, cfg, device, generator), step=global_step)

@@ -2,7 +2,7 @@
 
 ## Current objective
 
-Selective Krea main-block gradient checkpointing is ready for MB2/accum16 host profiling. No cache regeneration, 10-step/100-step run, or production run has been started.
+The Gate-F telemetry timing bug is fixed: sparse control/LoRA gradient diagnostics are captured after accumulated backward work and clipping, immediately before the optimizer update clears gradients. No training was run this session.
 
 ## Decisions in force
 
@@ -10,6 +10,7 @@ Selective Krea main-block gradient checkpointing is ready for MB2/accum16 host p
 - LoRA rank/alpha 64, BF16, flow-matching MSE only, seed 42, frozen backbone.
 - AdamW: lr `1e-4`, betas `(0.9, 0.99)`, weight decay `0.0`; warmup 200 optimizer steps; effective batch remains 32.
 - Gate-F remains `compile=False`, with zero checkpointed main blocks by default.
+- Global gradient clipping, AdamW settings, scheduler behavior, accumulation, and `zero_grad(set_to_none=True)` semantics remain unchanged.
 - Canonical latent root: `/lambda/nfs/adhit/krea2-pose/posebridge_latents`.
 - Canonical cached text root: `/lambda/nfs/adhit/krea2-pose/text_conditioning`.
 
@@ -24,13 +25,14 @@ Selective Krea main-block gradient checkpointing is ready for MB2/accum16 host p
 - The verifier accepts `--stem coco_100098_193288` and derives `dataset_root` from latent metadata when omitted. It requires exact BF16 tensor, mask, dtype, and shape equality with max absolute difference `0.0`.
 - Main-block checkpointing is now selective: `--gradient-checkpointing-blocks N` accepts 0–28 and checkpoints the first N entries of `model.blocks` in execution order. N=0 checkpoints none. Legacy `--gradient-checkpointing` remains an all-28 shorthand; the count option overrides it.
 - Only expensive Krea `model.blocks` are checkpointed. Cached text conditioning, frozen Qwen/text fusion, VAE, control construction, and helpers remain outside checkpointing.
+- The prior real 10-step smoke showed `diagnostics/control_input_grad_norm/{full,control_half}=0` because it sampled after `optimizer_update()` had called `zero_grad`. Diagnostics now use an optional pre-step callback inside that same optimizer boundary, after clipping and before `optimizer.step()`.
+- The regression test injects synthetic ControlInput and LoRA gradients, captures nonzero diagnostics via the pre-step callback, then proves the post-update gradients are cleared.
 
 ## Files changed this session
 
-- `pose_controlnet/config.py`
-- `pose_controlnet/diffusion.py`
 - `train.py`
 - `tests/test_train_mechanics.py`
+- `docs/CODEX_HANDOFF.md`
 
 ## Tests run
 
@@ -39,15 +41,15 @@ PASS:
 ```bash
 UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_train_mechanics
 UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile \
-  pose_controlnet/diffusion.py pose_controlnet/config.py train.py tests/test_train_mechanics.py
+  train.py tests/test_train_mechanics.py
 git diff --check
 ```
 
-Focused regressions cover default/legacy configuration, selective CLI propagation, invalid counts, zero/exact-N prefix checkpoint calls, unchanged forward output shape/value, and training loss propagation. No real training was run.
+Focused regressions cover the pre-step gradient capture plus existing configuration, checkpointing, and flow-loss mechanics. No real training was run.
 
 ## Exact next action
 
-From the GH200 host, measure MB2/accum16 with cached text conditioning and no compile, beginning with four checkpointed main blocks. Run exactly one optimizer step per count:
+From the GH200 host, repeat the real 10-step Gate-F smoke only when authorized, and confirm sparse W&B metrics now show nonzero control-half/full and representative LoRA gradient norms on the diagnostic cadence. Then continue the existing MB2/accum16 profiling plan, beginning with four checkpointed main blocks:
 
 ```bash
 UV_CACHE_DIR=/tmp/krea_uv_cache uv run python train.py \
