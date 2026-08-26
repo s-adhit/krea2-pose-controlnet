@@ -4,10 +4,55 @@ import glob
 import json
 import os
 import random
+from pathlib import Path
 
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+
+
+class PreparedLatentShardDataset(Dataset):
+    """Read-only access to verified Gate-D ``split/split-*.pt`` archives.
+
+    The compact index is derived from the archive headers/samples once and retains
+    only shard number, in-shard offset, and bucket metadata.  Latents are loaded
+    lazily from a one-shard cache; training never invokes VAE preprocessing.
+    """
+    def __init__(self, shard_root: str, split: str) -> None:
+        root = Path(shard_root)
+        metadata_path = root / "shards.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        if metadata.get("format_version") != 1 or not metadata.get("complete"):
+            raise ValueError(f"Latent root is not a verified complete shard set: {root}")
+        self.root, self.split = root, split
+        self.records: list[tuple[str, int, tuple[int, int]]] = []
+        for path in sorted((root / split).glob(f"{split}-*.pt")):
+            payload = torch.load(path, map_location="cpu", weights_only=False)
+            if payload.get("format_version") != 1 or payload.get("split") != split:
+                raise ValueError(f"Malformed {split} latent shard: {path}")
+            for offset, sample in enumerate(payload.get("samples", ())):
+                latent, control, text = sample.get("image_latent"), sample.get("control_latent"), sample.get("text")
+                if not isinstance(latent, torch.Tensor) or not isinstance(control, torch.Tensor) or latent.shape != control.shape:
+                    raise ValueError(f"Invalid paired latent at {path}:{offset}")
+                if not isinstance(text, str) or not text.strip():
+                    raise ValueError(f"Missing caption at {path}:{offset}")
+                self.records.append((str(path), offset, tuple(latent.shape[-2:])))
+        expected = metadata.get("expected_counts", {}).get(split)
+        if expected is not None and len(self.records) != expected:
+            raise ValueError(f"{split} shard count mismatch: got {len(self.records)}, expected {expected}")
+        self._cached_path: str | None = None
+        self._cached_samples: list[dict] | None = None
+
+    def __len__(self) -> int:
+        return len(self.records)
+
+    def __getitem__(self, index: int) -> dict:
+        path, offset, _ = self.records[index]
+        if path != self._cached_path:
+            payload = torch.load(path, map_location="cpu", weights_only=False)
+            self._cached_path, self._cached_samples = path, payload["samples"]
+        sample = self._cached_samples[offset]  # type: ignore[index]
+        return {"latent": sample["image_latent"], "control": sample["control_latent"], "prompt": sample["text"]}
 
 
 def load_prepared_sample(shard_root: str, split: str = "train",

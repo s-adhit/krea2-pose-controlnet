@@ -1,9 +1,36 @@
 """checkpointing.py — guardrail 3: local save/resume + wall-clock HF Hub mirror."""
 import os
 import threading
+import tempfile
+from pathlib import Path
+
+import torch
 
 from safetensors import safe_open
 from safetensors.torch import load_file, save_file
+
+
+def save_training_state(path: str | Path, state: dict) -> Path:
+    """Atomically save complete resumable training state (including optimizer/RNG)."""
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(dir=destination.parent, prefix=destination.name + ".", suffix=".tmp", delete=False) as handle:
+        temporary = Path(handle.name)
+    try:
+        torch.save(state, temporary)
+        # Verify deserialization before publishing the checkpoint.
+        torch.load(temporary, map_location="cpu", weights_only=False)
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return destination
+
+
+def load_training_state(path: str | Path) -> dict:
+    state = torch.load(path, map_location="cpu", weights_only=False)
+    if not isinstance(state, dict) or "model" not in state or "optimizer" not in state:
+        raise ValueError(f"Invalid full training checkpoint: {path}")
+    return state
 
 
 def save_checkpoint(model, ckpt_dir: str, run_name: str, step: int, cfg,

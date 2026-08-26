@@ -16,10 +16,11 @@ class TrainConfig:
 
     # optimization
     lr: float = 1e-4
-    batch_size: int = 8
-    grad_accum: int = 4
+    microbatch_size: int = 1
+    gradient_accumulation_steps: int = 32
     max_steps: int = 6000
     warmup_steps: int = 200
+    max_grad_norm: float = 1.0
     caption_dropout: float = 0.1
     control_dropout: float = 0.0
 
@@ -33,6 +34,9 @@ class TrainConfig:
     log_every: int = 10
     val_every: int = 250
     save_every: int = 500
+    checkpoint_every_seconds: int = 3600
+    validation_batches: int = 8
+    diagnostics_every: int = 50
 
     # guardrails
     seed: int = 42
