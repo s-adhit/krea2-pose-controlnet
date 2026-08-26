@@ -2,89 +2,68 @@
 
 ## Current objective
 
-Gate C2 — real Qwen/Krea VAE integration and paired RGB/control latent smoke
-verification. The project-owned VAE encoding path and focused unit tests are
-complete. The required three-sample real-data/GH200 smoke check remains
-blocked by unavailable artifacts in this audit workspace.
+Gate D latent-shard creation and hard verification are implemented. The code is ready for the required real-GH200 smoke run, but this Codex audit shell cannot perform that run because it has no CUDA device and cannot reach the Hub to fetch the uncached Qwen VAE weights. No full shard generation was started.
 
 ## Decisions in force
 
-- Krea-2 Raw uses `diffusers.AutoencoderKLQwenImage` from
-  `Qwen/Qwen-Image`, subfolder `vae`; no transformer/base-model artifact is
-  downloaded by the project-owned loader.
-- Installed project environment verification: `diffusers 0.40.0` exposes
-  `AutoencoderKLQwenImage`.
-- Input is RGB normalized from `[0, 255]` to `[-1, 1]` in BF16 on the VAE
-  device, with Qwen's one-frame video layout `B×3×1×H×W`.
-- The encoder uses `latent_dist.sample()`, matching Diffusers' Qwen-Image
-  ControlNet path. Normalize the raw `B×16×1×H/8×W/8` latent exactly as
-  `(z - vae.config.latents_mean) / vae.config.latents_std` per channel, then
-  remove batch/time axes to the downstream `16×H/8×W/8` layout. Shard
-  serialization, when separately implemented, must explicitly store float32;
-  this encoding path retains its BF16 compute dtype.
-- RGB/control resolution and geometry remain exclusively in `DatasetIndex` and
-  `preprocess_pair`; no path-resolution or crop logic was duplicated.
-
-## Verified environment facts
-
-- Host verification remains: Linux aarch64, GH200, Python 3.10.12, torch
-  2.7.0+cu128, CUDA runtime 12.8, cuDNN 9.8, Triton 3.3.0, and `uv 0.12.5`.
-- This Codex audit shell is CPU-only. It has the project `.venv` and
-  `diffusers 0.40.0`, but not `data/full/` and cannot resolve the Hugging Face
-  Hub DNS endpoint. No CUDA conclusion was drawn from this shell.
+- Krea-2 Raw uses `AutoencoderKLQwenImage` from `Qwen/Qwen-Image/vae`; BF16 encoding and paired geometry remain exclusively in the project-owned VAE and paired-preprocessing helpers.
+- Canonical immutable snapshot root: `/lambda/nfs/adhit/krea2-pose/posebridge_hf`.
+- Full latent output root: `/lambda/nfs/adhit/krea2-pose/posebridge_latents`.
+- Shards are Torch `.pt` archives containing a format-versioned split and a list of per-sample dictionaries. Each sample has float32 CPU `image_latent`/clean `control_latent`, caption, stem/file identity, split, and paired bucket/geometry metadata. The VAE remains BF16 for compute.
+- Default shard size is 256 samples. A paired latent payload is about 2 MiB for typical buckets, making a shard roughly 0.5 GiB: suitable for NFS sequential throughput while keeping retry/recovery granularity practical.
+- Shards are written to a same-directory temporary file, flushed/fsynced, loaded and hard-validated, then atomically renamed. Existing final shards are reused only when they validate against their deterministic split/stem range. Temporary files are never considered complete.
 
 ## Completed/green checks
 
-- Gate B physical dataset resolution: PASS (previously verified).
-- Gate C paired geometry: PASS (previously verified).
-- VAE helper unit tests: PASS — PIL range/layout, per-channel normalization,
-  invalid/nonfinite rejection, paired encode layout/shape/nonzero signal, and
-  diagnostic reporting.
-- Regression paired-preprocessing tests: PASS.
+- Gate B physical resolution and Gate C/C2 GH200 VAE smoke: host-verified PASS by the user (Qwen VAE, BF16, landscape/portrait/square, matched finite nonzero controls).
+- Shard unit and helper regression tests: PASS (21 tests): `.venv/bin/python -m unittest -v tests/test_shards.py tests/test_dataset_index.py tests/test_paired_preprocessing.py tests/test_vae_preprocessing.py`
+- Syntax checks: PASS — `.venv/bin/python -m py_compile prepare_shards.py scripts/verify_shards.py`.
+- `git diff --check`: PASS.
 
-## Gate C2 real-data smoke
+## Smoke status
 
-- Status: BLOCKED in the audit workspace, not passed.
-- Required dataset root `data/full/` is absent (no `images/` or
-  `conditioning_images/` directories), so `DatasetIndex.discover` correctly
-  rejects the attempted smoke command before it can select a square, portrait,
-  and landscape record.
-- Exact VAE-only Hub download was attempted through `hf` but could not begin
-  because this sandbox has a temporary DNS failure. No model weights or
-  unrelated components were downloaded.
-- Therefore there are no real sample latent statistics yet. Do not treat unit
-  test output or review images as the Gate C2 smoke result.
-
-## Exact checks this session
-
-- `.venv/bin/python -m unittest -v tests/test_vae_preprocessing.py tests/test_paired_preprocessing.py` — PASS (12 tests).
-- `.venv/bin/python -m py_compile pose_controlnet/vae_preprocessing.py` — PASS.
-- `.venv/bin/python` Diffusers class check — PASS: version `0.40.0`, required
-  class available.
-- `hf models info Qwen/Qwen-Image ...` and VAE-only dry run — blocked by DNS.
-- `.venv/bin/python -m pose_controlnet.vae_preprocessing --dataset-root data/full --device cpu --scan-limit 16` — expected BLOCKED: missing dataset root.
+- Attempted a three-sample real-data smoke (`--max-samples-per-split 1`) in a unique `/tmp/posebridge-latent-smoke.*` root.
+- BLOCKED before encoding: this audit shell reported `cuda_available=False` and Hub DNS failed while the VAE weights were not available locally. It did read the mounted snapshot/manifests. No latent shard was created; the incomplete temporary output was safely removed.
+- `scripts/verify_shards.py --allow-partial` was run against that incomplete smoke root and correctly rejected it with `No shard files found`.
 
 ## Files changed this session
 
-- `pose_controlnet/vae_preprocessing.py`
-- `tests/test_vae_preprocessing.py`
+- `prepare_shards.py`
+- `scripts/verify_shards.py`
+- `tests/test_shards.py`
 - `docs/CODEX_HANDOFF.md`
 
 ## Current blockers
 
-- Run the final smoke on the GH200 production shell/service environment where
-  the immutable PoseBridge snapshot is mounted and Hugging Face access is
-  available. This audit workspace cannot access those artifacts.
+- Run the tiny smoke from the real GH200 production shell, where CUDA and the already host-verified Qwen VAE artifact are available. This is an audit-shell access issue, not a data or shard-format failure.
 
 ## Exact next action
 
-On the GH200 host, after confirming the mounted snapshot root, run:
+First run and inspect the bounded smoke (then remove its `/tmp` output):
 
 ```bash
-.venv/bin/python -m pose_controlnet.vae_preprocessing \
-  --dataset-root <mounted-posebridge-snapshot> --device cuda --scan-limit 256
+.venv/bin/python prepare_shards.py \
+  --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
+  --output-root /tmp/posebridge-latent-smoke \
+  --device cuda --shard-samples 1 --max-samples-per-split 1
+.venv/bin/python scripts/verify_shards.py \
+  --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
+  --output-root /tmp/posebridge-latent-smoke --allow-partial
 ```
 
-Confirm one square, portrait, and landscape report; matching finite RGB/control
-latent shapes; BF16 encoding; and nonzero control latent statistics. Record
-the reported values in this handoff. Do not create full shards or begin Gate D.
+After explicit authorization, the exact full persistent creation command is:
+
+```bash
+.venv/bin/python prepare_shards.py \
+  --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
+  --output-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
+  --device cuda --shard-samples 256
+```
+
+Then run the hard full gate (must report train 16,503, val 889, diagnostic_val 24, total 17,416):
+
+```bash
+.venv/bin/python scripts/verify_shards.py \
+  --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
+  --output-root /lambda/nfs/adhit/krea2-pose/posebridge_latents
+```
