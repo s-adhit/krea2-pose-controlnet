@@ -18,14 +18,14 @@ class PreparedLatentShardDataset(Dataset):
     only shard number, in-shard offset, and bucket metadata.  Latents are loaded
     lazily from a one-shard cache; training never invokes VAE preprocessing.
     """
-    def __init__(self, shard_root: str, split: str) -> None:
+    def __init__(self, shard_root: str, split: str, *, text_conditioning_root: str | None = None) -> None:
         root = Path(shard_root)
         metadata_path = root / "shards.json"
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         if metadata.get("format_version") != 1 or not metadata.get("complete"):
             raise ValueError(f"Latent root is not a verified complete shard set: {root}")
         self.root, self.split = root, split
-        self.records: list[tuple[str, int, tuple[int, int]]] = []
+        self.records: list[tuple[str, int, tuple[int, int], str]] = []
         for path in sorted((root / split).glob(f"{split}-*.pt")):
             payload = torch.load(path, map_location="cpu", weights_only=False)
             if payload.get("format_version") != 1 or payload.get("split") != split:
@@ -36,23 +36,35 @@ class PreparedLatentShardDataset(Dataset):
                     raise ValueError(f"Invalid paired latent at {path}:{offset}")
                 if not isinstance(text, str) or not text.strip():
                     raise ValueError(f"Missing caption at {path}:{offset}")
-                self.records.append((str(path), offset, tuple(latent.shape[-2:])))
+                stem = sample.get("stem")
+                if not isinstance(stem, str) or not stem:
+                    raise ValueError(f"Missing stem at {path}:{offset}")
+                self.records.append((str(path), offset, tuple(latent.shape[-2:]), stem))
         expected = metadata.get("expected_counts", {}).get(split)
         if expected is not None and len(self.records) != expected:
             raise ValueError(f"{split} shard count mismatch: got {len(self.records)}, expected {expected}")
         self._cached_path: str | None = None
         self._cached_samples: list[dict] | None = None
+        self.text_conditioning = None
+        if text_conditioning_root is not None:
+            from pose_controlnet.text_conditioning import CachedTextConditioning
+            self.text_conditioning = CachedTextConditioning(text_conditioning_root, split)
+            stems = [record[3] for record in self.records]
+            if set(stems) != set(self.text_conditioning.index) or len(stems) != len(self.text_conditioning.index):
+                raise ValueError(f"Latent/text-conditioning stem identity mismatch for {split}")
 
     def __len__(self) -> int:
         return len(self.records)
 
     def __getitem__(self, index: int) -> dict:
-        path, offset, _ = self.records[index]
+        path, offset, _, stem = self.records[index]
         if path != self._cached_path:
             payload = torch.load(path, map_location="cpu", weights_only=False)
             self._cached_path, self._cached_samples = path, payload["samples"]
         sample = self._cached_samples[offset]  # type: ignore[index]
-        return {"latent": sample["image_latent"], "control": sample["control_latent"], "prompt": sample["text"]}
+        item = {"latent": sample["image_latent"], "control": sample["control_latent"], "prompt": sample["text"], "stem": stem}
+        if self.text_conditioning is not None: item.update(self.text_conditioning.get(stem))
+        return item
 
 
 def load_prepared_sample(shard_root: str, split: str = "train",
@@ -158,8 +170,15 @@ class BucketBatchSampler:
 
 
 def collate(items):
-    return {
+    batch = {
         "latent": torch.stack([x["latent"] for x in items]),
         "control": torch.stack([x["control"] for x in items]),
         "prompts": [x["prompt"] for x in items],
     }
+    if "context" in items[0]:
+        if any("context" not in item or "mask" not in item for item in items): raise ValueError("Mixed cached/non-cached text batch")
+        contexts, masks = [x["context"] for x in items], [x["mask"] for x in items]
+        length = max(context.shape[0] for context in contexts)
+        batch["context"] = torch.stack([torch.nn.functional.pad(context, (0, 0, 0, 0, 0, length - context.shape[0])) for context in contexts])
+        batch["text_mask"] = torch.stack([torch.nn.functional.pad(mask, (0, length - mask.shape[0])) for mask in masks])
+    return batch

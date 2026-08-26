@@ -95,7 +95,8 @@ class DeterministicBucketBatches:
     def for_epoch(self, epoch: int) -> list[list[int]]:
         rng = random.Random(self.seed + epoch)
         by_bucket: dict[tuple[int, int], list[int]] = {}
-        for index, (_, _, bucket) in enumerate(self.records):
+        for index, record in enumerate(self.records):
+            bucket = record[2]
             by_bucket.setdefault(bucket, []).append(index)
         batches: list[list[int]] = []
         for indices in by_bucket.values():
@@ -111,6 +112,18 @@ class DeterministicBucketBatches:
 def apply_caption_dropout(prompts: list[str], probability: float, seed: int, microbatch_index: int) -> list[str]:
     rng = random.Random(seed + 1_000_003 * microbatch_index)
     return ["" if rng.random() < probability else prompt for prompt in prompts]
+
+
+def apply_cached_caption_dropout(batch: dict, unconditional: dict[str, torch.Tensor], probability: float, seed: int, microbatch_index: int) -> None:
+    """Seeded 10% dropout selects cached unconditional text; it never alters archives."""
+    rng = random.Random(seed + 1_000_003 * microbatch_index)
+    entries = []
+    for index in range(batch["context"].shape[0]):
+        length = int(batch["text_mask"][index].sum().item())
+        entries.append(unconditional if rng.random() < probability else {"context": batch["context"][index, :length], "mask": batch["text_mask"][index, :length]})
+    max_length = max(entry["context"].shape[0] for entry in entries)
+    batch["context"] = torch.stack([F.pad(entry["context"], (0, 0, 0, 0, 0, max_length - entry["context"].shape[0])) for entry in entries])
+    batch["text_mask"] = torch.stack([F.pad(entry["mask"], (0, max_length - entry["mask"].shape[0])) for entry in entries])
 
 
 def _capture_rng() -> dict:
@@ -142,8 +155,11 @@ def _flow_loss(model, conditioner, batch: dict, cfg: TrainConfig, device: torch.
     timestep = sample_flow_timestep(clean.shape[0], (clean.shape[-2] // model.config.patch) * (clean.shape[-1] // model.config.patch), cfg, device, generator)
     noise = torch.randn(clean.shape, device=device, dtype=torch.float32, generator=generator)
     noisy, target = make_flow_pair(clean, noise, timestep)
-    prompts = batch["prompts"]
-    context, text_mask = conditioner(prompts)
+    if "context" in batch:
+        context, text_mask = batch["context"].to(device=device, dtype=torch.bfloat16, non_blocking=True), batch["text_mask"].to(device=device, dtype=torch.bool, non_blocking=True)
+    else:
+        if conditioner is None: raise RuntimeError("Cached conditioning is required but absent")
+        context, text_mask = conditioner(batch["prompts"])
     image_tokens, pos, mask = patchify_and_position(noisy.to(torch.bfloat16), context.shape[1], model.config.patch, text_mask)
     control_tokens, _, _ = patchify_and_position(control, context.shape[1], model.config.patch, text_mask)
     target_tokens, _, _ = patchify_and_position(target, context.shape[1], model.config.patch, text_mask)
@@ -182,6 +198,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--raw-ckpt", default="/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors")
     parser.add_argument("--latent-root", default="/lambda/nfs/adhit/krea2-pose/posebridge_latents")
+    parser.add_argument("--text-conditioning-root", default="/lambda/nfs/adhit/krea2-pose/text_conditioning",
+                        help="Complete persistent Qwen conditioning root; pass --online-text-conditioning only for diagnostics")
+    parser.add_argument("--online-text-conditioning", action="store_true", help="Diagnostic fallback that loads Qwen; never production mode")
     parser.add_argument("--checkpoint-dir", default="/lambda/nfs/adhit/krea2-pose/checkpoints")
     parser.add_argument("--run-name", required=True)
     parser.add_argument("--max-steps", required=True, type=int)
@@ -221,12 +240,14 @@ def main() -> None:
     set_seed(cfg.seed); device = torch.device("cuda"); torch.cuda.reset_peak_memory_stats()
     print(f"effective_batch={effective_batch_size(cfg.microbatch_size, cfg.gradient_accumulation_steps)} (microbatch × accumulation × world_size=1)", flush=True)
     print(f"runtime: compile={cfg.compile} gradient_checkpointing={cfg.gradient_checkpointing}", flush=True)
-    train_data, val_data = PreparedLatentShardDataset(cfg.shard_dir, "train"), PreparedLatentShardDataset(cfg.shard_dir, "val")
+    cached_text = not args.online_text_conditioning
+    train_data, val_data = PreparedLatentShardDataset(cfg.shard_dir, "train", text_conditioning_root=args.text_conditioning_root if cached_text else None), PreparedLatentShardDataset(cfg.shard_dir, "val", text_conditioning_root=args.text_conditioning_root if cached_text else None)
     train_plan, val_plan = DeterministicBucketBatches(train_data.records, cfg.microbatch_size, cfg.seed), DeterministicBucketBatches(val_data.records, cfg.microbatch_size, cfg.seed + 17)
     model = build_pose_model(cfg.raw_ckpt, cfg.rank, cfg.alpha, "cuda")
     configure_runtime(model, compile_enabled=cfg.compile)
     model.train()
-    conditioner = PoseTextConditioner(device="cuda", dtype=torch.bfloat16)
+    conditioner = None if cached_text else PoseTextConditioner(device="cuda", dtype=torch.bfloat16)
+    print(f"text_conditioning={'cached' if cached_text else 'online'} text_encoder_loaded={conditioner is not None}", flush=True)
     optimizer, scheduler = build_optimizer(model, cfg), None
     scheduler = OptimizerStepWarmup(optimizer, cfg.warmup_steps)
     global_step = epoch = batch_position = 0
@@ -256,7 +277,11 @@ def main() -> None:
                     epoch, batch_position = epoch + 1, 0
                     batches = train_plan.for_epoch(epoch)
                 batch = collate([train_data[index] for index in batches[batch_position]]); batch_position += 1
-                batch["prompts"] = apply_caption_dropout(batch["prompts"], cfg.caption_dropout, cfg.seed, global_step * cfg.gradient_accumulation_steps + accumulation_index)
+                dropout_index = global_step * cfg.gradient_accumulation_steps + accumulation_index
+                if cached_text:
+                    apply_cached_caption_dropout(batch, train_data.text_conditioning.unconditional, cfg.caption_dropout, cfg.seed, dropout_index)
+                else:
+                    batch["prompts"] = apply_caption_dropout(batch["prompts"], cfg.caption_dropout, cfg.seed, dropout_index)
                 with torch.autocast("cuda", dtype=torch.bfloat16): loss, last_diag = _flow_loss(model, conditioner, batch, cfg, device, generator, grad_ckpt=cfg.gradient_checkpointing)
                 (loss / cfg.gradient_accumulation_steps).backward()
             grad_norm = optimizer_update(optimizer, scheduler, trainable_params(model), cfg.max_grad_norm)
