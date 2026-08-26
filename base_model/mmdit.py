@@ -121,7 +121,6 @@ class PositionalEncoding(torch.nn.Module):
         self.theta = theta
         self.ntk = ntk
 
-    @torch.compile(fullgraph=True)
     def forward(self, pos: Tensor) -> Tensor:
         return torch.cat(
             [
@@ -151,7 +150,6 @@ class RMSNorm(torch.nn.Module):
             torch.zeros(features, device=device, dtype=torch.float32)
         )
 
-    @torch.compile(fullgraph=True)
     def forward(self, x: Tensor) -> Tensor:
         t, dtype = x.float(), x.dtype
         t = F.rms_norm(
@@ -218,7 +216,6 @@ class LastLayer(torch.nn.Module):
         self.linear = torch.nn.Linear(features, patch * patch * channels, bias=True)
         self.modulation = SimpleModulation(features)
 
-    @torch.compile(fullgraph=True)
     def forward(self, x: Tensor, tvec: Tensor) -> Tensor:
         scale, shift = self.modulation(tvec)
         x = (1 + scale) * self.norm(x) + shift

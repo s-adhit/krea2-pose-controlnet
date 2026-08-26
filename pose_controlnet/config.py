@@ -23,6 +23,8 @@ class TrainConfig:
     max_grad_norm: float = 1.0
     caption_dropout: float = 0.1
     control_dropout: float = 0.0
+    compile: bool = False
+    gradient_checkpointing: bool = False
 
     # schedule (resolution-aware flow-matching shift)
     mu_x1: float = 256.0

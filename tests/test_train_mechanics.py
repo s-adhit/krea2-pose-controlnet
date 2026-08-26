@@ -87,5 +87,49 @@ class TrainMechanicsTest(unittest.TestCase):
         with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "6000", "--microbatch-size", "1", "--gradient-accumulation-steps", "32"]):
             with self.assertRaises(SystemExit): train.parse_args()
 
+    def test_runtime_defaults_disable_compile_and_gradient_checkpointing(self):
+        with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "1", "--microbatch-size", "1", "--gradient-accumulation-steps", "32"]):
+            cfg = train.config_from_args(train.parse_args())
+        self.assertFalse(cfg.compile)
+        self.assertFalse(cfg.gradient_checkpointing)
+
+    def test_runtime_flags_propagate_to_config(self):
+        with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "1", "--microbatch-size", "1", "--gradient-accumulation-steps", "32", "--compile", "--gradient-checkpointing"]):
+            cfg = train.config_from_args(train.parse_args())
+        self.assertTrue(cfg.compile)
+        self.assertTrue(cfg.gradient_checkpointing)
+
+        with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "1", "--microbatch-size", "1", "--gradient-accumulation-steps", "32", "--compile", "--no-compile", "--gradient-checkpointing", "--no-gradient-checkpointing"]):
+            cfg = train.config_from_args(train.parse_args())
+        self.assertFalse(cfg.compile)
+        self.assertFalse(cfg.gradient_checkpointing)
+
+    def test_no_compile_runtime_leaves_text_mlp_unwrapped(self):
+        model = torch.nn.Module()
+        model.txtmlp = torch.nn.Linear(1, 1)
+        original_forward = model.txtmlp.forward
+        with patch("train.torch.compile") as compile_mock:
+            train.configure_runtime(model, compile_enabled=False)
+        compile_mock.assert_not_called()
+        self.assertIs(model.txtmlp.forward.__self__, original_forward.__self__)
+
+    def test_flow_loss_propagates_no_gradient_checkpointing(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.config = type("Config", (), {"patch": 1})()
+
+        model = Model()
+        cfg = TrainConfig(raw_ckpt="raw", shard_dir="shards", gradient_checkpointing=False)
+        batch = {"latent": torch.ones(1, 1, 2, 2), "control": torch.ones(1, 1, 2, 2), "prompts": ["pose"]}
+        context = torch.ones(1, 1, 1, 1)
+        with patch("train.sample_flow_timestep", return_value=torch.tensor([0.5])), \
+             patch("train.make_flow_pair", side_effect=lambda clean, noise, timestep: (clean, clean)), \
+             patch("train.patchify_and_position", side_effect=[(torch.ones(1, 4, 1), torch.zeros(1, 5, 3), torch.ones(1, 5, dtype=torch.bool)), (torch.ones(1, 4, 1), None, None), (torch.ones(1, 4, 1), None, None)]), \
+             patch("train.forward_pose_control", return_value=torch.ones(1, 4, 1)) as forward:
+            loss, _ = train._flow_loss(model, lambda prompts: (context, torch.ones(1, 1, dtype=torch.bool)), batch, cfg, torch.device("cpu"), torch.Generator(), grad_ckpt=cfg.gradient_checkpointing)
+        self.assertTrue(torch.isfinite(loss))
+        self.assertFalse(forward.call_args.kwargs["grad_ckpt"])
+
 
 if __name__ == "__main__": unittest.main()

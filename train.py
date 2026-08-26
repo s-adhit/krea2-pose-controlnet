@@ -123,6 +123,17 @@ def _restore_rng(state: dict) -> None:
     if state.get("cuda") is not None and torch.cuda.is_available(): torch.cuda.set_rng_state_all(state["cuda"])
 
 
+def configure_runtime(model: torch.nn.Module, *, compile_enabled: bool) -> None:
+    """Apply opt-in compilation only to a rank-stable text-projection boundary.
+
+    RMSNorm is deliberately never compiled directly: it is shared by text MLPs
+    (rank 3) and attention Q/K tensors (rank 4).  The text MLP always receives
+    ``[batch, text_length, text_features]`` in this training entry point.
+    """
+    if compile_enabled:
+        model.txtmlp.forward = torch.compile(model.txtmlp.forward, dynamic=True)
+
+
 def _flow_loss(model, conditioner, batch: dict, cfg: TrainConfig, device: torch.device, generator: torch.Generator, *, grad_ckpt: bool) -> tuple[torch.Tensor, dict]:
     clean = batch["latent"].to(device=device, dtype=torch.float32, non_blocking=True)
     control = batch["control"].to(device=device, dtype=torch.bfloat16, non_blocking=True)
@@ -181,6 +192,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--val-every", type=int, default=10)
     parser.add_argument("--save-every", type=int, default=10)
     parser.add_argument("--diagnostics-every", type=int, default=10)
+    parser.add_argument("--compile", action=argparse.BooleanOptionalAction, default=False,
+                        help="opt in to compiling the rank-stable text projection")
+    parser.add_argument("--gradient-checkpointing", action=argparse.BooleanOptionalAction, default=False,
+                        help="recompute transformer blocks during backward to reduce memory")
     parser.add_argument("--resume")
     parser.add_argument("--wandb-mode", default="online")
     parser.add_argument("--no-wandb", action="store_true")
@@ -190,19 +205,27 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+def config_from_args(args: argparse.Namespace) -> TrainConfig:
+    return TrainConfig(raw_ckpt=args.raw_ckpt, shard_dir=args.latent_root, ckpt_dir=args.checkpoint_dir, run_name=args.run_name,
+                       max_steps=args.max_steps, microbatch_size=args.microbatch_size, gradient_accumulation_steps=args.gradient_accumulation_steps,
+                       max_grad_norm=args.max_grad_norm, validation_batches=args.validation_batches, val_every=args.val_every, save_every=args.save_every, diagnostics_every=args.diagnostics_every,
+                       compile=args.compile, gradient_checkpointing=args.gradient_checkpointing,
+                       wandb_enabled=not args.no_wandb, wandb_mode=args.wandb_mode,
+                       metrics_jsonl_path=str(Path(args.checkpoint_dir) / args.run_name / "metrics.jsonl"))
+
+
 def main() -> None:
     args = parse_args()
     if not torch.cuda.is_available(): raise RuntimeError("Run Gate-F smoke from the GH200 host shell with CUDA visible")
-    cfg = TrainConfig(raw_ckpt=args.raw_ckpt, shard_dir=args.latent_root, ckpt_dir=args.checkpoint_dir, run_name=args.run_name,
-                      max_steps=args.max_steps, microbatch_size=args.microbatch_size, gradient_accumulation_steps=args.gradient_accumulation_steps,
-                      max_grad_norm=args.max_grad_norm, validation_batches=args.validation_batches, val_every=args.val_every, save_every=args.save_every, diagnostics_every=args.diagnostics_every,
-                      wandb_enabled=not args.no_wandb, wandb_mode=args.wandb_mode,
-                      metrics_jsonl_path=str(Path(args.checkpoint_dir) / args.run_name / "metrics.jsonl"))
+    cfg = config_from_args(args)
     set_seed(cfg.seed); device = torch.device("cuda"); torch.cuda.reset_peak_memory_stats()
     print(f"effective_batch={effective_batch_size(cfg.microbatch_size, cfg.gradient_accumulation_steps)} (microbatch × accumulation × world_size=1)", flush=True)
+    print(f"runtime: compile={cfg.compile} gradient_checkpointing={cfg.gradient_checkpointing}", flush=True)
     train_data, val_data = PreparedLatentShardDataset(cfg.shard_dir, "train"), PreparedLatentShardDataset(cfg.shard_dir, "val")
     train_plan, val_plan = DeterministicBucketBatches(train_data.records, cfg.microbatch_size, cfg.seed), DeterministicBucketBatches(val_data.records, cfg.microbatch_size, cfg.seed + 17)
-    model = build_pose_model(cfg.raw_ckpt, cfg.rank, cfg.alpha, "cuda"); model.train()
+    model = build_pose_model(cfg.raw_ckpt, cfg.rank, cfg.alpha, "cuda")
+    configure_runtime(model, compile_enabled=cfg.compile)
+    model.train()
     conditioner = PoseTextConditioner(device="cuda", dtype=torch.bfloat16)
     optimizer, scheduler = build_optimizer(model, cfg), None
     scheduler = OptimizerStepWarmup(optimizer, cfg.warmup_steps)
@@ -234,7 +257,7 @@ def main() -> None:
                     batches = train_plan.for_epoch(epoch)
                 batch = collate([train_data[index] for index in batches[batch_position]]); batch_position += 1
                 batch["prompts"] = apply_caption_dropout(batch["prompts"], cfg.caption_dropout, cfg.seed, global_step * cfg.gradient_accumulation_steps + accumulation_index)
-                with torch.autocast("cuda", dtype=torch.bfloat16): loss, last_diag = _flow_loss(model, conditioner, batch, cfg, device, generator, grad_ckpt=True)
+                with torch.autocast("cuda", dtype=torch.bfloat16): loss, last_diag = _flow_loss(model, conditioner, batch, cfg, device, generator, grad_ckpt=cfg.gradient_checkpointing)
                 (loss / cfg.gradient_accumulation_steps).backward()
             grad_norm = optimizer_update(optimizer, scheduler, trainable_params(model), cfg.max_grad_norm)
             global_step += 1

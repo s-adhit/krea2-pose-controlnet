@@ -2,10 +2,11 @@
 
 ## Current objective
 
-Gate E is host-verified **PASS**. Gate F production training mechanics are
-implemented and unit-tested, but the real GH200 10-optimizer-step smoke has
-**not** been run. The user must run that bounded smoke next; do not begin a
-100-step or 6000-step run in this session.
+Gate E is host-verified **PASS**. The first real Gate-F GH200 smoke failed
+before optimizer step 1 with `torch._dynamo.exc.FailOnRecompileLimitHit`.
+The bounded runtime-controls fix is complete and unit-tested. Run the 1-step
+no-compile/no-gradient-checkpointing correctness smoke next; do not begin a
+10-step, 100-step, or 6000-step run first.
 
 ## Decisions in force
 
@@ -21,6 +22,8 @@ implemented and unit-tested, but the real GH200 10-optimizer-step smoke has
   200 **optimizer** steps; target effective batch is 32.
 - GH200 host: ARM64, torch 2.7.0/CUDA 12.8, BF16/SDPA/compile verified.
   Do not replace the host accelerator stack.
+- Gate-F defaults: `compile=False`, `gradient_checkpointing=False`. Both have
+  explicit positive/negative CLI switches and are checkpointed as run config.
 
 ## Gates complete
 
@@ -33,6 +36,21 @@ implemented and unit-tested, but the real GH200 10-optimizer-step smoke has
   gradient, and post-step real-vs-zero-control divergence.
 
 ## Gate F implementation
+
+- The Dynamo failure came specifically from the former unconditional
+  `@torch.compile(fullgraph=True)` on `RMSNorm.forward` at
+  `base_model/mmdit.py:154`. `RMSNorm` is shared by rank-3 text/MLP
+  activations and rank-4 attention Q/K activations, so the full-graph compiled
+  primitive had an invalid shared specialization contract. No Dynamo
+  recompile/cache limit was raised.
+- Unconditional decorators were removed from RMSNorm, positional encoding,
+  and the final layer, making correctness independent of compilation.
+- `--compile` is opt-in and only compiles `model.txtmlp.forward` with
+  `dynamic=True`; this module boundary has a stable rank-3
+  `[batch, text_length, text_features]` contract and does not use fullgraph.
+- `--gradient-checkpointing` is opt-in. The training loop now passes its value
+  to `forward_pose_control`; it no longer hard-codes `grad_ckpt=True`.
+- Startup logs `runtime: compile=... gradient_checkpointing=...` before work.
 
 - `train.py` is now the bounded Gate-F entry point. It requires explicit
   `--max-steps`, rejects values outside 1..100, and therefore cannot inherit
@@ -67,47 +85,58 @@ implemented and unit-tested, but the real GH200 10-optimizer-step smoke has
 
 - `train.py`
 - `pose_controlnet/config.py`
-- `pose_controlnet/data.py`
-- `pose_controlnet/checkpointing.py`
+- `base_model/mmdit.py`
 - `tests/test_train_mechanics.py`
+- `docs/CODEX_HANDOFF.md`
 
 ## Tests run
 
 PASS:
 
 ```bash
-UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest \
-  tests.test_train_mechanics tests.test_wandb_logging tests.test_gate_e
+UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_train_mechanics
 UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile \
-  train.py pose_controlnet/config.py pose_controlnet/data.py \
-  pose_controlnet/checkpointing.py
+  train.py pose_controlnet/config.py pose_controlnet/diffusion.py \
+  base_model/mmdit.py tests/test_train_mechanics.py
 git diff --check
 ```
+
+The focused 13-test suite proves: bounded-smoke defaults keep both switches
+off; positive/negative CLI flags propagate; no-compile runtime does not invoke
+`torch.compile`; and `_flow_loss` passes disabled gradient checkpointing to
+`forward_pose_control`.
 
 No real training, VAE preprocessing, shard regeneration, production launch,
 commit, or push occurred.
 
-## Exact next action: user-run Gate-F 10-step smoke
+## Exact next action: user-run 1-step Gate-F correctness smoke
 
 Run from the normal GH200 host shell:
 
 ```bash
 UV_CACHE_DIR=/tmp/krea_uv_cache uv run python train.py \
-  --run-name gate-f-smoke-10 \
-  --max-steps 10 \
+  --run-name gate-f-correctness-1 \
+  --max-steps 1 \
   --microbatch-size 1 \
   --gradient-accumulation-steps 32 \
-  --max-grad-norm 1.0 \
-  --validation-batches 1 \
-  --val-every 10 \
-  --save-every 10 \
-  --diagnostics-every 10
+  --no-compile \
+  --no-gradient-checkpointing
 ```
 
 Expected effective batch: `1 × 32 × 1 = 32`.
 
-Inspect: all ten finite train losses; finite nonzero global gradients and
-control/LoRA diagnostics; LR at step 10 equals `1e-4 * 10 / 200 = 5e-6`;
-finite validation flow loss; no OOM/NaN; JSONL and W&B telemetry; and a valid
-full checkpoint at
-`/lambda/nfs/adhit/krea2-pose/checkpoints/gate-f-smoke-10/step_000010.pt`.
+Confirm startup prints `runtime: compile=False gradient_checkpointing=False`,
+then inspect finite loss/gradients, metrics, and its checkpoint. Use the same
+two runtime flags for the one-step effective-batch-32 memory probes:
+
+```bash
+UV_CACHE_DIR=/tmp/krea_uv_cache uv run python train.py --run-name gate-f-mb2-1 \
+  --max-steps 1 --microbatch-size 2 --gradient-accumulation-steps 16 \
+  --no-compile --no-gradient-checkpointing
+UV_CACHE_DIR=/tmp/krea_uv_cache uv run python train.py --run-name gate-f-mb4-1 \
+  --max-steps 1 --microbatch-size 4 --gradient-accumulation-steps 8 \
+  --no-compile --no-gradient-checkpointing
+UV_CACHE_DIR=/tmp/krea_uv_cache uv run python train.py --run-name gate-f-mb8-1 \
+  --max-steps 1 --microbatch-size 8 --gradient-accumulation-steps 4 \
+  --no-compile --no-gradient-checkpointing
+```
