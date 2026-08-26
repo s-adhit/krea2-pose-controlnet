@@ -23,20 +23,22 @@ from pose_controlnet.vae_preprocessing import decode_normalized_latents
 EVALUATION_FORMAT_VERSION = 1
 DEFAULT_FIXED_FLOW_SEED = 420_100
 DEFAULT_FIXED_POSE_SEED = 420_200
-CHECKPOINT_STEPS = (0, 20, 40, 60, 80, 100)
-COMPARISON_GRID_COLUMNS = ("control", "step0", "step20", "step40", "step60", "step80", "step100")
+CHECKPOINT_STEPS = (0, 20, 40, 60, 80, 100, 200, 300, 400, 500)
+COMPARISON_GRID_COLUMNS = ("Control", "Step 0", "Step 20", "Step 40", "Step 60", "Step 80", "Step 100", "Step 200", "Step 300", "Step 400", "Step 500")
 DEFAULT_COMPARISON_GRID_THUMBNAIL_WIDTH = 320
 DEFAULT_COMPARISON_GRID_THUMBNAIL_HEIGHT = 320
 
 
-def ordered_checkpoints(checkpoint_dir: str | Path, steps: Iterable[int] = CHECKPOINT_STEPS) -> list[tuple[int, Path | None]]:
+def ordered_checkpoints(checkpoint_dir: str | Path, steps: Iterable[int] = CHECKPOINT_STEPS,
+                        later_checkpoint_dir: str | Path | None = None) -> list[tuple[int, Path | None]]:
     """Baseline is always step 0; every trained state is full-schema validated."""
     root = Path(checkpoint_dir)
+    later_root = Path(later_checkpoint_dir) if later_checkpoint_dir is not None else root
     result: list[tuple[int, Path | None]] = []
     for step in steps:
         if step == 0:
             result.append((0, None)); continue
-        path = root / f"step_{step:06d}.pt"
+        path = (root if step <= 100 else later_root) / f"step_{step:06d}.pt"
         state = load_training_state(path)
         if state["global_step"] != step:
             raise ValueError(f"Checkpoint filename/embedded step mismatch: {path} has {state['global_step']}")
@@ -164,8 +166,10 @@ def save_image(array, path: Path) -> None:
 
 def make_contact_sheet(rows: list[tuple[str, list[Path]]], path: Path, *, thumbnail_width: int = DEFAULT_COMPARISON_GRID_THUMBNAIL_WIDTH,
                        thumbnail_height: int = DEFAULT_COMPARISON_GRID_THUMBNAIL_HEIGHT,
-                       column_labels: tuple[str, ...] = COMPARISON_GRID_COLUMNS) -> None:
+                       column_labels: tuple[str, ...] | None = None) -> None:
     """Render a compact, deterministic grid without altering any generated images."""
+    if column_labels is None:
+        column_labels = tuple(f"column {index}" for index in range(len(rows[0][1]) if rows else 0))
     if thumbnail_width < 1 or thumbnail_height < 1:
         raise ValueError("comparison-grid thumbnail dimensions must be positive")
     if not rows or len(column_labels) != len(rows[0][1]) or any(len(paths) != len(column_labels) for _, paths in rows):

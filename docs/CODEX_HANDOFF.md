@@ -2,61 +2,51 @@
 
 ## Current objective
 
-An explicit, checkpointed extended-training opt-in is implemented for the authorized step-100 to step-500 continuation. The normal Gate-F entry point still rejects values above 100. No training was started in this session.
+Post-step-500 evaluation gate is implemented but not host-executed. No training, optimizer step, commit, or push occurred.
 
-## Decisions and verified state
+## Verified state
 
-- Krea-2 Raw; clean skeleton-control latent channel concat; rank/alpha 64 LoRA; BF16 flow-matching MSE; AdamW `1e-4`, betas `(0.9, 0.99)`, no weight decay; warmup 200; MB2/accum16/effective batch32; GC blocks 6; compile off; cached Qwen conditioning; seed 42.
-- `train.py --max-steps` accepts `1..100` by default. Values above 100 require `--allow-extended-training`; the resulting `allow_extended_training` value is included in `TrainConfig`, checkpointed through the existing config payload, and printed at startup. Resume, optimizer/scheduler, data/RNG, telemetry, and checkpoint/mirror behavior are otherwise unchanged.
-- Gates A–E and Gate-F mechanics are reported green; real checkpoints 20/40/60/80/100 are at `/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-100`. Their stochastic validation losses are not a checkpoint-comparison metric.
-- No project-owned pose estimator/PCK interface exists. No heavyweight metric dependency was added.
+- Krea-2 Raw, clean skeleton-control concat, rank/alpha-64 LoRA, BF16 flow-MSE, AdamW `1e-4` / `(0.9, 0.99)` / zero decay, warmup 200, MB2/accum16/effective32, GC6, compile off, cached Qwen, seed42 remain in force.
+- Training reached step 500. The 100→500 continuation OOMed after step-277 backward; it rolled back to validated step 200, restarted with `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` and 25-step local checkpoint cadence, then reached step 500.
+- Local step 500 validates at `/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-500/step_000500.pt`. Prior proven HF mirrors: 200, 225, 350, 475; 475 remains the latest proven remote recovery point.
+- Sandbox HF DNS failed, so step-500 remote status was not verifiable here. The host status command below must be used.
+- Required order: `0,20,40,60,80,100,200,300,400,500`. Local inspection found valid 20–100 and 500, but **200, 300, 400 are missing** from `pose-learning-500`; complete evaluation deliberately fails rather than skips them.
 
 ## Implemented evaluation contract
 
-- `evaluate.py fixed-flow` creates/reuses `fixed_flow_spec.json`: default 32 deterministic `val` stems, seed `420100`, per-stem timestep/noise/sampling seeds, and SHA-256 identities of image latent, control latent, cached context, and mask. It calls existing `sample_flow_timestep`, `make_flow_pair`, `forward_pose_control`, and MSE. Changed latent/text inputs fail rather than silently changing the fixed set.
-- Baseline step 0 is fresh verified Krea + initial zero-impact control/LoRA state. Steps 20–100 are full-schema validated and load through exact trainable-state validation. JSON results include mean/median/std/per-sample loss.
-- `evaluate.py fixed-pose` uses default eight deterministic `diagnostic_val` stems, seed `420200`, cached conditional/unconditional text, existing Euler sampler, 8 steps, CFG 3.5, and Qwen VAE inverse normalization/decode. It writes `fixed_pose/<stem>/control.png`, metadata, steps 0–100, and `comparison_grid.png`.
-- `comparison_grid.png` now has labeled `control | step0 | step20 | step40 | step60 | step80 | step100` columns and fixed 320×320 cells. Each image is centered and thumbnail-scaled without stretching; `--comparison-grid-thumbnail-width` and `--comparison-grid-thumbnail-height` can override those display-only defaults. This does not alter stems, inputs, sampling, checkpoints, files, metadata, or inference behavior.
+- `evaluate.py` preserves/reuses deterministic specs and fixed-flow hashes/seeds (420100/420200), uses 100-run directory through step 100 and 500-run directory above it, and validates all required full checkpoint schemas.
+- `scripts/mirror_checkpoint.py` checks/mirrors one explicit checkpoint using the existing `pose-learning-500/full` layout, SHA-256, format-1 completion marker, local validation, background-mirror retry/credential behavior, then downloads and validates remote bytes/schema.
+- `scripts/score_post500.py` is evaluation-only: torchvision COCO-V1 Keypoint R-CNN, confidence `0.5`, COCO-17 identity, Hungarian minimum shared-joint-distance association, reference confident-keypoint bounding-box diagonal PCK normalization. Missing/low-confidence joints never match; coverage/exclusions are saved. Its control-raster detection coverage must be host-smoked before treating PCK as usable.
+- CLIP is `transformers.CLIPModel` / `openai/clip-vit-base-patch32`, cosine similarity to immutable captions only. Summary includes independent best metrics; no weighted score.
+- `scripts/post500_report.py` generates four deterministic plots/table and only exports the strict GitHub allowlist.
 
-## Files changed this session
+## Tests
 
-- `train.py`, `pose_controlnet/config.py`, `tests/test_train_mechanics.py`
-- `docs/CODEX_HANDOFF.md`
+PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_evaluation tests.test_post500_evaluation tests.test_train_mechanics` (35); `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile evaluate.py pose_controlnet/evaluation.py pose_controlnet/post500_evaluation.py scripts/mirror_checkpoint.py scripts/score_post500.py scripts/post500_report.py tests/test_post500_evaluation.py`; `git diff --check`.
 
-## Tests run
+## GH200 host commands
 
-PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_train_mechanics` (25 tests); `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile train.py pose_controlnet/config.py tests/test_train_mechanics.py`; `git diff --check`.
-
-Coverage: default 100-step acceptance, 101-step rejection without opt-in, authorized 500-step acceptance, accepted resume request from step 100 to 500, plus existing warmup/optimizer, resume state, deterministic data/RNG, checkpoint mirroring, cached-text, and GC mechanics coverage.
-
-## Exact GH200 commands / outputs
-
-From `/home/ubuntu/Krea-2-Pose-ControlNet`:
+From repo root, with existing private-HF credentials:
 
 ```bash
-uv run python evaluate.py fixed-flow --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-100 --output-dir /lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-100
+uv run python scripts/mirror_checkpoint.py status --repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints --run-name pose-learning-500 --checkpoint /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-500/step_000500.pt
+uv run python scripts/mirror_checkpoint.py mirror --repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints --run-name pose-learning-500 --checkpoint /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-500/step_000500.pt
+uv run python scripts/mirror_checkpoint.py status --repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints --run-name pose-learning-500 --checkpoint /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-500/step_000500.pt
 ```
 
-Writes `fixed_flow_spec.json` and `fixed_flow_results.json` under `/lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-100`.
+After recovering local steps 200/300/400, run fixed-flow, one-sample pose smoke, full pose, metric scoring, summary plots/report/export:
 
 ```bash
-uv run python evaluate.py fixed-pose --samples 1 --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-100 --output-dir /lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-100-smoke
+uv run python evaluate.py fixed-flow --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-100 --later-checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-500 --output-dir /lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-500
+uv run python evaluate.py fixed-pose --samples 1 --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-100 --later-checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-500 --output-dir /lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-500-smoke
+uv run python evaluate.py fixed-pose --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-100 --later-checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-500 --output-dir /lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-500
+uv run python scripts/score_post500.py --output-dir /lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-500 --samples 1
+uv run python scripts/score_post500.py --output-dir /lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-500
+uv run python scripts/post500_report.py plots --output-dir /lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-500
+uv run python scripts/post500_report.py report --output-dir /lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-500
+uv run python scripts/post500_report.py export --output-dir /lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-500 --destination docs/evaluation/pose-learning-500
+git status --short
+git add docs/evaluation/pose-learning-500/comparison_grid.png docs/evaluation/pose-learning-500/evaluation_summary.json docs/evaluation/pose-learning-500/fixed_flow_vs_step.png docs/evaluation/pose-learning-500/pck_vs_step.png docs/evaluation/pose-learning-500/clip_similarity_vs_step.png docs/evaluation/pose-learning-500/detection_coverage_vs_step.png
 ```
 
-Writes the six-checkpoint one-sample smoke beneath `.../pose-learning-100-smoke/fixed_pose/<stem>/`.
-
-```bash
-uv run python evaluate.py fixed-pose --samples 8 --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-100 --output-dir /lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-100
-```
-
-Writes full results and `fixed_pose/comparison_grid.png` beneath `.../evaluation/pose-learning-100`. `--dataset-root` is optional because the verified source root is read from `posebridge_latents/shards.json`.
-
-## Next action
-
-Run the already authorized continuation from the GH200 host shell, preserving the private HF target used for the step-100 run:
-
-```bash
-uv run python train.py --run-name pose-learning-100 --max-steps 500 --allow-extended-training --microbatch-size 2 --gradient-accumulation-steps 16 --gradient-checkpointing-blocks 6 --resume auto --hf-repo-id "${HF_REPO_ID:?set to the existing private checkpoint mirror repo}"
-```
-
-This resumes from the newest valid local checkpoint (step 100) first, with the existing HF fallback. Evaluate the resulting checkpoints using the fixed-flow/fixed-pose commands above before any further extension.
+Only stage optional `evaluation_metrics.png` if it exists and is reviewed. Never stage individual images, controls, checkpoints, or weights.

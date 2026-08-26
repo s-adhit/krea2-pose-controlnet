@@ -62,6 +62,13 @@ class EvaluationTest(unittest.TestCase):
             with patch("pose_controlnet.evaluation.load_training_state", return_value={"global_step": 99}):
                 with self.assertRaisesRegex(ValueError, "mismatch"): ordered_checkpoints(root, (20,))
 
+    def test_checkpoint_resolution_uses_two_roots_for_post_100_steps(self):
+        with tempfile.TemporaryDirectory() as temp:
+            early, late = Path(temp) / "early", Path(temp) / "late"
+            with patch("pose_controlnet.evaluation.load_training_state", side_effect=lambda path: {"global_step": int(path.stem.split("_")[1])}):
+                resolved = ordered_checkpoints(early, later_checkpoint_dir=late)
+        self.assertEqual(resolved[6][1], late / "step_000200.pt")
+
     def test_baseline_and_checkpoint_loading_use_trainable_state_interface(self):
         with patch("pose_controlnet.evaluation.load_training_state", return_value={"global_step": 20, "model": {"x": torch.tensor(1)}}), patch("pose_controlnet.evaluation.load_trainable_state_dict") as load:
             self.assertEqual(load_comparison_state(self.model, Path("step_000020.pt")), 20)

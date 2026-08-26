@@ -1,4 +1,4 @@
-"""Post-100-step deterministic fixed-flow and fixed-pose comparison gate."""
+"""Post-500 deterministic fixed-flow and fixed-pose comparison gate."""
 from __future__ import annotations
 import argparse
 import json
@@ -24,7 +24,9 @@ def main():
     parser.add_argument("--latent-root", default="/lambda/nfs/adhit/krea2-pose/posebridge_latents")
     parser.add_argument("--text-conditioning-root", default="/lambda/nfs/adhit/krea2-pose/text_conditioning")
     parser.add_argument("--checkpoint-dir", default="/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-100")
-    parser.add_argument("--output-dir", default="/lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-100")
+    parser.add_argument("--later-checkpoint-dir", default="/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-500",
+                        help="checkpoint root used for required steps above 100")
+    parser.add_argument("--output-dir", default="/lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-500")
     parser.add_argument("--split", default=None); parser.add_argument("--samples", type=int, default=None)
     parser.add_argument("--seed", type=int, default=None); parser.add_argument("--eval-steps", type=int, default=8); parser.add_argument("--eval-guidance", type=float, default=3.5)
     parser.add_argument("--dataset-root", help="required for fixed-pose control PNG export; otherwise read from shards.json")
@@ -39,7 +41,7 @@ def main():
     output = Path(args.output_dir); dataset = PreparedLatentShardDataset(args.latent_root, split, text_conditioning_root=args.text_conditioning_root)
     kind = "fixed_flow" if args.mode == "fixed-flow" else "fixed_pose"; spec_path = output / f"{kind}_spec.json"
     spec = read_or_create_spec(spec_path, dataset, split=split, count=count, seed=seed, kind=kind); write_spec(spec_path, spec)
-    cfg, device = _cfg(args), torch.device("cuda"); model = build_pose_model(args.raw_ckpt, 64, 64, "cuda").eval(); checkpoints = ordered_checkpoints(args.checkpoint_dir)
+    cfg, device = _cfg(args), torch.device("cuda"); model = build_pose_model(args.raw_ckpt, 64, 64, "cuda").eval(); checkpoints = ordered_checkpoints(args.checkpoint_dir, later_checkpoint_dir=args.later_checkpoint_dir)
     if args.mode == "fixed-flow":
         result = evaluate_fixed_flow(model, dataset, spec, cfg, device, checkpoints); path = output / "fixed_flow_results.json"
     else:
