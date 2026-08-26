@@ -241,5 +241,17 @@ def trainable_state_dict(model: nn.Module) -> dict[str, torch.Tensor]:
 
 
 def load_trainable_state_dict(model: nn.Module, sd: dict[str, torch.Tensor]):
+    expected = set(trainable_state_dict(model))
+    actual = set(sd)
+    if actual != expected:
+        raise ValueError(
+            "Trainable checkpoint state does not exactly match the control/LoRA contract: "
+            f"missing={sorted(expected - actual)[:5]}, unexpected={sorted(actual - expected)[:5]}"
+        )
     missing, unexpected = model.load_state_dict(sd, strict=False)
-    assert not unexpected, unexpected
+    frozen = set(model.state_dict()) - expected
+    if set(missing) != frozen or unexpected:
+        raise ValueError(
+            "Strict trainable-state load failed: "
+            f"missing={sorted(set(missing) - frozen)[:5]}, unexpected={unexpected}"
+        )

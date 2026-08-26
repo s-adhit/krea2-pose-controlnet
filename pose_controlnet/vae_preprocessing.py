@@ -45,6 +45,8 @@ class _VAE(Protocol):
 
     def encode(self, x: torch.Tensor) -> _EncodedOutput: ...
 
+    def decode(self, z: torch.Tensor) -> Any: ...
+
 
 @dataclass(frozen=True)
 class EncodedPair:
@@ -91,6 +93,19 @@ def normalize_qwen_latents(latents: torch.Tensor, vae: _VAE) -> torch.Tensor:
     if not torch.isfinite(normalized).all():
         raise VAEPreprocessingError("Normalized VAE latents contain NaN or Inf")
     return normalized
+
+
+@torch.inference_mode()
+def decode_normalized_latents(vae: _VAE, latents: torch.Tensor) -> torch.Tensor:
+    """Invert this project's Qwen latent normalization and decode one-frame images."""
+    if latents.ndim != 4 or latents.shape[1] != getattr(vae.config, "z_dim", None):
+        raise VAEPreprocessingError(f"Normalized image latents must be B×C×H×W, got {tuple(latents.shape)}")
+    mean, std = _latent_statistics(vae, latents.device, latents.dtype)
+    raw = latents.unsqueeze(2) * std + mean
+    decoded = vae.decode(raw).sample
+    if decoded.ndim != 5 or decoded.shape[2] != 1 or not torch.isfinite(decoded).all():
+        raise VAEPreprocessingError("Qwen VAE decode produced invalid image tensor")
+    return decoded.squeeze(2)
 
 
 @torch.inference_mode()

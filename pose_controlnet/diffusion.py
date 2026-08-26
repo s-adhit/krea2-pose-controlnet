@@ -146,13 +146,21 @@ def forward_pose_control(model, noisy_img, pose_ctrl, context, t, pos, mask,
 def sample_eval_image(model, vae_decode_fn, conditioner, sample, cfg, device, seed: int):
     latent = sample["latent"][None].to(device)
     ctrl_latent = sample["control"][None].to(device, torch.bfloat16)
-    prompt = sample["prompt"]
     patch = model.config.patch
 
     noise = torch.randn(latent.shape, device=device, dtype=torch.bfloat16,
                         generator=torch.Generator(device=device).manual_seed(seed))
-    txt, txt_mask = conditioner([prompt])
-    untxt, untxt_mask = conditioner([""])
+    if conditioner is None:
+        required = ("context", "mask", "unconditional_context", "unconditional_mask")
+        missing = [key for key in required if key not in sample]
+        if missing:
+            raise ValueError(f"Cached evaluation conditioning is incomplete: missing={missing}")
+        txt, txt_mask = sample["context"][None].to(device, torch.bfloat16), sample["mask"][None].to(device, torch.bool)
+        untxt, untxt_mask = (sample["unconditional_context"][None].to(device, torch.bfloat16),
+                             sample["unconditional_mask"][None].to(device, torch.bool))
+    else:
+        txt, txt_mask = conditioner([sample["prompt"]])
+        untxt, untxt_mask = conditioner([""])
 
     img, pos, mask = patchify_and_position(noise, txt.shape[1], patch, txt_mask)
     _, unpos, unmask = patchify_and_position(noise, untxt.shape[1], patch, untxt_mask)
