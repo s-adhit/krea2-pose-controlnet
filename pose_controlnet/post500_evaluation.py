@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 import numpy as np
+import torch
+from transformers.modeling_outputs import BaseModelOutputWithPooling
 
 CHECKPOINT_STEPS = (0, 20, 40, 60, 80, 100, 200, 225, 350, 475, 500)
 PCK_THRESHOLDS = (0.05, 0.10, 0.20)
@@ -94,6 +96,27 @@ class KeypointRCNNEstimator:
 def cosine_from_embeddings(image: np.ndarray, text: np.ndarray) -> np.ndarray:
     image = np.asarray(image, float); text = np.asarray(text, float)
     return (image * text).sum(-1) / (np.linalg.norm(image, axis=-1) * np.linalg.norm(text, axis=-1))
+
+
+def clip_feature_tensor(features: torch.Tensor | BaseModelOutputWithPooling) -> torch.Tensor:
+    """Return a projected CLIP feature from supported Transformers API returns."""
+    if isinstance(features, torch.Tensor):
+        return features
+    if isinstance(features, BaseModelOutputWithPooling) and isinstance(features.pooler_output, torch.Tensor):
+        return features.pooler_output
+    raise TypeError(
+        "CLIP get_*_features must return a torch.Tensor or "
+        "BaseModelOutputWithPooling with a tensor pooler_output, got "
+        f"{type(features).__name__}"
+    )
+
+
+def prepare_clip_scoring_inputs(processor: Any, caption: str, image: Any, context_length: int) -> Any:
+    """Tokenize only the scoring copy of an immutable caption at CLIP's limit."""
+    return processor(
+        text=[caption], images=[image], return_tensors="pt", padding=True,
+        truncation=True, max_length=context_length,
+    )
 
 
 def aggregate(values: list[float]) -> dict[str, float | int]:

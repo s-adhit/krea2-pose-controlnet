@@ -3,8 +3,10 @@ import tempfile
 import unittest
 from pathlib import Path
 import numpy as np
+import torch
 from PIL import Image
-from pose_controlnet.post500_evaluation import (CHECKPOINT_STEPS, associate_people, choose_best, cosine_from_embeddings, export_allowlisted, pck_for_people, plot_summary)
+from transformers.modeling_outputs import BaseModelOutputWithPooling
+from pose_controlnet.post500_evaluation import (CHECKPOINT_STEPS, associate_people, choose_best, clip_feature_tensor, cosine_from_embeddings, export_allowlisted, pck_for_people, plot_summary, prepare_clip_scoring_inputs)
 
 def person(points): return {"keypoints": points}
 def joints(x=0, confidence=1): return [[x + i, 0, confidence] for i in range(17)]
@@ -19,6 +21,19 @@ class Post500EvaluationTest(unittest.TestCase):
   refs=[person(joints(0)),person(joints(100))]; preds=[person(joints(101)),person(joints(1))]
   self.assertEqual(associate_people(refs,preds,.5),[(0,1),(1,0)])
   self.assertTrue(np.allclose(cosine_from_embeddings(np.array([[1,0]]),np.array([[2,0]])),[1]))
+ def test_clip_tensor_and_structured_feature_returns_are_compatible(self):
+  image=torch.tensor([[3.0,4.0]]); text=torch.tensor([[6.0,8.0]])
+  structured=BaseModelOutputWithPooling(last_hidden_state=torch.zeros(1,1,2),pooler_output=text)
+  image_embedding=clip_feature_tensor(image); text_embedding=clip_feature_tensor(structured)
+  self.assertIsInstance(image_embedding,torch.Tensor); self.assertIsInstance(text_embedding,torch.Tensor); self.assertEqual(image_embedding.shape,text_embedding.shape)
+  self.assertTrue(np.isfinite(cosine_from_embeddings(image_embedding.numpy(),text_embedding.numpy())).all())
+  with self.assertRaises(TypeError): clip_feature_tensor(object())
+ def test_clip_tokenizer_truncates_to_context_limit(self):
+  class Processor:
+   def __call__(self,**kwargs): self.kwargs=kwargs; return {"input_ids":torch.zeros((1,kwargs["max_length"]),dtype=torch.long)}
+  processor=Processor(); caption="word "*135; context_length=77
+  encoded=prepare_clip_scoring_inputs(processor,caption,Image.new("RGB",(2,2)),context_length)
+  self.assertEqual(processor.kwargs["text"],[caption]); self.assertTrue(processor.kwargs["truncation"]); self.assertEqual(processor.kwargs["max_length"],context_length); self.assertEqual(encoded["input_ids"].shape[-1],context_length)
  def test_best_plots_and_allowlist(self):
   rows=[]
   for step in CHECKPOINT_STEPS: rows.append({"checkpoint_step":step,"fixed_flow":{"mean":float(500-step),"median":1,"std":0,"sample_count":1},"pose":{"pck_005":step/500,"pck_010":step/500,"pck_020":step/500,"detection_coverage":step/500},"clip":{"mean_cosine_similarity":step/500,"median_cosine_similarity":0,"std_cosine_similarity":0,"sample_count":1}})
