@@ -8,13 +8,14 @@ dependencies = [
     "diffusers>=0.33",
     "einops>=0.8",
     "huggingface-hub>=0.30",
-    "numpy>=1.26",
+    "numpy>=1.26,<2",
     "pandas>=2.0",
     "PyYAML>=6.0",
     "safetensors>=0.5",
     "tqdm>=4.66",
     "transformers>=4.51",
     "wandb>=0.19",
+    "scipy>=1.11,<2",
 ]
 
 [dependency-groups]
