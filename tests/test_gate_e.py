@@ -47,9 +47,11 @@ class GateEUnitTests(unittest.TestCase):
 
         image = torch.randn(2, 7, 64)
         control = torch.randn_like(image)
-        output = layer(torch.cat((image, control), dim=-1))
-        self.assertEqual(tuple(output.shape), (2, 7, 32))
-        self.assertTrue(torch.equal(output, pretrained(image)))
+        real_output = layer(torch.cat((image, control), dim=-1))
+        zero_output = layer(torch.cat((image, torch.zeros_like(control)), dim=-1))
+        self.assertEqual(tuple(real_output.shape), (2, 7, 32))
+        self.assertTrue(torch.equal(real_output, pretrained(image)))
+        self.assertTrue(torch.equal(real_output, zero_output))
 
     def test_lora_rank_and_zero_impact_initialization(self) -> None:
         torch.manual_seed(42)

@@ -2,7 +2,7 @@
 
 ## Current objective
 
-Gate E real Krea-2 Raw control-path verification is implemented and locally tested, but the real GH200 checkpoint forward/backward remains **PENDING**. Do not begin Gate F, a production training loop, 10/100-step training, or the 6000-step run.
+Gate E real Krea-2 Raw control-path verification is implemented and locally tested, but the corrected real GH200 diagnostic rerun is **PENDING**. Do not begin Gate F, a production training loop, 10/100-step training, or the 6000-step run.
 
 ## Decisions in force
 
@@ -11,48 +11,38 @@ Gate E real Krea-2 Raw control-path verification is implemented and locally test
 - Flow diagnostic uses seed 42, logistic-normal timestep sampling plus the configured resolution shift, `x_t=t*noise+(1-t)*image`, target `noise-image`, and flow-matching MSE only.
 - Standard zero-impact LoRA initialization makes A's first gradient exactly zero because B starts at zero. The diagnostic records first-backward B/control gradients, takes exactly one AdamW step, proves real/zero-control output divergence, then performs one additional backward with no second optimizer step to prove both A and B gradients are finite and nonzero.
 
-## Completed/green gates and checks
+## Completed/green checks
 
 - User host-verified persistent latent dataset: train 16,503; val 889; diagnostic_val 24; total 17,416; full hard verification PASS.
-- Official architecture contract encoded and locally checked: hidden 6144; 28 blocks; 48 query heads; 12 KV heads; head dimension 128; MLP width 16,384; 12 input text layers; two layerwise plus two refiner text blocks with 20 heads/20 KV heads.
-- Strict checkpoint preflight compares every safetensors key and shape against a meta Krea model; build then uses `load_state_dict(..., strict=True, assign=True)` and rejects any missing/unexpected key.
-- ControlInput assertions cover `(6144,128)` expanded weight, exact raw image-half copy, zero control half, unchanged tokens, and output hidden width 6144.
-- Trainability audit permits only `first.{weight,bias}` and LoRA `A/B`; expected static counts are **215,488,512 trainable** and **12,819,673,676 frozen**.
-- One real persistent sample loaded locally from `train-00000.pt`, sample 0 (`coco_100098_193288`, bucket 1216x832): image/control shapes `(16,104,152)`, image RMS `0.5127766728`, std `0.5112274885`, control RMS `0.7648329139`, std `0.7523605824`; finite, nonzero, caption present.
-- Project venv import blocker fixed with project-owned `networkx>=3.1` via uv; no PyTorch/CUDA/cuDNN/Triton/NVIDIA package changed.
+- Official architecture contract and strict checkpoint preflight are encoded; control input is `(6144,128)` with an exact pretrained image-half copy and exactly zero control-half weights.
+- Trainability audit permits only `first.{weight,bias}` and rank-64 LoRA `A/B`; expected static counts are 215,488,512 trainable and 12,819,673,676 frozen.
+- One real persistent sample loaded locally from `train-00000.pt`, sample 0 (`coco_100098_193288`, bucket 1216x832); image/control latents are finite, nonzero, aligned, and captioned.
 - Targeted unit suite PASS (5 tests): `.venv/bin/python -m unittest -v tests/test_gate_e.py`.
-- Syntax PASS: `.venv/bin/python -m py_compile base_model/k2_lora.py pose_controlnet/data.py pose_controlnet/diffusion.py pose_controlnet/model.py scripts/gate_e_real_diagnostic.py`.
-- Patch hygiene PASS: `git diff --check`.
+- Syntax PASS: `.venv/bin/python -m py_compile scripts/gate_e_real_diagnostic.py tests/test_gate_e.py`.
+
+## Diagnostic bug found and fixed
+
+- The first real GH200 attempt reported initial real-vs-zero control `max_abs=0.0625`, `rms=0.0084880879`, despite `count_nonzero(control_half)==0`.
+- This was a diagnostic methodology bug: it compared a train-mode, autograd, `grad_ckpt=True` real-control prediction retained through `loss.backward()` against an eval-style no-grad, `grad_ckpt=False` zero-control prediction.
+- Initial functional comparison now runs before any backward with both forwards in `model.eval()`, one `torch.no_grad()` context, and `grad_ckpt=False`, using identical precomputed image/context/timestep/position/mask inputs. It requires the exact result `{max_abs: 0.0, rms: 0.0}` with no tolerance.
+- An isolated `model.first` real-control versus zero-control comparison now records max-absolute and RMS differences and also requires exact zero.
+- The gradient-bearing first forward/backward runs only after restoring `model.train()`.
+- After the optimizer step, both functional forwards again share eval/no-grad/`grad_ckpt=False` conditions and must have a finite nonzero difference. The script then restores train mode and creates a separate gradient-bearing real-control forward for the LoRA A/B proof.
 
 ## Gate E status / blocker
 
-- **Gate E is not yet PASS.** This audit shell reports `torch.cuda.is_available() == False`; the real diagnostic correctly exits before model loading.
-- No local `raw.safetensors` exists under `/lambda/nfs/adhit/krea2-pose`; sandbox Hugging Face CLI access failed with DNS resolution unavailable. The official artifact is about 26.3 GB and gated.
-- Therefore real loss, ControlInput weight/gradient norms, LoRA gradient norms, real/zero output deltas, runtime trainable/frozen counts, and peak VRAM are not yet available. Do not invent or infer these values; `scripts/gate_e_real_diagnostic.py` emits all of them as JSON after a successful host run.
+- **Gate E is not yet PASS.** The corrected script must be rerun from the normal GH200 shell with CUDA and the real checkpoint.
+- This Codex audit shell does not expose CUDA. Do not infer real loss, gradient norms, output deltas, or peak VRAM locally.
 
 ## Files changed this session
 
-- `base_model/k2_lora.py`
-- `pose_controlnet/data.py`
-- `pose_controlnet/diffusion.py`
-- `pose_controlnet/model.py`
 - `scripts/gate_e_real_diagnostic.py`
 - `tests/test_gate_e.py`
-- `pyproject.toml`
-- `uv.lock`
 - `docs/CODEX_HANDOFF.md`
 
 ## Exact next action
 
-Run from the normal GH200 shell. If the artifact is not already present, first download the one official monolithic raw checkpoint (requires accepted Krea license/HF access):
-
-```bash
-mkdir -p /lambda/nfs/adhit/krea2-pose/models/krea-2-raw
-hf download krea/Krea-2-Raw raw.safetensors \
-  --local-dir /lambda/nfs/adhit/krea2-pose/models/krea-2-raw
-```
-
-Then execute exactly one bounded Gate E diagnostic:
+Run exactly one corrected Gate E diagnostic from the normal GH200 shell:
 
 ```bash
 .venv/bin/python scripts/gate_e_real_diagnostic.py \
@@ -62,4 +52,4 @@ Then execute exactly one bounded Gate E diagnostic:
   --output-json /tmp/gate-e-real.json
 ```
 
-PASS requires JSON `status=PASS`, strict zero incompatible keys, control-half first-backward gradient finite and >0, first-backward representative LoRA B gradient >0, post-step representative LoRA A/B gradients both >0, no frozen gradients, and finite nonzero post-step real-vs-zero-control output difference. Copy the exact JSON values into this handoff, mark Gate E PASS, and stop; Gate F remains a separate milestone.
+PASS requires JSON `status=PASS`; strict zero incompatible checkpoint keys; isolated `model.first` and full-model initial differences exactly zero; control-half first-backward gradient finite and >0; first-backward representative LoRA B gradient >0; post-step functional difference finite and nonzero; post-step representative LoRA A/B gradients both >0; and no frozen gradients. Copy the exact JSON values into this handoff, mark Gate E PASS, and stop. Gate F remains a separate milestone.

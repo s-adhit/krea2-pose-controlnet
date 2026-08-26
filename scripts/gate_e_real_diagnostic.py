@@ -154,14 +154,38 @@ def run(args: argparse.Namespace) -> dict:
         flow_target, args.text_tokens, patch, text_mask
     )
     concatenated = torch.cat((image_tokens, control_tokens), dim=-1)
+    zero_concatenated = torch.cat((image_tokens, zero_control_tokens), dim=-1)
     if image_tokens.shape[1] != control_tokens.shape[1] or concatenated.shape[1] != image_tokens.shape[1]:
         raise AssertionError("Channel concatenation changed spatial token count")
     if concatenated.shape[-1] != input_width * 2:
         raise AssertionError(f"Wrong concatenated width: {concatenated.shape[-1]}")
+    model.eval()
     with torch.no_grad():
-        hidden_shape = list(model.first(concatenated).shape)
+        hidden_real = model.first(concatenated)
+        hidden_zero = model.first(zero_concatenated)
+        hidden_shape = list(hidden_real.shape)
+        first_initial_difference = _output_difference(hidden_real, hidden_zero)
     if hidden_shape != [1, image_tokens_count, POSE_CONFIG.features]:
         raise AssertionError(f"Unexpected ControlInputLayer output shape: {hidden_shape}")
+    if first_initial_difference != {"max_abs": 0.0, "rms": 0.0}:
+        raise AssertionError(
+            "Zero-initialized control changed ControlInputLayer output: "
+            f"{first_initial_difference}"
+        )
+
+    with torch.no_grad():
+        prediction_real_initial = forward_pose_control(
+            model, image_tokens, control_tokens, context, timestep, pos, mask,
+            grad_ckpt=False,
+        )
+        prediction_zero_initial = forward_pose_control(
+            model, image_tokens, zero_control_tokens, context, timestep, pos, mask,
+            grad_ckpt=False,
+        )
+    initial_difference = _output_difference(prediction_real_initial, prediction_zero_initial)
+    if initial_difference != {"max_abs": 0.0, "rms": 0.0}:
+        raise AssertionError(f"Zero-initialized control changed step-0 output: {initial_difference}")
+    model.train()
 
     control_report = {
         "image_tokens_shape": list(image_tokens.shape),
@@ -172,6 +196,7 @@ def run(args: argparse.Namespace) -> dict:
         "image_half_exact_match": True,
         "image_half_weight_norm": _norm(image_half.detach()),
         "control_half_weight_norm_before_backward": _norm(control_half.detach()),
+        "initial_real_vs_zero_control": first_initial_difference,
     }
 
     parameters = trainable_params(model)
@@ -204,15 +229,6 @@ def run(args: argparse.Namespace) -> dict:
         raise AssertionError(f"Representative LoRA B gradient is zero: {lora_b_first}")
     _assert_frozen_gradients_absent(model)
 
-    with torch.no_grad():
-        prediction_zero_before = forward_pose_control(
-            model, image_tokens, zero_control_tokens, context, timestep, pos, mask,
-            grad_ckpt=False,
-        )
-    initial_difference = _output_difference(prediction_before.detach(), prediction_zero_before)
-    if initial_difference["max_abs"] != 0.0:
-        raise AssertionError(f"Zero-initialized control changed step-0 output: {initial_difference}")
-
     print("[gate-e] taking exactly one AdamW step", flush=True)
     optimizer.step()
     optimizer.zero_grad(set_to_none=True)
@@ -220,20 +236,26 @@ def run(args: argparse.Namespace) -> dict:
     if control_half_after_step <= 0 or not math.isfinite(control_half_after_step):
         raise AssertionError(f"Control half did not update: {control_half_after_step}")
 
-    prediction_real_after = forward_pose_control(
-        model, image_tokens, control_tokens, context, timestep, pos, mask, grad_ckpt=True
-    )
+    model.eval()
     with torch.no_grad():
+        prediction_real_after = forward_pose_control(
+            model, image_tokens, control_tokens, context, timestep, pos, mask,
+            grad_ckpt=False,
+        )
         prediction_zero_after = forward_pose_control(
             model, image_tokens, zero_control_tokens, context, timestep, pos, mask,
             grad_ckpt=False,
         )
-    post_step_difference = _output_difference(prediction_real_after.detach(), prediction_zero_after)
+    post_step_difference = _output_difference(prediction_real_after, prediction_zero_after)
     if post_step_difference["max_abs"] <= 0 or post_step_difference["rms"] <= 0:
         raise AssertionError(f"Real/zero control outputs did not diverge: {post_step_difference}")
 
     print("[gate-e] post-step backward proving LoRA A and B gradients", flush=True)
-    loss_after = F.mse_loss(prediction_real_after.float(), target_tokens.float())
+    model.train()
+    prediction_real_after_for_backward = forward_pose_control(
+        model, image_tokens, control_tokens, context, timestep, pos, mask, grad_ckpt=True
+    )
+    loss_after = F.mse_loss(prediction_real_after_for_backward.float(), target_tokens.float())
     if not math.isfinite(loss_after.item()):
         raise AssertionError(f"Non-finite post-step flow loss: {loss_after.item()}")
     loss_after.backward()
