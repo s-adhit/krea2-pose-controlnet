@@ -25,6 +25,8 @@ class TrainConfig:
     control_dropout: float = 0.0
     compile: bool = False
     gradient_checkpointing: bool = False
+    # Checkpoint the first N main transformer blocks in execution order.
+    gradient_checkpointing_blocks: int = 0
 
     # schedule (resolution-aware flow-matching shift)
     mu_x1: float = 256.0

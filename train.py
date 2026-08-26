@@ -147,7 +147,7 @@ def configure_runtime(model: torch.nn.Module, *, compile_enabled: bool) -> None:
         model.txtmlp.forward = torch.compile(model.txtmlp.forward, dynamic=True)
 
 
-def _flow_loss(model, conditioner, batch: dict, cfg: TrainConfig, device: torch.device, generator: torch.Generator, *, grad_ckpt: bool) -> tuple[torch.Tensor, dict]:
+def _flow_loss(model, conditioner, batch: dict, cfg: TrainConfig, device: torch.device, generator: torch.Generator, *, gradient_checkpointing_blocks: int) -> tuple[torch.Tensor, dict]:
     clean = batch["latent"].to(device=device, dtype=torch.float32, non_blocking=True)
     control = batch["control"].to(device=device, dtype=torch.bfloat16, non_blocking=True)
     if clean.shape != control.shape or not torch.isfinite(clean).all() or not torch.isfinite(control).all():
@@ -163,7 +163,8 @@ def _flow_loss(model, conditioner, batch: dict, cfg: TrainConfig, device: torch.
     image_tokens, pos, mask = patchify_and_position(noisy.to(torch.bfloat16), context.shape[1], model.config.patch, text_mask)
     control_tokens, _, _ = patchify_and_position(control, context.shape[1], model.config.patch, text_mask)
     target_tokens, _, _ = patchify_and_position(target, context.shape[1], model.config.patch, text_mask)
-    prediction = forward_pose_control(model, image_tokens, control_tokens, context, timestep.to(torch.bfloat16), pos, mask, grad_ckpt=grad_ckpt)
+    prediction = forward_pose_control(model, image_tokens, control_tokens, context, timestep.to(torch.bfloat16), pos, mask,
+                                      gradient_checkpointing_blocks=gradient_checkpointing_blocks)
     loss = F.mse_loss(prediction.float(), target_tokens.float())
     if not torch.isfinite(loss): raise FloatingPointError("Non-finite flow-matching MSE")
     diagnostics = {"control_latent_rms": control.float().square().mean().sqrt().item(), "control_latent_std": control.float().std(unbiased=False).item()}
@@ -175,7 +176,7 @@ def validate_flow_loss(model, conditioner, batches: Iterable[dict], cfg: TrainCo
     try:
         with torch.inference_mode():
             for batch in batches:
-                loss, _ = _flow_loss(model, conditioner, batch, cfg, device, generator, grad_ckpt=False)
+                loss, _ = _flow_loss(model, conditioner, batch, cfg, device, generator, gradient_checkpointing_blocks=0)
                 losses.append(loss.item())
     finally:
         model.train(was_training)
@@ -213,22 +214,32 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--diagnostics-every", type=int, default=10)
     parser.add_argument("--compile", action=argparse.BooleanOptionalAction, default=False,
                         help="opt in to compiling the rank-stable text projection")
-    parser.add_argument("--gradient-checkpointing", action=argparse.BooleanOptionalAction, default=False,
-                        help="recompute transformer blocks during backward to reduce memory")
+    parser.add_argument("--gradient-checkpointing", action=argparse.BooleanOptionalAction, default=None,
+                        help="legacy shorthand: checkpoint all 28 main transformer blocks")
+    parser.add_argument("--gradient-checkpointing-blocks", type=int, default=None, metavar="N",
+                        help="checkpoint the first N of 28 main transformer blocks (0 disables; overrides legacy flag)")
     parser.add_argument("--resume")
     parser.add_argument("--wandb-mode", default="online")
     parser.add_argument("--no-wandb", action="store_true")
     args = parser.parse_args()
     if not 1 <= args.max_steps <= 100: parser.error("Gate-F entry point permits only explicit bounded 1..100-step runs")
     if args.microbatch_size < 1 or args.gradient_accumulation_steps < 1: parser.error("batch settings must be positive")
+    if args.gradient_checkpointing_blocks is not None and not 0 <= args.gradient_checkpointing_blocks <= 28:
+        parser.error("--gradient-checkpointing-blocks must be in [0, 28]")
     return args
 
 
 def config_from_args(args: argparse.Namespace) -> TrainConfig:
+    gradient_checkpointing_blocks = (
+        args.gradient_checkpointing_blocks
+        if args.gradient_checkpointing_blocks is not None
+        else (28 if args.gradient_checkpointing else 0)
+    )
     return TrainConfig(raw_ckpt=args.raw_ckpt, shard_dir=args.latent_root, ckpt_dir=args.checkpoint_dir, run_name=args.run_name,
                        max_steps=args.max_steps, microbatch_size=args.microbatch_size, gradient_accumulation_steps=args.gradient_accumulation_steps,
                        max_grad_norm=args.max_grad_norm, validation_batches=args.validation_batches, val_every=args.val_every, save_every=args.save_every, diagnostics_every=args.diagnostics_every,
-                       compile=args.compile, gradient_checkpointing=args.gradient_checkpointing,
+                       compile=args.compile, gradient_checkpointing=gradient_checkpointing_blocks > 0,
+                       gradient_checkpointing_blocks=gradient_checkpointing_blocks,
                        wandb_enabled=not args.no_wandb, wandb_mode=args.wandb_mode,
                        metrics_jsonl_path=str(Path(args.checkpoint_dir) / args.run_name / "metrics.jsonl"))
 
@@ -239,7 +250,7 @@ def main() -> None:
     cfg = config_from_args(args)
     set_seed(cfg.seed); device = torch.device("cuda"); torch.cuda.reset_peak_memory_stats()
     print(f"effective_batch={effective_batch_size(cfg.microbatch_size, cfg.gradient_accumulation_steps)} (microbatch × accumulation × world_size=1)", flush=True)
-    print(f"runtime: compile={cfg.compile} gradient_checkpointing={cfg.gradient_checkpointing}", flush=True)
+    print(f"runtime: compile={cfg.compile} gradient_checkpointing_blocks={cfg.gradient_checkpointing_blocks}", flush=True)
     cached_text = not args.online_text_conditioning
     train_data, val_data = PreparedLatentShardDataset(cfg.shard_dir, "train", text_conditioning_root=args.text_conditioning_root if cached_text else None), PreparedLatentShardDataset(cfg.shard_dir, "val", text_conditioning_root=args.text_conditioning_root if cached_text else None)
     train_plan, val_plan = DeterministicBucketBatches(train_data.records, cfg.microbatch_size, cfg.seed), DeterministicBucketBatches(val_data.records, cfg.microbatch_size, cfg.seed + 17)
@@ -282,7 +293,7 @@ def main() -> None:
                     apply_cached_caption_dropout(batch, train_data.text_conditioning.unconditional, cfg.caption_dropout, cfg.seed, dropout_index)
                 else:
                     batch["prompts"] = apply_caption_dropout(batch["prompts"], cfg.caption_dropout, cfg.seed, dropout_index)
-                with torch.autocast("cuda", dtype=torch.bfloat16): loss, last_diag = _flow_loss(model, conditioner, batch, cfg, device, generator, grad_ckpt=cfg.gradient_checkpointing)
+                with torch.autocast("cuda", dtype=torch.bfloat16): loss, last_diag = _flow_loss(model, conditioner, batch, cfg, device, generator, gradient_checkpointing_blocks=cfg.gradient_checkpointing_blocks)
                 (loss / cfg.gradient_accumulation_steps).backward()
             grad_norm = optimizer_update(optimizer, scheduler, trainable_params(model), cfg.max_grad_norm)
             global_step += 1

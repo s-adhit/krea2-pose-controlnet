@@ -80,8 +80,37 @@ def flow_schedule(seq_len: int, steps: int, cfg) -> list[float]:
     return ts.tolist()
 
 
+def checkpointed_main_block_indices(block_count: int, requested_blocks: int) -> range:
+    """Return the contiguous prefix of main blocks selected for recomputation.
+
+    The first ``requested_blocks`` entries of ``model.blocks`` are checkpointed
+    in execution order.  A prefix keeps tuning deterministic and makes zero
+    mean no checkpointing.  The caller supplies the actual model block count,
+    so this rejects requests incompatible with a loaded checkpoint.
+    """
+    if isinstance(requested_blocks, bool) or not isinstance(requested_blocks, int):
+        raise TypeError("gradient checkpointing block count must be an integer")
+    if not 0 <= requested_blocks <= block_count:
+        raise ValueError(
+            f"gradient checkpointing block count must be in [0, {block_count}], got {requested_blocks}"
+        )
+    return range(requested_blocks)
+
+
 def forward_pose_control(model, noisy_img, pose_ctrl, context, t, pos, mask,
-                          grad_ckpt: bool = True):
+                         gradient_checkpointing_blocks: int | None = None,
+                         grad_ckpt: bool | None = True):
+    """Run Krea with optional checkpointing of a prefix of its main blocks.
+
+    ``grad_ckpt`` remains a compatibility alias: ``True`` checkpoints every
+    main block and ``False`` checkpoints none.  New callers must provide
+    ``gradient_checkpointing_blocks`` (0 through ``len(model.blocks)``).
+    """
+    if gradient_checkpointing_blocks is None:
+        gradient_checkpointing_blocks = len(model.blocks) if grad_ckpt else 0
+    checkpointed_indices = checkpointed_main_block_indices(
+        len(model.blocks), gradient_checkpointing_blocks
+    )
     x = model.first(torch.cat([noisy_img, pose_ctrl], dim=-1))
     t_raw = model.tmlp(temb(t, model.config.tdim, device=x.device, dtype=x.dtype))
     t_vec = model.tproj(t_raw)
@@ -103,8 +132,8 @@ def forward_pose_control(model, noisy_img, pose_ctrl, context, t, pos, mask,
     full_mask = _mask(mask)
     freqs = model.posemb(pos)
 
-    for block in model.blocks:
-        if grad_ckpt:
+    for index, block in enumerate(model.blocks):
+        if index in checkpointed_indices:
             combined = checkpoint(block, combined, t_vec, freqs, full_mask, use_reentrant=False)
         else:
             combined = block(combined, t_vec, freqs, full_mask)

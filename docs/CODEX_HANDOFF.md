@@ -2,14 +2,14 @@
 
 ## Current objective
 
-Host text-cache generation has the required v2 normal-entry writer fix. No cache regeneration, 10-step/100-step run, or production run has been started.
+Selective Krea main-block gradient checkpointing is ready for MB2/accum16 host profiling. No cache regeneration, 10-step/100-step run, or production run has been started.
 
 ## Decisions in force
 
 - Base: Krea-2 Raw; skeleton control is clean latent channel concatenation.
 - LoRA rank/alpha 64, BF16, flow-matching MSE only, seed 42, frozen backbone.
 - AdamW: lr `1e-4`, betas `(0.9, 0.99)`, weight decay `0.0`; warmup 200 optimizer steps; effective batch remains 32.
-- Gate-F remains `compile=False`, `gradient_checkpointing=False` by default.
+- Gate-F remains `compile=False`, with zero checkpointed main blocks by default.
 - Canonical latent root: `/lambda/nfs/adhit/krea2-pose/posebridge_latents`.
 - Canonical cached text root: `/lambda/nfs/adhit/krea2-pose/text_conditioning`.
 
@@ -22,42 +22,40 @@ Host text-cache generation has the required v2 normal-entry writer fix. No cache
 - Text cache `FORMAT_VERSION=2`. Metadata, shard payloads, and `unconditional.pt` must all declare v2. v1 contents cannot be reused. Preparation remains atomic and metadata is incomplete until validation passes.
 - Normal cached entries now persist `stem`, `context`, and `mask`. The writer adds `record.stem` before `_validate_entry(..., expected_stem=record.stem)` and its atomic shard save, eliminating the immediate `Invalid stem` failure.
 - The verifier accepts `--stem coco_100098_193288` and derives `dataset_root` from latent metadata when omitted. It requires exact BF16 tensor, mask, dtype, and shape equality with max absolute difference `0.0`.
+- Main-block checkpointing is now selective: `--gradient-checkpointing-blocks N` accepts 0–28 and checkpoints the first N entries of `model.blocks` in execution order. N=0 checkpoints none. Legacy `--gradient-checkpointing` remains an all-28 shorthand; the count option overrides it.
+- Only expensive Krea `model.blocks` are checkpointed. Cached text conditioning, frozen Qwen/text fusion, VAE, control construction, and helpers remain outside checkpointing.
 
 ## Files changed this session
 
-- `pose_controlnet/text_conditioning.py`
-- `tests/test_text_conditioning.py`
+- `pose_controlnet/config.py`
+- `pose_controlnet/diffusion.py`
+- `train.py`
+- `tests/test_train_mechanics.py`
 
 ## Tests run
 
 PASS:
 
 ```bash
-UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_text_conditioning
+UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_train_mechanics
 UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile \
-  pose_controlnet/text_conditioning.py tests/test_text_conditioning.py
+  pose_controlnet/diffusion.py pose_controlnet/config.py train.py tests/test_train_mechanics.py
 git diff --check
 ```
 
-Eight focused regressions cover mixed short/long prompts, internal padding before suffixes, suffix preservation, independent-online equality, unconditional extraction, dynamic right-padding, v1 metadata rejection, and normal-entry stem validation. The Codex shell did not run Qwen or mutate host cache artifacts.
+Focused regressions cover default/legacy configuration, selective CLI propagation, invalid counts, zero/exact-N prefix checkpoint calls, unchanged forward output shape/value, and training loss propagation. No real training was run.
 
 ## Exact next action
 
-From the GH200 host, regenerate the rejected v1 cache in place; it replaces archives atomically and does not delete the root:
+From the GH200 host, measure MB2/accum16 with cached text conditioning and no compile, beginning with four checkpointed main blocks. Run exactly one optimizer step per count:
 
 ```bash
-UV_CACHE_DIR=/tmp/krea_uv_cache uv run python prepare_text_conditioning.py \
+UV_CACHE_DIR=/tmp/krea_uv_cache uv run python train.py \
   --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
-  --output-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
-  --device cuda --shard-samples 64
+  --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
+  --run-name mb2-gc4 --max-steps 1 --microbatch-size 2 \
+  --gradient-accumulation-steps 16 --no-compile \
+  --gradient-checkpointing-blocks 4
 ```
 
-Then hard-verify representative captions and the original failing stem:
-
-```bash
-UV_CACHE_DIR=/tmp/krea_uv_cache uv run python scripts/verify_text_conditioning.py \
-  --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
-  --output-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
-  --online-equivalence --device cuda --samples-per-split 3 \
-  --stem coco_100098_193288
-```
+Repeat with `--gradient-checkpointing-blocks 8`, `12`, and `16` (using a distinct `--run-name`) and record peak allocated/reserved memory plus seconds per step. Do not begin a longer run.

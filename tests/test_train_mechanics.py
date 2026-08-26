@@ -9,6 +9,7 @@ import torch
 import train
 from pose_controlnet.checkpointing import load_training_state, save_training_state
 from pose_controlnet.config import TrainConfig
+from pose_controlnet.diffusion import checkpointed_main_block_indices, forward_pose_control
 from pose_controlnet.wandb_logging import TrainingTelemetry
 
 
@@ -92,17 +93,85 @@ class TrainMechanicsTest(unittest.TestCase):
             cfg = train.config_from_args(train.parse_args())
         self.assertFalse(cfg.compile)
         self.assertFalse(cfg.gradient_checkpointing)
+        self.assertEqual(cfg.gradient_checkpointing_blocks, 0)
 
     def test_runtime_flags_propagate_to_config(self):
         with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "1", "--microbatch-size", "1", "--gradient-accumulation-steps", "32", "--compile", "--gradient-checkpointing"]):
             cfg = train.config_from_args(train.parse_args())
         self.assertTrue(cfg.compile)
         self.assertTrue(cfg.gradient_checkpointing)
+        self.assertEqual(cfg.gradient_checkpointing_blocks, 28)
 
         with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "1", "--microbatch-size", "1", "--gradient-accumulation-steps", "32", "--compile", "--no-compile", "--gradient-checkpointing", "--no-gradient-checkpointing"]):
             cfg = train.config_from_args(train.parse_args())
         self.assertFalse(cfg.compile)
         self.assertFalse(cfg.gradient_checkpointing)
+        self.assertEqual(cfg.gradient_checkpointing_blocks, 0)
+
+    def test_selective_gradient_checkpointing_cli_propagates(self):
+        with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "1", "--microbatch-size", "2", "--gradient-accumulation-steps", "16", "--gradient-checkpointing-blocks", "8"]):
+            cfg = train.config_from_args(train.parse_args())
+        self.assertEqual(cfg.gradient_checkpointing_blocks, 8)
+        self.assertTrue(cfg.gradient_checkpointing)
+
+    def test_invalid_gradient_checkpointing_block_count_rejected(self):
+        for count in ("-1", "29"):
+            with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "1", "--microbatch-size", "1", "--gradient-accumulation-steps", "32", "--gradient-checkpointing-blocks", count]):
+                with self.assertRaises(SystemExit): train.parse_args()
+        with self.assertRaises(ValueError):
+            checkpointed_main_block_indices(28, 29)
+
+    def test_selective_checkpointing_uses_exact_prefix_and_preserves_forward_shape(self):
+        class Block(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.calls = 0
+
+            def forward(self, combined, t_vec, freqs, full_mask):
+                self.calls += 1
+                return combined + 1
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.first = torch.nn.Linear(2, 1, bias=False)
+                self.first.weight.data.fill_(1)
+                self.tmlp = torch.nn.Identity()
+                self.tproj = torch.nn.Identity()
+                self.txtfusion = type("TextFusion", (torch.nn.Module,), {
+                    "forward": lambda self, context, mask: context
+                })()
+                self.txtmlp = torch.nn.Identity()
+                self.posemb = torch.nn.Identity()
+                self.blocks = torch.nn.ModuleList([Block() for _ in range(4)])
+                self.config = type("Config", (), {"tdim": 1})()
+
+            def last(self, combined, t_raw):
+                return combined
+
+        model = Model()
+        noisy = pose = context = torch.ones(1, 1, 1)
+        t = torch.ones(1)
+        pos = torch.zeros(1, 2, 3)
+        mask = torch.ones(1, 2, dtype=torch.bool)
+        checkpointed_blocks = []
+        def run_checkpoint(function, *args, **kwargs):
+            checkpointed_blocks.append(function)
+            return function(*args)
+
+        with patch("pose_controlnet.diffusion.checkpoint", side_effect=run_checkpoint) as checkpoint_mock:
+            output = forward_pose_control(model, noisy, pose, context, t, pos, mask, gradient_checkpointing_blocks=2)
+        self.assertEqual(checkpoint_mock.call_count, 2)
+        self.assertEqual(checkpointed_blocks, list(model.blocks[:2]))
+        self.assertEqual([block.calls for block in model.blocks], [1, 1, 1, 1])
+        self.assertEqual(output.shape, (1, 1, 1))
+        self.assertTrue(torch.equal(output, torch.full((1, 1, 1), 6.0)))
+
+        with patch("pose_controlnet.diffusion.checkpoint") as checkpoint_mock:
+            output_zero = forward_pose_control(model, noisy, pose, context, t, pos, mask, gradient_checkpointing_blocks=0)
+        checkpoint_mock.assert_not_called()
+        self.assertEqual(output_zero.shape, output.shape)
+        self.assertTrue(torch.equal(output_zero, output))
 
     def test_no_compile_runtime_leaves_text_mlp_unwrapped(self):
         model = torch.nn.Module()
@@ -120,16 +189,16 @@ class TrainMechanicsTest(unittest.TestCase):
                 self.config = type("Config", (), {"patch": 1})()
 
         model = Model()
-        cfg = TrainConfig(raw_ckpt="raw", shard_dir="shards", gradient_checkpointing=False)
+        cfg = TrainConfig(raw_ckpt="raw", shard_dir="shards", gradient_checkpointing_blocks=0)
         batch = {"latent": torch.ones(1, 1, 2, 2), "control": torch.ones(1, 1, 2, 2), "prompts": ["pose"]}
         context = torch.ones(1, 1, 1, 1)
         with patch("train.sample_flow_timestep", return_value=torch.tensor([0.5])), \
              patch("train.make_flow_pair", side_effect=lambda clean, noise, timestep: (clean, clean)), \
              patch("train.patchify_and_position", side_effect=[(torch.ones(1, 4, 1), torch.zeros(1, 5, 3), torch.ones(1, 5, dtype=torch.bool)), (torch.ones(1, 4, 1), None, None), (torch.ones(1, 4, 1), None, None)]), \
              patch("train.forward_pose_control", return_value=torch.ones(1, 4, 1)) as forward:
-            loss, _ = train._flow_loss(model, lambda prompts: (context, torch.ones(1, 1, dtype=torch.bool)), batch, cfg, torch.device("cpu"), torch.Generator(), grad_ckpt=cfg.gradient_checkpointing)
+            loss, _ = train._flow_loss(model, lambda prompts: (context, torch.ones(1, 1, dtype=torch.bool)), batch, cfg, torch.device("cpu"), torch.Generator(), gradient_checkpointing_blocks=cfg.gradient_checkpointing_blocks)
         self.assertTrue(torch.isfinite(loss))
-        self.assertFalse(forward.call_args.kwargs["grad_ckpt"])
+        self.assertEqual(forward.call_args.kwargs["gradient_checkpointing_blocks"], 0)
 
 
 if __name__ == "__main__": unittest.main()
