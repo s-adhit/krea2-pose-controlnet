@@ -15,7 +15,7 @@ from typing import Any, Iterable
 
 import numpy as np
 
-CHECKPOINT_STEPS = (0, 20, 40, 60, 80, 100, 200, 300, 400, 500)
+CHECKPOINT_STEPS = (0, 20, 40, 60, 80, 100, 200, 225, 350, 475, 500)
 PCK_THRESHOLDS = (0.05, 0.10, 0.20)
 GITHUB_EXPORT_NAMES = frozenset({"comparison_grid.png", "evaluation_summary.json", "fixed_flow_vs_step.png", "pck_vs_step.png", "clip_similarity_vs_step.png", "detection_coverage_vs_step.png", "evaluation_metrics.png"})
 

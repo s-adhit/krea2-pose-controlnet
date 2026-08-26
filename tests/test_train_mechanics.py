@@ -190,6 +190,20 @@ class TrainMechanicsTest(unittest.TestCase):
             recovered = newest_valid_hf_checkpoint(repo_id="user/private", run_name="run", download_dir=root / "dl", api=api, download_fn=download)
             self.assertEqual(load_training_state(recovered)["global_step"], 5)
 
+    def test_exact_hf_recovery_requires_matching_completion_marker_and_step(self):
+        class Api:
+            def __init__(self, files): self.files = files
+            def list_repo_files(self, *args, **kwargs): return list(self.files)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); checkpoint = save_training_state(root / "step_000225.pt", self.full_state(225))
+            from pose_controlnet.checkpointing import _sha256, validated_hf_checkpoint_for_step
+            remote = "run/full/step_000225.pt"; files = {remote: checkpoint.read_bytes(), remote + ".complete.json": json.dumps({"format": 1, "checkpoint": remote, "sha256": _sha256(checkpoint), "global_step": 225}).encode()}
+            def download(**kwargs):
+                destination = Path(kwargs["local_dir"]) / kwargs["filename"]; destination.parent.mkdir(parents=True, exist_ok=True); destination.write_bytes(files[kwargs["filename"]]); return str(destination)
+            recovered = validated_hf_checkpoint_for_step(repo_id="user/private", run_name="run", step=225, download_dir=root / "dl", api=Api(files), download_fn=download)
+            self.assertEqual(load_training_state(recovered)["global_step"], 225)
+            self.assertIsNone(validated_hf_checkpoint_for_step(repo_id="user/private", run_name="run", step=350, download_dir=root / "dl", api=Api(files), download_fn=download))
+
     def test_telemetry_failures_are_nonfatal(self):
         with tempfile.TemporaryDirectory() as temporary:
             cfg = TrainConfig(raw_ckpt="raw", shard_dir="shards", wandb_enabled=False, metrics_jsonl_path=str(Path(temporary) / "metrics.jsonl"))

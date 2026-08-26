@@ -229,6 +229,47 @@ def newest_valid_hf_checkpoint(*, repo_id: str, run_name: str, download_dir: str
     return None
 
 
+def validated_hf_checkpoint_for_step(*, repo_id: str, run_name: str, step: int,
+                                     download_dir: str | Path, api: object | None = None,
+                                     download_fn: Callable[..., str] | None = None) -> Path | None:
+    """Return one exact completion-marked HF checkpoint, or ``None``.
+
+    This is deliberately stricter than newest-checkpoint recovery: evaluation
+    comparisons must never silently replace an unavailable archived step with a
+    different checkpoint.
+    """
+    if not repo_id or step < 0:
+        return None
+    remote = f"{run_name}/full/step_{step:06d}.pt"
+    marker_name = f"{remote}.complete.json"
+    try:
+        if api is None:
+            from huggingface_hub import HfApi
+            api = HfApi()
+        if download_fn is None:
+            from huggingface_hub import hf_hub_download
+            download_fn = hf_hub_download
+        files = set(api.list_repo_files(repo_id, repo_type="model"))
+        if remote not in files or marker_name not in files:
+            return None
+        target = Path(download_dir)
+        target.mkdir(parents=True, exist_ok=True)
+        marker_local = Path(download_fn(repo_id=repo_id, repo_type="model", filename=marker_name,
+                                        local_dir=str(target)))
+        marker = json.loads(marker_local.read_text(encoding="utf-8"))
+        expected = {"format": 1, "checkpoint": remote, "sha256": marker.get("sha256"), "global_step": step}
+        if marker != expected or not isinstance(marker["sha256"], str):
+            return None
+        checkpoint = Path(download_fn(repo_id=repo_id, repo_type="model", filename=remote,
+                                      local_dir=str(target)))
+        if _sha256(checkpoint) != marker["sha256"]:
+            return None
+        state = load_training_state(checkpoint)
+        return checkpoint if state["global_step"] == step else None
+    except Exception:
+        return None
+
+
 def resolve_auto_resume(*, checkpoint_dir: str | Path, run_name: str, repo_id: str,
                         remote_download_dir: str | Path) -> Path | None:
     local = newest_valid_local_checkpoint(Path(checkpoint_dir) / run_name)

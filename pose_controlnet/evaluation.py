@@ -12,7 +12,7 @@ import torch
 import torch.nn.functional as F
 from PIL import Image, ImageDraw
 
-from pose_controlnet.checkpointing import load_training_state
+from pose_controlnet.checkpointing import load_training_state, validated_hf_checkpoint_for_step
 from pose_controlnet.config import TrainConfig
 from pose_controlnet.data import PreparedLatentShardDataset
 from pose_controlnet.diffusion import forward_pose_control, make_flow_pair, patchify_and_position, sample_eval_image, sample_flow_timestep
@@ -23,14 +23,16 @@ from pose_controlnet.vae_preprocessing import decode_normalized_latents
 EVALUATION_FORMAT_VERSION = 1
 DEFAULT_FIXED_FLOW_SEED = 420_100
 DEFAULT_FIXED_POSE_SEED = 420_200
-CHECKPOINT_STEPS = (0, 20, 40, 60, 80, 100, 200, 300, 400, 500)
-COMPARISON_GRID_COLUMNS = ("Control", "Step 0", "Step 20", "Step 40", "Step 60", "Step 80", "Step 100", "Step 200", "Step 300", "Step 400", "Step 500")
+CHECKPOINT_STEPS = (0, 20, 40, 60, 80, 100, 200, 225, 350, 475, 500)
+COMPARISON_GRID_COLUMNS = ("Control", "Step 0", "Step 20", "Step 40", "Step 60", "Step 80", "Step 100", "Step 200", "Step 225", "Step 350", "Step 475", "Step 500")
 DEFAULT_COMPARISON_GRID_THUMBNAIL_WIDTH = 320
 DEFAULT_COMPARISON_GRID_THUMBNAIL_HEIGHT = 320
 
 
 def ordered_checkpoints(checkpoint_dir: str | Path, steps: Iterable[int] = CHECKPOINT_STEPS,
-                        later_checkpoint_dir: str | Path | None = None) -> list[tuple[int, Path | None]]:
+                        later_checkpoint_dir: str | Path | None = None, *, hf_repo_id: str = "",
+                        hf_run_name: str = "pose-learning-500",
+                        hf_recovery_dir: str | Path | None = None) -> list[tuple[int, Path | None]]:
     """Baseline is always step 0; every trained state is full-schema validated."""
     root = Path(checkpoint_dir)
     later_root = Path(later_checkpoint_dir) if later_checkpoint_dir is not None else root
@@ -39,6 +41,13 @@ def ordered_checkpoints(checkpoint_dir: str | Path, steps: Iterable[int] = CHECK
         if step == 0:
             result.append((0, None)); continue
         path = (root if step <= 100 else later_root) / f"step_{step:06d}.pt"
+        if not path.is_file() and step > 100 and hf_repo_id:
+            recovery_dir = Path(hf_recovery_dir) if hf_recovery_dir is not None else later_root / "hf-recovery"
+            recovered = validated_hf_checkpoint_for_step(repo_id=hf_repo_id, run_name=hf_run_name, step=step,
+                                                         download_dir=recovery_dir)
+            if recovered is None:
+                raise FileNotFoundError(f"Required checkpoint step {step} is unavailable locally and has no validated completion-marked HF copy")
+            path = recovered
         state = load_training_state(path)
         if state["global_step"] != step:
             raise ValueError(f"Checkpoint filename/embedded step mismatch: {path} has {state['global_step']}")

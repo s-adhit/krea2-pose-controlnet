@@ -69,6 +69,20 @@ class EvaluationTest(unittest.TestCase):
                 resolved = ordered_checkpoints(early, later_checkpoint_dir=late)
         self.assertEqual(resolved[6][1], late / "step_000200.pt")
 
+    def test_missing_archived_checkpoint_uses_only_exact_validated_hf_step(self):
+        with tempfile.TemporaryDirectory() as temp:
+            early, late, recovery = Path(temp) / "early", Path(temp) / "late", Path(temp) / "recovery"
+            def state(path):
+                return {"global_step": int(path.stem.split("_")[1])}
+            with patch("pose_controlnet.evaluation.load_training_state", side_effect=state), patch(
+                "pose_controlnet.evaluation.validated_hf_checkpoint_for_step",
+                side_effect=lambda **kwargs: recovery / f"step_{kwargs['step']:06d}.pt",
+            ) as fetch:
+                resolved = ordered_checkpoints(early, steps=(200, 225), later_checkpoint_dir=late,
+                                               hf_repo_id="user/private", hf_recovery_dir=recovery)
+        self.assertEqual([path for _, path in resolved], [recovery / "step_000200.pt", recovery / "step_000225.pt"])
+        self.assertEqual([call.kwargs["step"] for call in fetch.call_args_list], [200, 225])
+
     def test_baseline_and_checkpoint_loading_use_trainable_state_interface(self):
         with patch("pose_controlnet.evaluation.load_training_state", return_value={"global_step": 20, "model": {"x": torch.tensor(1)}}), patch("pose_controlnet.evaluation.load_trainable_state_dict") as load:
             self.assertEqual(load_comparison_state(self.model, Path("step_000020.pt")), 20)

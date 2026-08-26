@@ -12,7 +12,7 @@ def joints(x=0, confidence=1): return [[x + i, 0, confidence] for i in range(17)
 class Post500EvaluationTest(unittest.TestCase):
  def test_order_pck_normalization_missing_and_low_confidence(self):
   ref=person(joints()); pred=person(joints(.5)); metric=pck_for_people([ref],[pred],.5)
-  self.assertEqual(tuple(CHECKPOINT_STEPS),(0,20,40,60,80,100,200,300,400,500)); self.assertEqual(metric["evaluated_joint_count"],17); self.assertEqual(metric["pck_020"],1.0)
+  self.assertEqual(tuple(CHECKPOINT_STEPS),(0,20,40,60,80,100,200,225,350,475,500)); self.assertEqual(metric["evaluated_joint_count"],17); self.assertEqual(metric["pck_020"],1.0)
   missing=pck_for_people([ref],[],.5); self.assertEqual(missing["evaluated_joint_count"],0); self.assertEqual(missing["pck_005"],None)
   low=pck_for_people([ref],[person(joints(confidence=.1))],.5); self.assertEqual(low["evaluated_joint_count"],0)
  def test_deterministic_association_and_clip_cosine(self):
