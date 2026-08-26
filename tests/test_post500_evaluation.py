@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from PIL import Image
 from transformers.modeling_outputs import BaseModelOutputWithPooling
-from pose_controlnet.post500_evaluation import (CHECKPOINT_STEPS, associate_people, choose_best, clip_feature_tensor, cosine_from_embeddings, export_allowlisted, pck_for_people, plot_summary, prepare_clip_scoring_inputs)
+from pose_controlnet.post500_evaluation import (CHECKPOINT_STEPS, POSE_METRIC_UNAVAILABLE_REASON, associate_people, choose_best, clip_feature_tensor, cosine_from_embeddings, export_allowlisted, pck_for_people, plot_summary, prepare_clip_scoring_inputs, unavailable_pose_result)
 
 def person(points): return {"keypoints": points}
 def joints(x=0, confidence=1): return [[x + i, 0, confidence] for i in range(17)]
@@ -34,13 +34,28 @@ class Post500EvaluationTest(unittest.TestCase):
   processor=Processor(); caption="word "*135; context_length=77
   encoded=prepare_clip_scoring_inputs(processor,caption,Image.new("RGB",(2,2)),context_length)
   self.assertEqual(processor.kwargs["text"],[caption]); self.assertTrue(processor.kwargs["truncation"]); self.assertEqual(processor.kwargs["max_length"],context_length); self.assertEqual(encoded["input_ids"].shape[-1],context_length)
- def test_best_plots_and_allowlist(self):
+ def test_unavailable_pose_preserves_nulls_and_best_metrics(self):
   rows=[]
-  for step in CHECKPOINT_STEPS: rows.append({"checkpoint_step":step,"fixed_flow":{"mean":float(500-step),"median":1,"std":0,"sample_count":1},"pose":{"pck_005":step/500,"pck_010":step/500,"pck_020":step/500,"detection_coverage":step/500},"clip":{"mean_cosine_similarity":step/500,"median_cosine_similarity":0,"std_cosine_similarity":0,"sample_count":1}})
-  summary={"checkpoints":rows}; self.assertEqual(choose_best(summary)["lowest_fixed_flow_mean"],500)
+  for step in CHECKPOINT_STEPS: rows.append({"checkpoint_step":step,"fixed_flow":{"mean":float(500-step),"median":1,"std":0,"sample_count":1},"pose":unavailable_pose_result(),"clip":{"mean_cosine_similarity":step/500,"median_cosine_similarity":0,"std_cosine_similarity":0,"sample_count":1}})
+  summary={"metadata":{"pose_metric_status":"unavailable","pose_metric_reason":POSE_METRIC_UNAVAILABLE_REASON},"checkpoints":rows}; best=choose_best(summary)
+  self.assertEqual(best["lowest_fixed_flow_mean"],500); self.assertEqual(best["highest_clip_mean_cosine_similarity"],500)
+  self.assertIsNone(best["highest_pck_005"]); self.assertIsNone(best["highest_pck_010"]); self.assertIsNone(best["highest_pck_020"]); self.assertIsNone(best["highest_detection_coverage"])
+  for row in rows:
+   self.assertEqual(row["pose"]["pose_metric_reason"],POSE_METRIC_UNAVAILABLE_REASON)
+   self.assertIsNone(row["pose"]["pck_005"]); self.assertIsNone(row["pose"]["pck_010"]); self.assertIsNone(row["pose"]["pck_020"]); self.assertIsNone(row["pose"]["detection_coverage"])
+ def test_unavailable_plots_are_skipped_and_export_excludes_them(self):
+  rows=[]
+  for step in CHECKPOINT_STEPS: rows.append({"checkpoint_step":step,"fixed_flow":{"mean":float(500-step),"median":1,"std":0,"sample_count":1},"pose":unavailable_pose_result(),"clip":{"mean_cosine_similarity":step/500,"median_cosine_similarity":0,"std_cosine_similarity":0,"sample_count":1}})
+  summary={"metadata":{"pose_metric_status":"unavailable","pose_metric_reason":POSE_METRIC_UNAVAILABLE_REASON},"checkpoints":rows}
   with tempfile.TemporaryDirectory() as temp:
    root=Path(temp); (root/"evaluation_summary.json").write_text(json.dumps(summary)); (root/"fixed_pose").mkdir(); Image.new("RGB",(2,2)).save(root/"fixed_pose/comparison_grid.png")
-   self.assertEqual(len(plot_summary(root/"evaluation_summary.json",root)),4); destination=root/"docs"; copied=export_allowlisted(root,destination); self.assertTrue(all("step_" not in x.name for x in copied))
+   made=plot_summary(root/"evaluation_summary.json",root); self.assertEqual({x.name for x in made},{"fixed_flow_vs_step.png","clip_similarity_vs_step.png"})
+   self.assertFalse((root/"pck_vs_step.png").exists()); self.assertFalse((root/"detection_coverage_vs_step.png").exists())
+   destination=root/"docs"; copied=export_allowlisted(root,destination); self.assertEqual({x.name for x in copied},{"comparison_grid.png","evaluation_summary.json","fixed_flow_vs_step.png","clip_similarity_vs_step.png"})
+   self.assertFalse((destination/"pck_vs_step.png").exists()); self.assertFalse((destination/"detection_coverage_vs_step.png").exists())
    Image.new("RGB",(2,2)).save(destination/"step_000500.png")
    with self.assertRaises(ValueError): export_allowlisted(root,destination)
+ def test_scorer_does_not_invoke_pose_detector_or_training(self):
+  scorer=(Path(__file__).resolve().parents[1]/"scripts"/"score_post500.py").read_text()
+  self.assertNotIn("KeypointRCNNEstimator",scorer); self.assertNotIn("optimizer",scorer.lower())
 if __name__=="__main__": unittest.main()

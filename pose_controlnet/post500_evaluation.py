@@ -1,9 +1,8 @@
 """Metric, summary, plot, and allowlisted-export helpers for the post-500 gate.
 
 This module is evaluation-only: it constructs neither an optimizer nor a training
-data loader.  PCK uses the COCO-17 Keypoint R-CNN estimator on both the rendered
-control and generated image.  A control for which the estimator cannot produce a
-confident person is explicitly excluded; it is never converted to zero joints.
+data loader.  PCK requires authoritative source pose annotations and rendering
+geometry; rendered control rasters are never treated as an annotation source.
 """
 from __future__ import annotations
 
@@ -19,7 +18,8 @@ from transformers.modeling_outputs import BaseModelOutputWithPooling
 
 CHECKPOINT_STEPS = (0, 20, 40, 60, 80, 100, 200, 225, 350, 475, 500)
 PCK_THRESHOLDS = (0.05, 0.10, 0.20)
-GITHUB_EXPORT_NAMES = frozenset({"comparison_grid.png", "evaluation_summary.json", "fixed_flow_vs_step.png", "pck_vs_step.png", "clip_similarity_vs_step.png", "detection_coverage_vs_step.png", "evaluation_metrics.png"})
+GITHUB_EXPORT_NAMES = frozenset({"comparison_grid.png", "evaluation_summary.json", "fixed_flow_vs_step.png", "clip_similarity_vs_step.png"})
+POSE_METRIC_UNAVAILABLE_REASON = "authoritative_reference_pose_unavailable"
 
 
 def assert_checkpoint_order(steps: Iterable[int]) -> tuple[int, ...]:
@@ -74,6 +74,22 @@ def pck_for_people(reference: list[dict], predicted: list[dict], confidence_thre
         "detection_coverage": (len(pairs) / len(reference) if reference else 0.0)}
 
 
+def unavailable_pose_result(reason: str = POSE_METRIC_UNAVAILABLE_REASON) -> dict[str, Any]:
+    """Structured result used until authoritative per-stem pose data is supplied."""
+    return {
+        "pose_metric_status": "unavailable",
+        "pose_metric_reason": reason,
+        "pck_005": None,
+        "pck_010": None,
+        "pck_020": None,
+        "detection_coverage": None,
+        "evaluated_joint_count": 0,
+        "excluded_sample_count": 0,
+        "per_image": [],
+        "generated_image_detector": {"status": "not_run", "reason": reason},
+    }
+
+
 class KeypointRCNNEstimator:
     """COCO-17 estimator from the already-installed torchvision stack."""
     identifier = "torchvision/keypointrcnn_resnet50_fpn:COCO_V1"
@@ -124,13 +140,18 @@ def aggregate(values: list[float]) -> dict[str, float | int]:
     return {"sample_count": int(len(vector)), "mean": float(vector.mean()), "median": float(np.median(vector)), "std": float(vector.std())}
 
 
-def choose_best(summary: dict[str, Any]) -> dict[str, int]:
+def _best_or_none(rows: list[dict[str, Any]], metric) -> int | None:
+    valid = [row for row in rows if metric(row) is not None]
+    return max(valid, key=metric)["checkpoint_step"] if valid else None
+
+
+def choose_best(summary: dict[str, Any]) -> dict[str, int | None]:
     rows = summary["checkpoints"]
     return {"lowest_fixed_flow_mean": min(rows, key=lambda row: row["fixed_flow"]["mean"])["checkpoint_step"],
-            "highest_pck_005": max(rows, key=lambda row: row["pose"]["pck_005"] if row["pose"]["pck_005"] is not None else -math.inf)["checkpoint_step"],
-            "highest_pck_010": max(rows, key=lambda row: row["pose"]["pck_010"] if row["pose"]["pck_010"] is not None else -math.inf)["checkpoint_step"],
-            "highest_pck_020": max(rows, key=lambda row: row["pose"]["pck_020"] if row["pose"]["pck_020"] is not None else -math.inf)["checkpoint_step"],
-            "highest_detection_coverage": max(rows, key=lambda row: row["pose"]["detection_coverage"])["checkpoint_step"],
+            "highest_pck_005": _best_or_none(rows, lambda row: row["pose"].get("pck_005")),
+            "highest_pck_010": _best_or_none(rows, lambda row: row["pose"].get("pck_010")),
+            "highest_pck_020": _best_or_none(rows, lambda row: row["pose"].get("pck_020")),
+            "highest_detection_coverage": _best_or_none(rows, lambda row: row["pose"].get("detection_coverage")),
             "highest_clip_mean_cosine_similarity": max(rows, key=lambda row: row["clip"]["mean_cosine_similarity"])["checkpoint_step"]}
 
 
@@ -143,9 +164,7 @@ def plot_summary(summary_path: str | Path, output: str | Path) -> list[Path]:
         for label, values in series: axis.plot(steps, values, marker="o", label=label)
         axis.set_xticks(steps); axis.set_xlabel("optimizer step"); axis.set_ylabel(ylabel); axis.grid(True, alpha=.25); axis.legend(); figure.tight_layout(); path = output / name; figure.savefig(path, dpi=160); plt.close(figure); made.append(path)
     draw("fixed_flow_vs_step.png", [("mean fixed-flow MSE", [x["fixed_flow"]["mean"] for x in rows]), ("median", [x["fixed_flow"]["median"] for x in rows])], "fixed-flow MSE (lower is better)")
-    draw("pck_vs_step.png", [("PCK@0.05", [x["pose"]["pck_005"] for x in rows]), ("PCK@0.10", [x["pose"]["pck_010"] for x in rows]), ("PCK@0.20", [x["pose"]["pck_020"] for x in rows])], "PCK (higher is better)")
     draw("clip_similarity_vs_step.png", [("mean cosine similarity", [x["clip"]["mean_cosine_similarity"] for x in rows])], "CLIP cosine similarity (higher is better)")
-    draw("detection_coverage_vs_step.png", [("detection coverage", [x["pose"]["detection_coverage"] for x in rows])], "pose detection coverage (higher is better)")
     return made
 
 
