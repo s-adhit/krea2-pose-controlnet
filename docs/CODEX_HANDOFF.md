@@ -2,7 +2,7 @@
 
 ## Current objective
 
-Post-100-step deterministic evaluation / checkpoint-comparison gate is implemented. No training was started in this session.
+Post-100-step deterministic evaluation / checkpoint-comparison gate is implemented. The fixed-pose comparison grid has a compact, aspect-preserving display layout. No training was started in this session.
 
 ## Decisions and verified state
 
@@ -15,18 +15,18 @@ Post-100-step deterministic evaluation / checkpoint-comparison gate is implement
 - `evaluate.py fixed-flow` creates/reuses `fixed_flow_spec.json`: default 32 deterministic `val` stems, seed `420100`, per-stem timestep/noise/sampling seeds, and SHA-256 identities of image latent, control latent, cached context, and mask. It calls existing `sample_flow_timestep`, `make_flow_pair`, `forward_pose_control`, and MSE. Changed latent/text inputs fail rather than silently changing the fixed set.
 - Baseline step 0 is fresh verified Krea + initial zero-impact control/LoRA state. Steps 20–100 are full-schema validated and load through exact trainable-state validation. JSON results include mean/median/std/per-sample loss.
 - `evaluate.py fixed-pose` uses default eight deterministic `diagnostic_val` stems, seed `420200`, cached conditional/unconditional text, existing Euler sampler, 8 steps, CFG 3.5, and Qwen VAE inverse normalization/decode. It writes `fixed_pose/<stem>/control.png`, metadata, steps 0–100, and `comparison_grid.png`.
+- `comparison_grid.png` now has labeled `control | step0 | step20 | step40 | step60 | step80 | step100` columns and fixed 320×320 cells. Each image is centered and thumbnail-scaled without stretching; `--comparison-grid-thumbnail-width` and `--comparison-grid-thumbnail-height` can override those display-only defaults. This does not alter stems, inputs, sampling, checkpoints, files, metadata, or inference behavior.
 
 ## Files changed this session
 
 - `evaluate.py`, `pose_controlnet/evaluation.py`, `tests/test_evaluation.py`
-- `pose_controlnet/diffusion.py`, `pose_controlnet/vae_preprocessing.py`, `base_model/k2_lora.py`
 - `docs/CODEX_HANDOFF.md`
 
 ## Tests run
 
-PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_evaluation tests.test_train_mechanics tests.test_vae_preprocessing` (32 tests); `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile evaluate.py pose_controlnet/evaluation.py pose_controlnet/diffusion.py pose_controlnet/vae_preprocessing.py base_model/k2_lora.py tests/test_evaluation.py`; `git diff --check`.
+PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_evaluation` (6 tests); `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile evaluate.py pose_controlnet/evaluation.py tests/test_evaluation.py`; `git diff --check`.
 
-Coverage: deterministic repeated fixed flow, checkpoint-independent timestep/noise, required checkpoint order, trainable-state interface, deterministic pose filenames/metadata, no gradients/optimizer effects, and eval-mode restoration.
+Coverage: deterministic repeated fixed flow, checkpoint-independent timestep/noise, required checkpoint order, trainable-state interface, deterministic pose filenames/metadata, compact deterministic grid bytes/dimensions, aspect preservation, no gradients/optimizer effects, and eval-mode restoration.
 
 ## Exact GH200 commands / outputs
 

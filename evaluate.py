@@ -28,6 +28,10 @@ def main():
     parser.add_argument("--split", default=None); parser.add_argument("--samples", type=int, default=None)
     parser.add_argument("--seed", type=int, default=None); parser.add_argument("--eval-steps", type=int, default=8); parser.add_argument("--eval-guidance", type=float, default=3.5)
     parser.add_argument("--dataset-root", help="required for fixed-pose control PNG export; otherwise read from shards.json")
+    parser.add_argument("--comparison-grid-thumbnail-width", type=int, default=320,
+                        help="fixed-pose grid cell width in pixels (default: 320)")
+    parser.add_argument("--comparison-grid-thumbnail-height", type=int, default=320,
+                        help="fixed-pose grid cell height in pixels (default: 320)")
     args = parser.parse_args()
     if not torch.cuda.is_available(): raise RuntimeError("Run evaluation from the GH200 host shell with CUDA visible")
     split = args.split or ("val" if args.mode == "fixed-flow" else "diagnostic_val")
@@ -42,6 +46,8 @@ def main():
         metadata = json.loads((Path(args.latent_root) / "shards.json").read_text()); dataset_root = Path(args.dataset_root or metadata["dataset_root"])
         snapshot = validate_posebridge_snapshot(dataset_root); records = {record.stem: record for record in snapshot.records_by_split[split]}
         controls = {stem: records[stem].control_path for stem in spec["stems"]}; vae = load_krea_vae(device)
-        result = evaluate_fixed_pose(model, dataset, spec, cfg, device, checkpoints, vae, controls, output); path = output / "fixed_pose_results.json"
+        result = evaluate_fixed_pose(model, dataset, spec, cfg, device, checkpoints, vae, controls, output,
+                                     thumbnail_width=args.comparison_grid_thumbnail_width,
+                                     thumbnail_height=args.comparison_grid_thumbnail_height); path = output / "fixed_pose_results.json"
     path.parent.mkdir(parents=True, exist_ok=True); path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n"); print(path)
 if __name__ == "__main__": main()

@@ -10,7 +10,7 @@ import torch
 from pose_controlnet.config import TrainConfig
 from pose_controlnet.evaluation import (
     CHECKPOINT_STEPS, evaluate_fixed_pose, fixed_flow_inputs, fixed_flow_loss,
-    load_comparison_state, make_evaluation_spec, ordered_checkpoints,
+    load_comparison_state, make_contact_sheet, make_evaluation_spec, ordered_checkpoints,
 )
 
 
@@ -77,6 +77,22 @@ class EvaluationTest(unittest.TestCase):
             self.assertTrue((sample_dir / "step_000000.png").is_file()); self.assertTrue((sample_dir / "step_000020.png").is_file())
             metadata = json.loads((sample_dir / "metadata.json").read_text())
             self.assertEqual(metadata["stem"], "alpha"); self.assertEqual(metadata["prompt"], "prompt alpha"); self.assertEqual(metadata["seed"], pose_spec["per_stem_seeds"]["alpha"]["sampling"])
+
+    def test_comparison_grid_is_compact_preserves_aspect_ratio_and_is_deterministic(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            paths = []
+            for index in range(7):
+                image = __import__("PIL").Image.new("RGB", (80, 20) if index == 0 else (20, 80), (index + 1, 0, 0))
+                item = root / f"image_{index}.png"; image.save(item); paths.append(item)
+            first, second = root / "first.png", root / "second.png"
+            make_contact_sheet([("alpha", paths)], first, thumbnail_width=100, thumbnail_height=60)
+            make_contact_sheet([("alpha", paths)], second, thumbnail_width=100, thumbnail_height=60)
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+            grid = __import__("PIL").Image.open(first)
+            self.assertEqual(grid.size, (700, 84))
+            self.assertEqual(grid.getpixel((50, 54)), (1, 0, 0))
+            self.assertEqual(grid.getpixel((150, 54)), (2, 0, 0))
 
 
 if __name__ == "__main__": unittest.main()

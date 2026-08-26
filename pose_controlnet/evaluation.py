@@ -10,7 +10,7 @@ from typing import Any, Iterable
 
 import torch
 import torch.nn.functional as F
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from pose_controlnet.checkpointing import load_training_state
 from pose_controlnet.config import TrainConfig
@@ -24,6 +24,9 @@ EVALUATION_FORMAT_VERSION = 1
 DEFAULT_FIXED_FLOW_SEED = 420_100
 DEFAULT_FIXED_POSE_SEED = 420_200
 CHECKPOINT_STEPS = (0, 20, 40, 60, 80, 100)
+COMPARISON_GRID_COLUMNS = ("control", "step0", "step20", "step40", "step60", "step80", "step100")
+DEFAULT_COMPARISON_GRID_THUMBNAIL_WIDTH = 320
+DEFAULT_COMPARISON_GRID_THUMBNAIL_HEIGHT = 320
 
 
 def ordered_checkpoints(checkpoint_dir: str | Path, steps: Iterable[int] = CHECKPOINT_STEPS) -> list[tuple[int, Path | None]]:
@@ -159,17 +162,34 @@ def save_image(array, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True); Image.fromarray(array).save(path)
 
 
-def make_contact_sheet(rows: list[tuple[str, list[Path]]], path: Path) -> None:
-    images = [[Image.open(item).convert("RGB") for item in paths] for _, paths in rows]
-    width, height = max(image.width for row in images for image in row), max(image.height for row in images for image in row)
-    sheet = Image.new("RGB", (width * len(images[0]), height * len(images)), "white")
-    for y, row in enumerate(images):
-        for x, image in enumerate(row):
-            image.thumbnail((width, height)); sheet.paste(image, (x * width, y * height))
+def make_contact_sheet(rows: list[tuple[str, list[Path]]], path: Path, *, thumbnail_width: int = DEFAULT_COMPARISON_GRID_THUMBNAIL_WIDTH,
+                       thumbnail_height: int = DEFAULT_COMPARISON_GRID_THUMBNAIL_HEIGHT,
+                       column_labels: tuple[str, ...] = COMPARISON_GRID_COLUMNS) -> None:
+    """Render a compact, deterministic grid without altering any generated images."""
+    if thumbnail_width < 1 or thumbnail_height < 1:
+        raise ValueError("comparison-grid thumbnail dimensions must be positive")
+    if not rows or len(column_labels) != len(rows[0][1]) or any(len(paths) != len(column_labels) for _, paths in rows):
+        raise ValueError("comparison grid rows must have one image for every column label")
+    header_height, gutter = 24, 4
+    sheet = Image.new("RGB", (len(column_labels) * thumbnail_width, header_height + len(rows) * thumbnail_height), "white")
+    draw = ImageDraw.Draw(sheet)
+    for column, label in enumerate(column_labels):
+        draw.text((column * thumbnail_width + gutter, gutter), label, fill="black")
+    for row_index, (stem, paths) in enumerate(rows):
+        y = header_height + row_index * thumbnail_height
+        for column, item in enumerate(paths):
+            with Image.open(item) as source:
+                image = source.convert("RGB")
+            image.thumbnail((thumbnail_width - 2 * gutter, thumbnail_height - 2 * gutter))
+            x = column * thumbnail_width + (thumbnail_width - image.width) // 2
+            sheet.paste(image, (x, y + (thumbnail_height - image.height) // 2))
+        draw.text((gutter, y + gutter), stem, fill="black", stroke_width=1, stroke_fill="white")
     path.parent.mkdir(parents=True, exist_ok=True); sheet.save(path)
 
 
-def evaluate_fixed_pose(model, dataset, spec, cfg, device, checkpoints, vae, control_paths: dict[str, Path], output: Path) -> dict[str, Any]:
+def evaluate_fixed_pose(model, dataset, spec, cfg, device, checkpoints, vae, control_paths: dict[str, Path], output: Path, *,
+                        thumbnail_width: int = DEFAULT_COMPARISON_GRID_THUMBNAIL_WIDTH,
+                        thumbnail_height: int = DEFAULT_COMPARISON_GRID_THUMBNAIL_HEIGHT) -> dict[str, Any]:
     baseline = {name: value.detach().clone() for name, value in model.state_dict().items() if name.startswith("first.") or ".A" in name or ".B" in name}
     rows = []
     was_training = model.training; model.eval()
@@ -190,5 +210,7 @@ def evaluate_fixed_pose(model, dataset, spec, cfg, device, checkpoints, vae, con
             rows.append((stem, paths))
     finally:
         model.train(was_training)
-    make_contact_sheet(rows, output / "fixed_pose" / "comparison_grid.png")
+    labels = ("control", *(f"step{step}" for step, _ in checkpoints))
+    make_contact_sheet(rows, output / "fixed_pose" / "comparison_grid.png", thumbnail_width=thumbnail_width,
+                       thumbnail_height=thumbnail_height, column_labels=labels)
     return {"format_version": EVALUATION_FORMAT_VERSION, "kind": "fixed_pose", "spec": spec, "checkpoints": [step for step, _ in checkpoints], "output": str(output / "fixed_pose")}
