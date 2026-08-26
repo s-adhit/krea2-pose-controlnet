@@ -36,8 +36,11 @@ class TrainConfig:
 
     # guardrails
     seed: int = 42
-    wandb_project: str = "pose-controlnet"
+    wandb_entity: str = "adhit-projects"
+    wandb_project: str = "Krea-2-PoseControl-Lora"
     wandb_enabled: bool = True
+    wandb_mode: str = "online"
+    metrics_jsonl_path: str = "runs/metrics.jsonl"
     hf_repo_id: str = ""
     hf_push_every_seconds: int = 7200
 
