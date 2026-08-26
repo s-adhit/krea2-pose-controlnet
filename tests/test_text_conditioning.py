@@ -13,6 +13,7 @@ from pose_controlnet.text_conditioning import (
     FORMAT_VERSION,
     METADATA_NAME,
     TextConditioningError,
+    _validate_entry,
     compact_valid_conditioning,
 )
 
@@ -101,6 +102,25 @@ class CachedTextConditioningTest(unittest.TestCase):
         unconditional = compact_valid_conditioning(contexts, masks, 0)
         self.assertTrue(unconditional["mask"].all())
         self.assertTrue(torch.equal(unconditional["context"], contexts[0][masks[0]]))
+
+    def test_generated_normal_entry_retains_stem_and_validates(self):
+        contexts = torch.ones(1, 3, 12, 4, dtype=torch.bfloat16)
+        masks = torch.tensor([[True, False, True]])
+        stem = "coco_100098_193288"
+        entry = {
+            "stem": stem,
+            **{
+                key: value.detach().cpu().to(torch.bfloat16 if key == "context" else torch.bool).contiguous()
+                for key, value in compact_valid_conditioning(contexts, masks, 0).items()
+            },
+        }
+
+        observed_stem, dimensions = _validate_entry(entry, path="train-00000.pt", expected_stem=stem)
+
+        self.assertEqual(observed_stem, stem)
+        self.assertEqual(dimensions, (12, 4))
+        self.assertEqual(entry["context"].dtype, torch.bfloat16)
+        self.assertEqual(entry["mask"].dtype, torch.bool)
 
     def test_dynamic_right_padding_preserves_compacted_valid_content(self):
         contexts = torch.arange(2 * 8 * 12 * 4, dtype=torch.float32).reshape(2, 8, 12, 4).to(torch.bfloat16)

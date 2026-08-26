@@ -2,7 +2,7 @@
 
 ## Current objective
 
-Repair cached-vs-online Qwen text-conditioning equivalence, then regenerate and hard-verify the host text cache. No 10-step, 100-step, or production run has been started.
+Host text-cache generation has the required v2 normal-entry writer fix. No cache regeneration, 10-step/100-step run, or production run has been started.
 
 ## Decisions in force
 
@@ -20,13 +20,12 @@ Repair cached-vs-online Qwen text-conditioning equivalence, then regenerate and 
 - `PoseTextConditioner` now encodes captions independently, preserving tokenizer/template, `PREFIX_IDX=34`, selected layers `(2,5,...,35)`, BF16 hidden states, and Krea txtfusion semantics. It restores only trailing batch padding.
 - `compact_valid_conditioning` is the canonical boolean extraction for normal and unconditional entries. Cached masks are contiguous all-true sequences; training collate restores trailing padding only.
 - Text cache `FORMAT_VERSION=2`. Metadata, shard payloads, and `unconditional.pt` must all declare v2. v1 contents cannot be reused. Preparation remains atomic and metadata is incomplete until validation passes.
+- Normal cached entries now persist `stem`, `context`, and `mask`. The writer adds `record.stem` before `_validate_entry(..., expected_stem=record.stem)` and its atomic shard save, eliminating the immediate `Invalid stem` failure.
 - The verifier accepts `--stem coco_100098_193288` and derives `dataset_root` from latent metadata when omitted. It requires exact BF16 tensor, mask, dtype, and shape equality with max absolute difference `0.0`.
 
 ## Files changed this session
 
-- `pose_controlnet/text_encoder.py`
 - `pose_controlnet/text_conditioning.py`
-- `scripts/verify_text_conditioning.py`
 - `tests/test_text_conditioning.py`
 
 ## Tests run
@@ -36,12 +35,11 @@ PASS:
 ```bash
 UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_text_conditioning
 UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile \
-  pose_controlnet/text_encoder.py pose_controlnet/text_conditioning.py \
-  scripts/verify_text_conditioning.py tests/test_text_conditioning.py
+  pose_controlnet/text_conditioning.py tests/test_text_conditioning.py
 git diff --check
 ```
 
-Seven focused regressions cover mixed short/long prompts, internal padding before suffixes, suffix preservation, independent-online equality, unconditional extraction, dynamic right-padding, and v1 metadata rejection. The Codex shell did not run Qwen or mutate host cache artifacts.
+Eight focused regressions cover mixed short/long prompts, internal padding before suffixes, suffix preservation, independent-online equality, unconditional extraction, dynamic right-padding, v1 metadata rejection, and normal-entry stem validation. The Codex shell did not run Qwen or mutate host cache artifacts.
 
 ## Exact next action
 

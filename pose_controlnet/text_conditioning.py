@@ -159,8 +159,13 @@ def prepare_text_conditioning(*, dataset_root: str | Path | None, latent_root: s
             entries = []
             for index, record in enumerate(chunk):
                 # Only valid tokens are persisted; collate restores right-padding dynamically.
-                entry = {key: value.detach().cpu().to(torch.bfloat16 if key == "context" else torch.bool).contiguous()
-                         for key, value in compact_valid_conditioning(contexts, masks, index).items()}
+                entry = {
+                    "stem": record.stem,
+                    **{
+                        key: value.detach().cpu().to(torch.bfloat16 if key == "context" else torch.bool).contiguous()
+                        for key, value in compact_valid_conditioning(contexts, masks, index).items()
+                    },
+                }
                 _, dimensions = _validate_entry(entry, path=path, expected_stem=record.stem, dimensions=dimensions)
                 entries.append(entry)
             _atomic_torch_save(path, {"format_version": FORMAT_VERSION, "split": split, "samples": entries})
