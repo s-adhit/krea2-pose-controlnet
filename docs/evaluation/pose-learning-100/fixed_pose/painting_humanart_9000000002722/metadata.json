@@ -1,0 +1,12 @@
+{
+  "bucket": [
+    704,
+    1472
+  ],
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/painting_humanart_9000000002722.png",
+  "eval_guidance": 3.5,
+  "eval_steps": 8,
+  "prompt": "A stained glass depicts a haloed man wearing a bright red garment, positioned in a rocky landscape near water with a classical pillar on the right. Above him, a white dove with outstretched wings descends amid golden rays against a deep blue sky, accompanied by an angelic cherub in the upper right corner. The vertical composition is framed by dark lead lines separating multicolored panes of glass, illuminated by bright backlighting that creates glowing passages of blues, reds, golds, and whites. The eye-level photograph captures the intricate detailing of the glass panels, stained glass, leaded window, vitreous enamel, stained glass, leaded window",
+  "seed": 573803802872078447,
+  "stem": "painting_humanart_9000000002722"
+}

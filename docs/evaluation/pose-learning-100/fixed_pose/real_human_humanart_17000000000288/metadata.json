@@ -1,0 +1,12 @@
+{
+  "bucket": [
+    832,
+    1216
+  ],
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_02/real_human_humanart_17000000000288.png",
+  "eval_guidance": 3.5,
+  "eval_steps": 8,
+  "prompt": "A photograph depicts two men against a dark, near-black stage background that absorbs ambient light. The bottom man has a shaved head, a dark reddish-brown beard, and bare torso, wearing muted olive-green cinched trousers. The top man wears matching olive-green garments and is positioned vertically above the first man, with one hand resting on the first man's head and the other extended upward. Dramatic overhead spotlights illuminate the scene, casting sharp highlights on the skin and fabric while leaving the surrounding space in deep shadow. The camera angle is low, looking upward toward the performers on the stage, theatrical performance, acrobatics, dramatic lighting",
+  "seed": 6163039533559699249,
+  "stem": "real_human_humanart_17000000000288"
+}

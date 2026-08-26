@@ -1,0 +1,12 @@
+{
+  "bucket": [
+    1024,
+    1024
+  ],
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_06/painting_humanart_1000000000218.png",
+  "eval_guidance": 3.5,
+  "eval_steps": 8,
+  "prompt": "A cartoon depicts a snowy forest scene at night, featuring three children, with legible text at the top and bottom reading \"13 DAYS OF ERMAWEEN\" and \"WHO GOES THERE? (1938) JOHN W. CAMPBELL\". The background consists of dark, shadowy tree trunks and a blue night sky with icicles hanging. The color palette relies heavily on deep blues, dark greens, and muted earth tones, contrasted by stark white snow. Lighting emanates from a glowing handheld flashlight, casting a bright, circular beam and illuminating the snowy ground and one of the characters. The dominant visual elements include a pale ghost-like child in the center holding the light, and another child on the right mutated into a tentacled, multi-eyed monster, pop art, digital illustration, comic book style",
+  "seed": 9022673857389605354,
+  "stem": "painting_humanart_1000000000218"
+}

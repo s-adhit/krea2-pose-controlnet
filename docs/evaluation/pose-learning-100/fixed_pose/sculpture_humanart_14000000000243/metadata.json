@@ -1,0 +1,12 @@
+{
+  "bucket": [
+    1024,
+    1024
+  ],
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/sculpture_humanart_14000000000243.png",
+  "eval_guidance": 3.5,
+  "eval_steps": 8,
+  "prompt": "A sculpture of three children in a painted stone and wood architectural niche, lit by soft ambient light from the front, revealing textured surfaces with a warm palette of muted ochres, faded pinks, and earthy browns, captured with an eye-level telephoto lens, polychrome relief, terracotta sculpture, Renaissance art",
+  "seed": 7268152311884585886,
+  "stem": "sculpture_humanart_14000000000243"
+}
