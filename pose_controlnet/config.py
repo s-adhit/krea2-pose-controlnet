@@ -19,6 +19,7 @@ class TrainConfig:
     microbatch_size: int = 1
     gradient_accumulation_steps: int = 32
     max_steps: int = 6000
+    allow_extended_training: bool = False
     warmup_steps: int = 200
     max_grad_norm: float = 1.0
     caption_dropout: float = 0.1

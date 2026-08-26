@@ -1,7 +1,8 @@
 """Bounded Gate-F trainer for Krea-2 Raw skeleton-control LoRA.
 
 This entry point intentionally requires ``--max-steps`` and accepts at most a
-100-step smoke.  It is not a production-run launcher.
+100-step smoke unless ``--allow-extended-training`` is explicitly supplied.
+It is not a production-run launcher.
 """
 from __future__ import annotations
 
@@ -216,6 +217,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint-dir", default="/lambda/nfs/adhit/krea2-pose/checkpoints")
     parser.add_argument("--run-name", required=True)
     parser.add_argument("--max-steps", required=True, type=int)
+    parser.add_argument("--allow-extended-training", action="store_true",
+                        help="explicitly authorize a bounded run beyond the 100-step Gate-F entry limit")
     parser.add_argument("--microbatch-size", type=int, required=True)
     parser.add_argument("--gradient-accumulation-steps", type=int, required=True)
     parser.add_argument("--max-grad-norm", type=float, default=1.0)
@@ -236,7 +239,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--wandb-mode", default="online")
     parser.add_argument("--no-wandb", action="store_true")
     args = parser.parse_args()
-    if not 1 <= args.max_steps <= 100: parser.error("Gate-F entry point permits only explicit bounded 1..100-step runs")
+    if args.max_steps < 1:
+        parser.error("--max-steps must be positive")
+    if args.max_steps > 100 and not args.allow_extended_training:
+        parser.error("Gate-F entry point permits only explicit bounded 1..100-step runs; pass --allow-extended-training to exceed 100")
     if args.microbatch_size < 1 or args.gradient_accumulation_steps < 1: parser.error("batch settings must be positive")
     if args.gradient_checkpointing_blocks is not None and not 0 <= args.gradient_checkpointing_blocks <= 28:
         parser.error("--gradient-checkpointing-blocks must be in [0, 28]")
@@ -252,6 +258,7 @@ def config_from_args(args: argparse.Namespace) -> TrainConfig:
     )
     return TrainConfig(raw_ckpt=args.raw_ckpt, shard_dir=args.latent_root, ckpt_dir=args.checkpoint_dir, run_name=args.run_name,
                        max_steps=args.max_steps, microbatch_size=args.microbatch_size, gradient_accumulation_steps=args.gradient_accumulation_steps,
+                       allow_extended_training=args.allow_extended_training,
                        max_grad_norm=args.max_grad_norm, validation_batches=args.validation_batches, val_every=args.val_every, save_every=args.save_every, diagnostics_every=args.diagnostics_every,
                        compile=args.compile, gradient_checkpointing=gradient_checkpointing_blocks > 0,
                        gradient_checkpointing_blocks=gradient_checkpointing_blocks,
@@ -266,7 +273,8 @@ def main() -> None:
     cfg = config_from_args(args)
     set_seed(cfg.seed); device = torch.device("cuda"); torch.cuda.reset_peak_memory_stats()
     print(f"effective_batch={effective_batch_size(cfg.microbatch_size, cfg.gradient_accumulation_steps)} (microbatch × accumulation × world_size=1)", flush=True)
-    print(f"runtime: compile={cfg.compile} gradient_checkpointing_blocks={cfg.gradient_checkpointing_blocks}", flush=True)
+    print(f"runtime: compile={cfg.compile} gradient_checkpointing_blocks={cfg.gradient_checkpointing_blocks} "
+          f"allow_extended_training={cfg.allow_extended_training}", flush=True)
     cached_text = not args.online_text_conditioning
     train_data, val_data = PreparedLatentShardDataset(cfg.shard_dir, "train", text_conditioning_root=args.text_conditioning_root if cached_text else None), PreparedLatentShardDataset(cfg.shard_dir, "val", text_conditioning_root=args.text_conditioning_root if cached_text else None)
     train_plan, val_plan = DeterministicBucketBatches(train_data.records, cfg.microbatch_size, cfg.seed), DeterministicBucketBatches(val_data.records, cfg.microbatch_size, cfg.seed + 17)

@@ -197,11 +197,29 @@ class TrainMechanicsTest(unittest.TestCase):
             self.assertTrue(telemetry.log_train(loss=1.0, learning_rate=0.0, global_grad_norm=1.0, sec_per_step=.1, samples_per_second=1.0, step=1))
             telemetry.close()
 
-    def test_max_steps_is_required_and_bounded(self):
-        with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "10", "--microbatch-size", "1", "--gradient-accumulation-steps", "32"]):
-            self.assertEqual(train.parse_args().max_steps, 10)
-        with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "6000", "--microbatch-size", "1", "--gradient-accumulation-steps", "32"]):
-            with self.assertRaises(SystemExit): train.parse_args()
+    def test_max_steps_100_works_without_extended_training_opt_in(self):
+        with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "100", "--microbatch-size", "1", "--gradient-accumulation-steps", "32"]):
+            args = train.parse_args()
+        self.assertEqual(args.max_steps, 100)
+        self.assertFalse(args.allow_extended_training)
+
+    def test_max_steps_101_is_rejected_without_extended_training_opt_in(self):
+        with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "101", "--microbatch-size", "1", "--gradient-accumulation-steps", "32"]):
+            with self.assertRaises(SystemExit):
+                train.parse_args()
+
+    def test_max_steps_500_works_with_explicit_extended_training_opt_in(self):
+        with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "500", "--allow-extended-training", "--microbatch-size", "1", "--gradient-accumulation-steps", "32"]):
+            cfg = train.config_from_args(train.parse_args())
+        self.assertEqual(cfg.max_steps, 500)
+        self.assertTrue(cfg.allow_extended_training)
+
+    def test_resume_from_step_100_to_step_500_is_accepted_with_opt_in(self):
+        with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "500", "--allow-extended-training", "--resume", "step_000100.pt", "--microbatch-size", "2", "--gradient-accumulation-steps", "16"]):
+            args = train.parse_args()
+        self.assertEqual(args.resume, "step_000100.pt")
+        self.assertEqual(args.max_steps, 500)
+        self.assertTrue(args.allow_extended_training)
 
     def test_runtime_defaults_disable_compile_and_gradient_checkpointing(self):
         with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "1", "--microbatch-size", "1", "--gradient-accumulation-steps", "32"]):

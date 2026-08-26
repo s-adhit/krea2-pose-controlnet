@@ -2,11 +2,12 @@
 
 ## Current objective
 
-Post-100-step deterministic evaluation / checkpoint-comparison gate is implemented. The fixed-pose comparison grid has a compact, aspect-preserving display layout. No training was started in this session.
+An explicit, checkpointed extended-training opt-in is implemented for the authorized step-100 to step-500 continuation. The normal Gate-F entry point still rejects values above 100. No training was started in this session.
 
 ## Decisions and verified state
 
 - Krea-2 Raw; clean skeleton-control latent channel concat; rank/alpha 64 LoRA; BF16 flow-matching MSE; AdamW `1e-4`, betas `(0.9, 0.99)`, no weight decay; warmup 200; MB2/accum16/effective batch32; GC blocks 6; compile off; cached Qwen conditioning; seed 42.
+- `train.py --max-steps` accepts `1..100` by default. Values above 100 require `--allow-extended-training`; the resulting `allow_extended_training` value is included in `TrainConfig`, checkpointed through the existing config payload, and printed at startup. Resume, optimizer/scheduler, data/RNG, telemetry, and checkpoint/mirror behavior are otherwise unchanged.
 - Gates A–E and Gate-F mechanics are reported green; real checkpoints 20/40/60/80/100 are at `/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-100`. Their stochastic validation losses are not a checkpoint-comparison metric.
 - No project-owned pose estimator/PCK interface exists. No heavyweight metric dependency was added.
 
@@ -19,14 +20,14 @@ Post-100-step deterministic evaluation / checkpoint-comparison gate is implement
 
 ## Files changed this session
 
-- `evaluate.py`, `pose_controlnet/evaluation.py`, `tests/test_evaluation.py`
+- `train.py`, `pose_controlnet/config.py`, `tests/test_train_mechanics.py`
 - `docs/CODEX_HANDOFF.md`
 
 ## Tests run
 
-PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_evaluation` (6 tests); `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile evaluate.py pose_controlnet/evaluation.py tests/test_evaluation.py`; `git diff --check`.
+PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_train_mechanics` (25 tests); `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile train.py pose_controlnet/config.py tests/test_train_mechanics.py`; `git diff --check`.
 
-Coverage: deterministic repeated fixed flow, checkpoint-independent timestep/noise, required checkpoint order, trainable-state interface, deterministic pose filenames/metadata, compact deterministic grid bytes/dimensions, aspect preservation, no gradients/optimizer effects, and eval-mode restoration.
+Coverage: default 100-step acceptance, 101-step rejection without opt-in, authorized 500-step acceptance, accepted resume request from step 100 to 500, plus existing warmup/optimizer, resume state, deterministic data/RNG, checkpoint mirroring, cached-text, and GC mechanics coverage.
 
 ## Exact GH200 commands / outputs
 
@@ -52,4 +53,10 @@ Writes full results and `fixed_pose/comparison_grid.png` beneath `.../evaluation
 
 ## Next action
 
-Run fixed flow twice and require identical results/spec identity; then run the one-sample smoke and full grid. Interpret deterministic loss and fixed-control evidence before authorizing further training.
+Run the already authorized continuation from the GH200 host shell, preserving the private HF target used for the step-100 run:
+
+```bash
+uv run python train.py --run-name pose-learning-100 --max-steps 500 --allow-extended-training --microbatch-size 2 --gradient-accumulation-steps 16 --gradient-checkpointing-blocks 6 --resume auto --hf-repo-id "${HF_REPO_ID:?set to the existing private checkpoint mirror repo}"
+```
+
+This resumes from the newest valid local checkpoint (step 100) first, with the existing HF fallback. Evaluate the resulting checkpoints using the fixed-flow/fixed-pose commands above before any further extension.
