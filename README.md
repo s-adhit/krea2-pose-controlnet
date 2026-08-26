@@ -53,3 +53,20 @@ uploaded to any public host.
 Data prep, captioning, and validation are complete. Training infra
 (checkpointing, wandb, seed) is written; GH200 provisioning and the first
 real training run are in progress.
+
+## Environment (GH200)
+
+The Lambda GH200 image's CUDA-enabled Torch stack is host-owned and must not
+be installed, upgraded, or replaced by this repository. Create the project
+environment with:
+
+```bash
+scripts/create_uv_env.sh
+source .venv/bin/activate
+python scripts/check_environment.py --require-cuda
+```
+
+The bootstrap script creates a `uv` virtual environment with system site
+packages enabled, then syncs only the non-Torch packages pinned in `uv.lock`.
+It intentionally fails rather than converting an existing isolated `.venv`.
+Use `uv sync --locked` for subsequent syncs; do not use `pip install`.

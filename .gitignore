@@ -7,6 +7,7 @@ __pycache__/
 .venv/
 venv/
 env/
+.uv-cache/
 
 # Local data
 data/full/
@@ -45,4 +46,3 @@ current_structure.txt
 eval_sets/
 
 vendor/
-

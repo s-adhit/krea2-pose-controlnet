@@ -1,0 +1,30 @@
+[project]
+name = "krea-2-pose-controlnet"
+version = "0.1.0"
+description = "Phase-1 skeleton-conditioned Control-LoRA training stack for Krea-2 Raw"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "Pillow>=10.0",
+    "diffusers>=0.33",
+    "einops>=0.8",
+    "huggingface-hub>=0.30",
+    "numpy>=1.26",
+    "pandas>=2.0",
+    "PyYAML>=6.0",
+    "safetensors>=0.5",
+    "tqdm>=4.66",
+    "transformers>=4.51",
+    "wandb>=0.19",
+]
+
+[dependency-groups]
+dev = [
+    "ipython>=8.0",
+    "pytest>=8.0",
+]
+
+[tool.uv]
+# Torch, torchvision, CUDA, cuDNN, Triton, and NVIDIA wheels are deliberately
+# absent.  The GH200 image owns that validated stack; the project venv inherits
+# it through `uv venv --system-site-packages` (see scripts/create_uv_env.sh).
+package = false
