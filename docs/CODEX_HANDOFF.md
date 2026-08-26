@@ -2,74 +2,89 @@
 
 ## Current objective
 
-Production-safe W&B telemetry and an independent local JSONL metrics fallback
-are implemented and verified. This session deliberately did not touch VAE
-preprocessing, latent shards, model downloads, training mechanics,
-checkpointing, HF uploads, or production training.
+Gate C2 — real Qwen/Krea VAE integration and paired RGB/control latent smoke
+verification. The project-owned VAE encoding path and focused unit tests are
+complete. The required three-sample real-data/GH200 smoke check remains
+blocked by unavailable artifacts in this audit workspace.
 
 ## Decisions in force
 
-- Krea-2 Raw, rendered skeleton control, spatial channel concatenation,
-  rank-64 LoRA, BF16, and flow-matching MSE only remain unchanged.
-- `TrainingTelemetry` in `pose_controlnet.wandb_logging` is project-owned and
-  failure-isolated: local JSONL is attempted independently; W&B import/init,
-  network, log, image-log, and finish failures are recorded in memory but never
-  raised to training.
-- Default W&B target is entity `adhit-projects`, project
-  `Krea-2-PoseControl-Lora`. `TrainConfig` can override entity/project/mode,
-  and `WANDB_ENTITY`, `WANDB_PROJECT`, `WANDB_MODE`, and `WANDB_DISABLED`
-  override at runtime. Default local log path is `runs/metrics.jsonl`.
-- Configuration fields whose names imply credentials (`api_key`, token,
-  password, secret) are excluded from W&B config serialization. No API key is
-  read, stored, or written by project telemetry.
+- Krea-2 Raw uses `diffusers.AutoencoderKLQwenImage` from
+  `Qwen/Qwen-Image`, subfolder `vae`; no transformer/base-model artifact is
+  downloaded by the project-owned loader.
+- Installed project environment verification: `diffusers 0.40.0` exposes
+  `AutoencoderKLQwenImage`.
+- Input is RGB normalized from `[0, 255]` to `[-1, 1]` in BF16 on the VAE
+  device, with Qwen's one-frame video layout `B×3×1×H×W`.
+- The encoder uses `latent_dist.sample()`, matching Diffusers' Qwen-Image
+  ControlNet path. Normalize the raw `B×16×1×H/8×W/8` latent exactly as
+  `(z - vae.config.latents_mean) / vae.config.latents_std` per channel, then
+  remove batch/time axes to the downstream `16×H/8×W/8` layout. Shard
+  serialization, when separately implemented, must explicitly store float32;
+  this encoding path retains its BF16 compute dtype.
+- RGB/control resolution and geometry remain exclusively in `DatasetIndex` and
+  `preprocess_pair`; no path-resolution or crop logic was duplicated.
 
 ## Verified environment facts
 
 - Host verification remains: Linux aarch64, GH200, Python 3.10.12, torch
   2.7.0+cu128, CUDA runtime 12.8, cuDNN 9.8, Triton 3.3.0, and `uv 0.12.5`.
-- User-confirmed W&B host verification is green: a real remote test run synced
-  metrics to `adhit-projects/Krea-2-PoseControl-Lora`.
-- This audit shell remains CPU-only; no CUDA conclusion was drawn here.
+- This Codex audit shell is CPU-only. It has the project `.venv` and
+  `diffusers 0.40.0`, but not `data/full/` and cannot resolve the Hugging Face
+  Hub DNS endpoint. No CUDA conclusion was drawn from this shell.
 
-## Completed gates
+## Completed/green checks
 
-- Gate B physical dataset resolution: PASS. Read-only dataset indexing resolves
-  17,416 immutable manifest records with expected split counts and rejects
-  ambiguity, missing counterparts, split overlap, and empty captions.
-- Gate C paired geometry: PASS. RGB/control pair geometry is shared exactly
-  across the fixed Krea buckets and is covered by focused tests.
-- W&B/local telemetry implementation: PASS. Named future-training interfaces
-  cover train loss/LR/grad norm/throughput, validation flow loss, control and
-  LoRA diagnostics, CUDA memory, checkpoint metadata, HF upload status and
-  remote-checkpoint age, and sparse diagnostic images.
+- Gate B physical dataset resolution: PASS (previously verified).
+- Gate C paired geometry: PASS (previously verified).
+- VAE helper unit tests: PASS — PIL range/layout, per-channel normalization,
+  invalid/nonfinite rejection, paired encode layout/shape/nonzero signal, and
+  diagnostic reporting.
+- Regression paired-preprocessing tests: PASS.
 
-## Exact checks
+## Gate C2 real-data smoke
 
-- `python -m unittest -v tests/test_wandb_logging.py` — PASS (7 tests): normal
-  init, init failure, log failure, JSONL output and named interfaces,
-  disabled/offline modes, environment overrides, and credential exclusion.
-- `python -m unittest -v tests/test_dataset_index.py tests/test_paired_preprocessing.py`
-  — PASS (13 tests; regression check run before the final W&B-only test pass).
-- `git diff --check` — PASS before this handoff rewrite; rerun after it.
-- `git status --short` before this handoff rewrite: user-existing `M .gitignore`;
-  session changes `M pose_controlnet/config.py`, `M pose_controlnet/wandb_logging.py`,
-  and `?? tests/test_wandb_logging.py`.
+- Status: BLOCKED in the audit workspace, not passed.
+- Required dataset root `data/full/` is absent (no `images/` or
+  `conditioning_images/` directories), so `DatasetIndex.discover` correctly
+  rejects the attempted smoke command before it can select a square, portrait,
+  and landscape record.
+- Exact VAE-only Hub download was attempted through `hf` but could not begin
+  because this sandbox has a temporary DNS failure. No model weights or
+  unrelated components were downloaded.
+- Therefore there are no real sample latent statistics yet. Do not treat unit
+  test output or review images as the Gate C2 smoke result.
+
+## Exact checks this session
+
+- `.venv/bin/python -m unittest -v tests/test_vae_preprocessing.py tests/test_paired_preprocessing.py` — PASS (12 tests).
+- `.venv/bin/python -m py_compile pose_controlnet/vae_preprocessing.py` — PASS.
+- `.venv/bin/python` Diffusers class check — PASS: version `0.40.0`, required
+  class available.
+- `hf models info Qwen/Qwen-Image ...` and VAE-only dry run — blocked by DNS.
+- `.venv/bin/python -m pose_controlnet.vae_preprocessing --dataset-root data/full --device cpu --scan-limit 16` — expected BLOCKED: missing dataset root.
 
 ## Files changed this session
 
-- `pose_controlnet/wandb_logging.py`
-- `pose_controlnet/config.py`
-- `tests/test_wandb_logging.py`
+- `pose_controlnet/vae_preprocessing.py`
+- `tests/test_vae_preprocessing.py`
 - `docs/CODEX_HANDOFF.md`
 
 ## Current blockers
 
-None for the telemetry milestone. W&B real-remote verification is confirmed by
-the user; this isolated test suite uses fakes and does not require credentials.
+- Run the final smoke on the GH200 production shell/service environment where
+  the immutable PoseBridge snapshot is mounted and Hugging Face access is
+  available. This audit workspace cannot access those artifacts.
 
-## Exact next recommended action
+## Exact next action
 
-Await a separately bounded implementation assignment. Do not start production
-training. When a training loop exists, instantiate `TrainingTelemetry` once,
-call its named interfaces at the configured cadences, and close it during
-controlled shutdown; do not add a second logging implementation.
+On the GH200 host, after confirming the mounted snapshot root, run:
+
+```bash
+.venv/bin/python -m pose_controlnet.vae_preprocessing \
+  --dataset-root <mounted-posebridge-snapshot> --device cuda --scan-limit 256
+```
+
+Confirm one square, portrait, and landscape report; matching finite RGB/control
+latent shapes; BF16 encoding; and nonzero control latent statistics. Record
+the reported values in this handoff. Do not create full shards or begin Gate D.
