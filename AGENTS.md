@@ -35,9 +35,12 @@ Expected clean split after the known exclusions:
 - total used: 17,416
 
 Raw source/control pairs share stems but use different extensions. Manifest records use the real schema:
-- `file_name`: e.g. `images/<stem>.jpg`
-- `conditioning_image`: e.g. `conditioning_images/<stem>.png`
+- immutable manifest `file_name`: bare `<stem>.jpg`
+- physical RGB/control locations on Hugging Face are storage/shard paths and must be discovered after download
+- controls are matched by stem and use `.png`
 - `text`: caption
+
+Do not infer physical paths from manifest filenames. Build a read-only stem → physical RGB/control index from the downloaded HF snapshot and validate it against the immutable manifests.
 
 Normalize path/basename joins deliberately. Never silently replace a missing caption with `""`.
 
@@ -81,6 +84,59 @@ Start read-only. Do not recursively dump the entire repository into context.
    - reference `k2_lora.py`, `mmdit.py`, `trainer/sampling.py`, and `trainer/train_control_lora.py` only when needed to verify architecture/math.
 4. Produce a short audit: `PASS / FIX / BLOCKED` for environment, data loader, control path, loss math, optimizer/scheduler, W&B, checkpoint/resume, HF backup, signal handling, and unattended service.
 5. Only then edit code. Prefer small reviewable changes and test each layer before moving on.
+
+
+## Hands-off session operating protocol
+Default behavior for every Codex session is **hands-off execution within the stated task boundary**. Do not stop after each minor step to ask for permission. Inspect, implement, run targeted tests, diagnose failures, repair them, and re-test until the bounded task is complete or a genuine blocker is reached.
+
+### At session start
+1. Read this `AGENTS.md`.
+2. Read `docs/CODEX_HANDOFF.md` if it exists. Treat it as the current operational state, not as an unquestioned source of truth; verify material claims against code/tests when relevant.
+3. Run `git status --short` before edits. Never overwrite unrelated user changes.
+4. Identify the single bounded session objective from the user prompt. Do not expand scope unless required to make that objective work.
+5. Use targeted search (`rg`, `rg --files`) and open only the files needed for the objective.
+
+### During the session
+- Work autonomously through normal implementation details, package installation allowed by the task, test failures, small refactors, and documentation updates.
+- Prefer the smallest coherent patch that satisfies the acceptance criteria.
+- After each material change, run the narrowest useful test before moving on.
+- If a test fails, investigate and fix it rather than immediately returning the failure to the user.
+- Escalate only for a **genuine blocker**: missing credential/access, missing external artifact, destructive/irreversible action not already authorized, contradictory requirements, or a decision that materially changes the training experiment.
+- Never treat transient W&B/HF/network failures as reasons to stop training-system implementation; add retry/nonfatal behavior where required.
+- Never change the working torch/CUDA/cuDNN/Triton/NVIDIA stack without demonstrated incompatibility and explicit approval.
+- Never launch the paid 6000-step production run without explicit user approval. This is the primary exception to hands-off execution.
+
+### Model/effort routing
+Keep expensive reasoning focused on tasks that need it. When the installed Codex environment supports model selection/delegation:
+- **Luna / low reasoning:** installations, version checks, file discovery, simple config edits, formatting, mechanical validations.
+- **Terra / medium reasoning:** bounded Python implementation, dataset indexing, preprocessing, logging, checkpoint plumbing, ordinary debugging and tests.
+- **Sol / high reasoning:** architecture/math changes, control-path correctness, difficult numerical/CUDA issues, optimizer/training decisions, final production-readiness review.
+
+Do not use Sol merely to run shell commands or perform mechanical edits. Do not spawn multiple agents for work that one bounded task can complete.
+
+### Session completion — mandatory handoff
+Before ending **every session that inspects or changes project state**, update `docs/CODEX_HANDOFF.md`. Create it if absent. This update is part of the task and should happen automatically without being requested.
+
+`docs/CODEX_HANDOFF.md` must stay concise (target roughly 2–5 KB) and contain only current state:
+- current Phase-1 objective;
+- verified environment facts;
+- decisions currently in force;
+- completed/green gates;
+- current failures/blockers;
+- files changed this session;
+- exact tests/commands run with PASS/FAIL;
+- important new findings;
+- exact next recommended action.
+
+Rewrite stale sections instead of appending a chronological transcript. Do not paste large logs, diffs, stack traces, source files, or chat history. A fresh Codex session should be able to continue by reading only `AGENTS.md`, `docs/CODEX_HANDOFF.md`, and files relevant to its new task.
+
+If code/config was changed, finish with:
+1. targeted tests green or clearly documented blocker;
+2. `git diff --check`;
+3. `git status --short`;
+4. concise handoff update.
+
+Do not automatically commit or push unless the session/user instruction explicitly authorizes Git writes. Never include credentials, tokens, model weights, datasets, checkpoints, or generated secrets in Git.
 
 ## Phase 1 verification gates
 Do not start the 6000-step run until every gate is green.
@@ -216,7 +272,7 @@ When ready, stop and present the exact production command/config for explicit us
 - Read slices around relevant definitions instead of whole large files.
 - Never scan image data, model checkpoints, latent shards, `.venv`, or generated outputs unless a specific test requires one sample/file.
 - Use existing handoff docs as references, but search/open only the section needed for the current question.
-- Maintain a short `docs/CODEX_STATUS.md` (roughly 1–3 KB) containing only: current green/red gates, last tested command, current blocker, and next action. Replace stale details rather than appending endlessly.
+- Maintain `docs/CODEX_HANDOFF.md` as the single short cross-session state file. Do not create competing status/handoff documents unless explicitly requested.
 - Prefer one bounded Codex task per session: audit, preprocessing fix, control test, logging, checkpoint/resume, or service setup. New session after a major milestone keeps context smaller.
 - Ask Codex for a plan/audit first for risky multi-file changes, then implement the smallest coherent patch.
 - Avoid automatic review on every tiny change; it consumes additional model calls. Use it at milestone/release boundaries.
