@@ -10,7 +10,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from k2_lora import (  # noqa: E402
     K2_RAW_CONFIG,
+    LORA_TARGETS,
+    audit_control_model,
     build_control_model,
+    inspect_raw_checkpoint,
     trainable_params as _trainable_params,
     trainable_state_dict as _trainable_state_dict,
     load_trainable_state_dict as _load_trainable_state_dict,

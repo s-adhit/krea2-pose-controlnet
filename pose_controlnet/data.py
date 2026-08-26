@@ -10,6 +10,48 @@ import torch
 from torch.utils.data import Dataset
 
 
+def load_prepared_sample(shard_root: str, split: str = "train",
+                         shard_number: int = 0, sample_number: int = 0) -> dict:
+    """Load and hard-check one sample from the persistent Gate-D shard format."""
+    path = os.path.join(shard_root, split, f"{split}-{shard_number:05d}.pt")
+    try:
+        payload = torch.load(path, map_location="cpu", weights_only=False)
+    except (OSError, RuntimeError, EOFError, ValueError) as exc:
+        raise ValueError(f"Could not load prepared latent shard {path}: {exc}") from exc
+    if not isinstance(payload, dict) or payload.get("format_version") != 1:
+        raise ValueError(f"Malformed prepared latent shard: {path}")
+    if payload.get("split") != split:
+        raise ValueError(f"Wrong split in prepared latent shard: {path}")
+    samples = payload.get("samples")
+    if not isinstance(samples, list) or not 0 <= sample_number < len(samples):
+        raise IndexError(f"Sample {sample_number} does not exist in {path}")
+    sample = samples[sample_number]
+    image = sample.get("image_latent")
+    control = sample.get("control_latent")
+    text = sample.get("text")
+    if not isinstance(image, torch.Tensor) or not isinstance(control, torch.Tensor):
+        raise ValueError(f"Missing latent tensors in {path} sample {sample_number}")
+    if image.dtype != torch.float32 or control.dtype != torch.float32:
+        raise ValueError(f"Latents are not float32 in {path} sample {sample_number}")
+    if image.ndim != 3 or image.shape[0] != 16 or image.shape != control.shape:
+        raise ValueError(f"Invalid paired latent shapes in {path} sample {sample_number}")
+    if not torch.isfinite(image).all().item() or not torch.isfinite(control).all().item():
+        raise ValueError(f"Non-finite latent in {path} sample {sample_number}")
+    if control.abs().max().item() == 0.0:
+        raise ValueError(f"Empty control latent in {path} sample {sample_number}")
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError(f"Missing caption in {path} sample {sample_number}")
+    return {
+        "latent": image,
+        "control": control,
+        "prompt": text,
+        "stem": sample.get("stem"),
+        "bucket": sample.get("bucket"),
+        "shard_path": path,
+        "sample_number": sample_number,
+    }
+
+
 class PoseShardDataset(Dataset):
     def __init__(self, shard_dir: str, split: str = "train",
                  exclude_stems_path: str | None = None):

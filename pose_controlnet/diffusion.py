@@ -43,6 +43,36 @@ def shift_timestep(t: torch.Tensor, mu: float) -> torch.Tensor:
     return math.exp(mu) * t / (math.exp(mu) * t + 1.0 - t)
 
 
+def sample_flow_timestep(batch_size: int, seq_len: int, cfg, device,
+                         generator: torch.Generator | None = None) -> torch.Tensor:
+    """Sample the intended logistic-normal timestep and apply resolution shift."""
+    if batch_size < 1 or seq_len < 1:
+        raise ValueError("batch_size and seq_len must be positive")
+    mu = resolution_shift_mu(seq_len, cfg.mu_x1, cfg.mu_y1, cfg.mu_x2, cfg.mu_y2)
+    logistic_normal = torch.sigmoid(
+        torch.randn(batch_size, device=device, dtype=torch.float32, generator=generator)
+    )
+    shifted = shift_timestep(logistic_normal, mu)
+    if not torch.isfinite(shifted).all().item() or not ((shifted > 0) & (shifted < 1)).all().item():
+        raise FloatingPointError("Sampled invalid flow-matching timestep")
+    return shifted
+
+
+def make_flow_pair(clean_image: torch.Tensor, noise: torch.Tensor,
+                   timestep: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    """Construct x_t and v target while leaving any control latent untouched."""
+    if clean_image.shape != noise.shape:
+        raise ValueError("clean image latent and noise must have identical shapes")
+    if timestep.ndim != 1 or timestep.shape[0] != clean_image.shape[0]:
+        raise ValueError("timestep must have shape (batch,)")
+    broadcast = timestep.view(-1, *([1] * (clean_image.ndim - 1)))
+    noisy = broadcast * noise + (1.0 - broadcast) * clean_image
+    target = noise - clean_image
+    if not torch.isfinite(noisy).all().item() or not torch.isfinite(target).all().item():
+        raise FloatingPointError("Non-finite flow-matching input or target")
+    return noisy, target
+
+
 def flow_schedule(seq_len: int, steps: int, cfg) -> list[float]:
     mu = resolution_shift_mu(seq_len, cfg.mu_x1, cfg.mu_y1, cfg.mu_x2, cfg.mu_y2)
     ts = torch.linspace(1, 0, steps + 1)
