@@ -1,3 +1,5 @@
+import json
+import shutil
 import tempfile
 import unittest
 import sys
@@ -7,13 +9,22 @@ from unittest.mock import patch
 import torch
 
 import train
-from pose_controlnet.checkpointing import load_training_state, save_training_state
+from pose_controlnet.checkpointing import (
+    HFTrainingCheckpointMirror, load_training_state, resolve_auto_resume,
+    save_training_state,
+)
 from pose_controlnet.config import TrainConfig
 from pose_controlnet.diffusion import checkpointed_main_block_indices, forward_pose_control
 from pose_controlnet.wandb_logging import TrainingTelemetry
 
 
 class TrainMechanicsTest(unittest.TestCase):
+    def full_state(self, step: int = 1) -> dict:
+        return {"model": {"first.weight": torch.ones(1)}, "optimizer": {"state": {}},
+                "scheduler": {"step_count": step, "base_lrs": [1e-4], "warmup_steps": 200},
+                "global_step": step, "epoch": 2, "batch_position": 3,
+                "rng": train._capture_rng(), "flow_generator_state": torch.Generator().get_state(),
+                "config": {"seed": 42}}
     def test_effective_batch_formula(self):
         self.assertEqual(train.effective_batch_size(1, 32, 1), 32)
         self.assertEqual(train.effective_batch_size(2, 16, 1), 32)
@@ -30,17 +41,39 @@ class TrainMechanicsTest(unittest.TestCase):
         self.assertEqual(optimizer.param_groups[0]["weight_decay"], 0.0)
         self.assertEqual({id(p) for p in optimizer.param_groups[0]["params"]}, {id(p) for p in model[0].parameters()})
 
-    def test_warmup_and_optimizer_boundary_counts(self):
+    def test_warmup_uses_lr_for_current_optimizer_update(self):
         parameter = torch.nn.Parameter(torch.tensor([1.0]))
         optimizer = torch.optim.AdamW([parameter], lr=1e-4, betas=(0.9, 0.99), weight_decay=0.0)
         scheduler = train.OptimizerStepWarmup(optimizer, 200)
-        self.assertEqual(optimizer.param_groups[0]["lr"], 0.0)
+        self.assertAlmostEqual(optimizer.param_groups[0]["lr"], 5e-7)
+        used = []
         for _ in range(200):
             parameter.grad = torch.ones_like(parameter)
+            used.append(optimizer.param_groups[0]["lr"])
             train.optimizer_update(optimizer, scheduler, [parameter], 1.0)
         self.assertEqual(scheduler.step_count, 200)
         self.assertAlmostEqual(optimizer.param_groups[0]["lr"], 1e-4)
+        self.assertAlmostEqual(used[0], 5e-7)
+        self.assertAlmostEqual(used[9], 5e-6)
+        self.assertAlmostEqual(used[199], 1e-4)
         self.assertIsNone(parameter.grad)
+
+    def test_resumed_warmup_installs_next_update_lr(self):
+        parameter = torch.nn.Parameter(torch.tensor([1.0])); optimizer = torch.optim.AdamW([parameter], lr=1e-4)
+        scheduler = train.OptimizerStepWarmup(optimizer, 200)
+        scheduler.load_state_dict({"step_count": 10, "base_lrs": [1e-4], "warmup_steps": 200})
+        self.assertAlmostEqual(optimizer.param_groups[0]["lr"], 5.5e-6)
+
+    def test_telemetry_lr_matches_lr_used_by_optimizer_update(self):
+        parameter = torch.nn.Parameter(torch.tensor([1.0])); optimizer = torch.optim.AdamW([parameter], lr=1e-4)
+        scheduler = train.OptimizerStepWarmup(optimizer, 200); used = scheduler.current_update_learning_rates[0]
+        parameter.grad = torch.ones_like(parameter); observed = []
+        original_step = optimizer.step
+        with patch.object(optimizer, "step", side_effect=lambda: (observed.append(optimizer.param_groups[0]["lr"]), original_step())[1]):
+            train.optimizer_update(optimizer, scheduler, [parameter], 1.0)
+        self.assertAlmostEqual(used, 5e-7)
+        self.assertEqual(observed, [used])
+        self.assertAlmostEqual(scheduler.current_update_learning_rates[0], 1e-6)
 
     def test_gradient_clipping_precedes_optimizer_step(self):
         parameter = torch.nn.Parameter(torch.tensor([1.0])); parameter.grad = torch.tensor([10.0])
@@ -99,10 +132,63 @@ class TrainMechanicsTest(unittest.TestCase):
     def test_full_resume_state_preserves_position_and_rng_payload(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "step_000001.pt"
-            state = {"model": {"first.weight": torch.ones(1)}, "optimizer": {"state": {}}, "scheduler": {"step_count": 1}, "global_step": 1, "epoch": 2, "batch_position": 3, "rng": train._capture_rng()}
+            state = self.full_state()
             save_training_state(path, state)
             restored = load_training_state(path)
             self.assertEqual((restored["global_step"], restored["epoch"], restored["batch_position"]), (1, 2, 3))
+
+    def test_hf_mirror_failure_is_nonfatal_and_retries(self):
+        class FailingApi:
+            def __init__(self): self.uploads = 0
+            def create_repo(self, *args, **kwargs): pass
+            def upload_file(self, **kwargs): self.uploads += 1; raise OSError("offline")
+        with tempfile.TemporaryDirectory() as temporary:
+            path = save_training_state(Path(temporary) / "step_000001.pt", self.full_state())
+            api, sleeps = FailingApi(), []
+            mirror = HFTrainingCheckpointMirror(repo_id="user/private", run_name="run", max_attempts=3,
+                                                api=api, sleep=sleeps.append)
+            self.assertFalse(mirror._upload(path)); self.assertEqual(api.uploads, 3)
+            self.assertEqual(sleeps, [5.0, 10.0]); self.assertIn("offline", mirror.last_error)
+
+    def test_hf_mirror_and_auto_recovery_prefer_local_then_valid_remote(self):
+        class MemoryApi:
+            def __init__(self): self.files = {}
+            def create_repo(self, *args, **kwargs): pass
+            def upload_file(self, *, path_or_fileobj, path_in_repo, **kwargs):
+                self.files[path_in_repo] = (Path(path_or_fileobj).read_bytes() if isinstance(path_or_fileobj, str)
+                                            else path_or_fileobj.read())
+            def list_repo_files(self, *args, **kwargs): return list(self.files)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); run_dir = root / "run"; local = save_training_state(run_dir / "step_000005.pt", self.full_state(5))
+            api = MemoryApi(); mirror = HFTrainingCheckpointMirror(repo_id="user/private", run_name="run", api=api)
+            self.assertTrue(mirror._upload(local)); self.assertIn("run/full/step_000005.pt.complete.json", api.files)
+            remote = root / "remote.pt"; remote.write_bytes(local.read_bytes())
+            with patch("pose_controlnet.checkpointing.newest_valid_hf_checkpoint", return_value=remote):
+                self.assertEqual(resolve_auto_resume(checkpoint_dir=root, run_name="run", repo_id="user/private", remote_download_dir=root / "recovery"), local)
+                shutil.rmtree(run_dir)
+                recovered = resolve_auto_resume(checkpoint_dir=root, run_name="run", repo_id="user/private", remote_download_dir=root / "recovery")
+            restored = load_training_state(recovered)
+            self.assertEqual(restored["global_step"], 5); self.assertEqual(restored["scheduler"]["step_count"], 5)
+            self.assertEqual(restored["epoch"], 2); self.assertEqual(restored["batch_position"], 3)
+
+    def test_corrupt_newest_hf_candidate_is_skipped(self):
+        class Api:
+            def __init__(self): self.files = {}
+            def list_repo_files(self, *args, **kwargs): return list(self.files)
+        with tempfile.TemporaryDirectory() as temporary:
+            root, api = Path(temporary), Api()
+            valid = save_training_state(root / "step_000005.pt", self.full_state(5))
+            api.files["run/full/step_000005.pt"] = valid.read_bytes()
+            from pose_controlnet.checkpointing import _sha256
+            api.files["run/full/step_000005.pt.complete.json"] = json.dumps({"checkpoint": "run/full/step_000005.pt", "sha256": _sha256(valid), "global_step": 5}).encode()
+            api.files["run/full/step_000010.pt"] = b"corrupt"
+            api.files["run/full/step_000010.pt.complete.json"] = json.dumps({"checkpoint": "run/full/step_000010.pt", "sha256": __import__("hashlib").sha256(b"corrupt").hexdigest(), "global_step": 10}).encode()
+            def download(**kwargs):
+                destination = Path(kwargs["local_dir"]) / kwargs["filename"]; destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(api.files[kwargs["filename"]]); return str(destination)
+            from pose_controlnet.checkpointing import newest_valid_hf_checkpoint
+            recovered = newest_valid_hf_checkpoint(repo_id="user/private", run_name="run", download_dir=root / "dl", api=api, download_fn=download)
+            self.assertEqual(load_training_state(recovered)["global_step"], 5)
 
     def test_telemetry_failures_are_nonfatal(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -175,9 +175,15 @@ class TrainingTelemetry:
                          "checkpoint/time": checkpoint_time}, step=step)
 
     def log_hf_upload(self, *, success: bool, remote_checkpoint_age_seconds: float,
-                      step: int) -> bool:
-        return self.log({"hf/upload_success": success,
-                         "hf/remote_checkpoint_age_seconds": remote_checkpoint_age_seconds}, step=step)
+                      step: int, uploaded_checkpoint_step: int | None = None,
+                      error_status: str | None = None) -> bool:
+        metrics = {"hf/upload_success": success,
+                   "hf/remote_checkpoint_age_seconds": remote_checkpoint_age_seconds}
+        if uploaded_checkpoint_step is not None:
+            metrics["hf/uploaded_checkpoint_step"] = uploaded_checkpoint_step
+        if error_status is not None:
+            metrics["hf/error_status"] = error_status
+        return self.log(metrics, step=step)
 
     def log_diagnostic_images(self, images: Mapping[str, Any], *, step: int) -> bool:
         """Mirror sparse images to W&B; record their names locally, never image bytes."""

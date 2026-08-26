@@ -97,7 +97,8 @@ class WandbLoggingTests(unittest.TestCase):
                                        lora_grad_norms={"q_proj": 0.4}, step=4)
         logger.log_cuda_memory(allocated_bytes=1, reserved_bytes=2, peak_allocated_bytes=3, step=4)
         logger.log_checkpoint(checkpoint_step=4, checkpoint_time="2026-08-26T00:00:00Z", step=4)
-        logger.log_hf_upload(success=True, remote_checkpoint_age_seconds=60.0, step=4)
+        logger.log_hf_upload(success=True, remote_checkpoint_age_seconds=60.0, step=4,
+                             uploaded_checkpoint_step=4, error_status=None)
         logger.close()
         rows = [json.loads(line) for line in self.metrics_path.read_text().splitlines()]
         self.assertEqual(len(rows), 5)
@@ -105,6 +106,7 @@ class WandbLoggingTests(unittest.TestCase):
         self.assertEqual(rows[1]["diagnostics/control_input_grad_norm/control_half"], 0.3)
         self.assertEqual(rows[2]["cuda/peak_allocated_bytes"], 3)
         self.assertTrue(rows[4]["hf/upload_success"])
+        self.assertEqual(rows[4]["hf/uploaded_checkpoint_step"], 4)
 
     def test_disabled_and_offline_modes(self) -> None:
         disabled = FakeWandb()

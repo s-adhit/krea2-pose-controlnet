@@ -18,7 +18,10 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from pose_controlnet.checkpointing import load_training_state, save_training_state
+from pose_controlnet.checkpointing import (
+    HFTrainingCheckpointMirror, load_training_state, resolve_auto_resume,
+    save_training_state,
+)
 from pose_controlnet.config import TrainConfig
 from pose_controlnet.data import PreparedLatentShardDataset, collate
 from pose_controlnet.diffusion import forward_pose_control, make_flow_pair, patchify_and_position, sample_flow_timestep
@@ -40,16 +43,21 @@ class OptimizerStepWarmup:
         self.optimizer, self.warmup_steps = optimizer, warmup_steps
         self.base_lrs = [group["lr"] for group in optimizer.param_groups]
         self.step_count = 0
-        self._apply()
+        self._apply_for_update(1)
 
-    def _apply(self) -> None:
-        scale = min(1.0, self.step_count / self.warmup_steps) if self.warmup_steps else 1.0
+    def _apply_for_update(self, update_number: int) -> None:
+        scale = min(1.0, update_number / self.warmup_steps) if self.warmup_steps else 1.0
         for group, base_lr in zip(self.optimizer.param_groups, self.base_lrs):
             group["lr"] = base_lr * scale
 
     def step(self) -> None:
         self.step_count += 1
-        self._apply()
+        self._apply_for_update(self.step_count + 1)
+
+    @property
+    def current_update_learning_rates(self) -> list[float]:
+        """The rates installed for the optimizer update about to occur."""
+        return [group["lr"] for group in self.optimizer.param_groups]
 
     def state_dict(self) -> dict:
         return {"step_count": self.step_count, "base_lrs": self.base_lrs, "warmup_steps": self.warmup_steps}
@@ -58,7 +66,7 @@ class OptimizerStepWarmup:
         if state["warmup_steps"] != self.warmup_steps:
             raise ValueError("Checkpoint warmup schedule differs from current configuration")
         self.step_count, self.base_lrs = int(state["step_count"]), list(state["base_lrs"])
-        self._apply()
+        self._apply_for_update(self.step_count + 1)
 
 
 def build_optimizer(model: torch.nn.Module, cfg: TrainConfig) -> torch.optim.AdamW:
@@ -221,7 +229,10 @@ def parse_args() -> argparse.Namespace:
                         help="legacy shorthand: checkpoint all 28 main transformer blocks")
     parser.add_argument("--gradient-checkpointing-blocks", type=int, default=None, metavar="N",
                         help="checkpoint the first N of 28 main transformer blocks (0 disables; overrides legacy flag)")
-    parser.add_argument("--resume")
+    parser.add_argument("--resume", help="checkpoint path or 'auto' (newest valid local, then HF fallback)")
+    parser.add_argument("--hf-repo-id", default="", help="private HF model repo for full checkpoint mirroring")
+    parser.add_argument("--hf-mirror-every-seconds", type=float, default=3600,
+                        help="wall-clock full-checkpoint mirror cadence (default: 3600)")
     parser.add_argument("--wandb-mode", default="online")
     parser.add_argument("--no-wandb", action="store_true")
     args = parser.parse_args()
@@ -229,6 +240,7 @@ def parse_args() -> argparse.Namespace:
     if args.microbatch_size < 1 or args.gradient_accumulation_steps < 1: parser.error("batch settings must be positive")
     if args.gradient_checkpointing_blocks is not None and not 0 <= args.gradient_checkpointing_blocks <= 28:
         parser.error("--gradient-checkpointing-blocks must be in [0, 28]")
+    if args.hf_mirror_every_seconds < 0: parser.error("--hf-mirror-every-seconds must be non-negative")
     return args
 
 
@@ -244,7 +256,8 @@ def config_from_args(args: argparse.Namespace) -> TrainConfig:
                        compile=args.compile, gradient_checkpointing=gradient_checkpointing_blocks > 0,
                        gradient_checkpointing_blocks=gradient_checkpointing_blocks,
                        wandb_enabled=not args.no_wandb, wandb_mode=args.wandb_mode,
-                       metrics_jsonl_path=str(Path(args.checkpoint_dir) / args.run_name / "metrics.jsonl"))
+                       metrics_jsonl_path=str(Path(args.checkpoint_dir) / args.run_name / "metrics.jsonl"),
+                       hf_repo_id=args.hf_repo_id, hf_push_every_seconds=args.hf_mirror_every_seconds)
 
 
 def main() -> None:
@@ -267,9 +280,19 @@ def main() -> None:
     global_step = epoch = batch_position = 0
     resume_generator_state = None
     if args.resume:
-        state = load_training_state(args.resume); load_trainable_state_dict(model, state["model"]); optimizer.load_state_dict(state["optimizer"]); scheduler.load_state_dict(state["scheduler"]); global_step, epoch, batch_position = state["global_step"], state["epoch"], state["batch_position"]; _restore_rng(state["rng"])
+        resume_path = (resolve_auto_resume(checkpoint_dir=cfg.ckpt_dir, run_name=cfg.run_name,
+                                           repo_id=cfg.hf_repo_id,
+                                           remote_download_dir=Path(cfg.ckpt_dir) / cfg.run_name / "hf_recovery")
+                       if args.resume == "auto" else Path(args.resume))
+        if resume_path is None: raise FileNotFoundError("--resume auto found no valid local or HF full checkpoint")
+        state = load_training_state(resume_path); load_trainable_state_dict(model, state["model"]); optimizer.load_state_dict(state["optimizer"]); scheduler.load_state_dict(state["scheduler"]); global_step, epoch, batch_position = state["global_step"], state["epoch"], state["batch_position"]; _restore_rng(state["rng"])
+        print(f"[resume] loaded validated full checkpoint {resume_path} at optimizer step {global_step} "
+              f"(epoch={epoch}, batch_position={batch_position})", flush=True)
         resume_generator_state = state.get("flow_generator_state")
     telemetry = TrainingTelemetry(cfg, cfg.run_name)
+    mirror = HFTrainingCheckpointMirror(repo_id=cfg.hf_repo_id, run_name=cfg.run_name,
+                                        interval_seconds=cfg.hf_push_every_seconds, telemetry=telemetry)
+    mirror.start()
     stopped = False
     def stop_handler(signum, _frame):
         nonlocal stopped
@@ -303,13 +326,14 @@ def main() -> None:
             def capture_diagnostics() -> None:
                 nonlocal control_norms, lora_norms
                 control_norms, lora_norms = _diagnostic_grad_norms(model)
+            learning_rate_used = scheduler.current_update_learning_rates[0]
             grad_norm = optimizer_update(
                 optimizer, scheduler, trainable_params(model), cfg.max_grad_norm,
                 before_step=capture_diagnostics if diagnostics_due else None,
             )
             global_step += 1
             elapsed = time.monotonic() - start; samples = effective_batch_size(cfg.microbatch_size, cfg.gradient_accumulation_steps)
-            telemetry.log_train(loss=float(loss.item()), learning_rate=optimizer.param_groups[0]["lr"], global_grad_norm=grad_norm, sec_per_step=elapsed, samples_per_second=samples / elapsed, step=global_step)
+            telemetry.log_train(loss=float(loss.item()), learning_rate=learning_rate_used, global_grad_norm=grad_norm, sec_per_step=elapsed, samples_per_second=samples / elapsed, step=global_step)
             telemetry.log_cuda_memory(allocated_bytes=torch.cuda.memory_allocated(), reserved_bytes=torch.cuda.memory_reserved(), peak_allocated_bytes=torch.cuda.max_memory_allocated(), step=global_step)
             if diagnostics_due:
                 telemetry.log_control_diagnostics(**last_diag, control_input_grad_norms=control_norms, lora_grad_norms=lora_norms, step=global_step)
@@ -322,7 +346,9 @@ def main() -> None:
                 save_training_state(path, {"model": trainable_state_dict(model), "optimizer": optimizer.state_dict(), "scheduler": scheduler.state_dict(), "global_step": global_step, "epoch": epoch, "batch_position": batch_position, "rng": _capture_rng(), "flow_generator_state": generator.get_state(), "config": asdict(cfg)})
                 last_checkpoint_time = time.monotonic()
                 telemetry.log_checkpoint(checkpoint_step=global_step, checkpoint_time=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), step=global_step)
+                mirror.maybe_submit(path)
     finally:
+        mirror.stop()
         telemetry.close()
 
 

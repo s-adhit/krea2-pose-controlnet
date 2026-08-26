@@ -50,7 +50,7 @@ class TrainConfig:
     wandb_mode: str = "online"
     metrics_jsonl_path: str = "runs/metrics.jsonl"
     hf_repo_id: str = ""
-    hf_push_every_seconds: int = 7200
+    hf_push_every_seconds: int = 3600
 
     # eval
     eval_steps: int = 8
