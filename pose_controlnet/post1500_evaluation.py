@@ -175,6 +175,9 @@ def score_authoritative_pck(*, sidecar: Mapping[str, Any], geometry_by_stem: Map
         geometry = geometry_by_stem.get(stem)
         if geometry is None:
             raise ValueError(f"No persisted paired geometry for authoritative PCK stem {stem}")
+        missing = [field for field in ("source_size", "resized_size", "crop_box") if field not in geometry]
+        if missing:
+            raise ValueError(f"Persisted paired geometry for authoritative PCK stem {stem} is missing required fields: {', '.join(missing)}")
         people = reference_people_from_sidecar(record, source_size=tuple(geometry["source_size"]), resized_size=tuple(geometry["resized_size"]), crop_box=tuple(geometry["crop_box"]))
         rendered = [person for person in people if person["reference_rendered"]]
         if not rendered:

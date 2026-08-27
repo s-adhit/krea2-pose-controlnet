@@ -6,9 +6,11 @@ from unittest.mock import patch
 
 import torch
 
+from pose_controlnet.data import PreparedLatentShardDataset
+from pose_controlnet.paired_preprocessing import resize_center_crop_geometry
 from pose_controlnet.turbo_evaluation import (TURBO_CFG, TURBO_MU, TURBO_STEPS, assert_exact_diagnostic_stems,
     assert_turbo_output_isolated, exact_turbo_checkpoints, raw_to_turbo_control_compatibility,
-    sample_turbo_pose_image, turbo_schedule)
+    sample_turbo_pose_image, turbo_schedule, turbo_scoring_geometry)
 
 
 class TurboEvaluationTest(unittest.TestCase):
@@ -57,6 +59,75 @@ class TurboEvaluationTest(unittest.TestCase):
         self.assertEqual(result["shape_mismatches"], 0)
         with patch("pose_controlnet.turbo_evaluation.trainable_state_dict", return_value={"first.weight": torch.zeros(2, 2)}):
             with self.assertRaises(ValueError): raw_to_turbo_control_compatibility(model, {"config": {}, "model": {"first.weight": torch.zeros(2, 2)}})
+
+    def test_turbo_scoring_geometry_matches_canonical_paired_preprocessing_for_all_aspects(self):
+        examples = {"portrait": ((1000, 1500), (832, 1216)), "landscape": ((1800, 1000), (1344, 768)),
+                    "square": ((1000, 1000), (1024, 1024))}
+        for stem, (source_size, bucket) in examples.items():
+            with self.subTest(stem=stem):
+                canonical = resize_center_crop_geometry(source_size, bucket)
+                sample = {"stem": stem, "bucket": list(bucket), "source_size": list(source_size),
+                          "resized_size": list(canonical.resized_size), "crop_box": list(canonical.crop_box)}
+                self.assertEqual(turbo_scoring_geometry(sample), {
+                    "source_size": list(canonical.source_size), "resized_size": list(canonical.resized_size),
+                    "crop_box": list(canonical.crop_box),
+                })
+
+    def test_turbo_scoring_geometry_requires_complete_persisted_fields(self):
+        with self.assertRaisesRegex(ValueError, "missing persisted paired fields: crop_box"):
+            turbo_scoring_geometry({"stem": "missing", "source_size": [100, 100],
+                                    "resized_size": [1024, 1024], "bucket": [1024, 1024]})
+
+    def test_existing_turbo_outputs_score_without_regeneration(self):
+        from scripts import turbo_benchmark
+
+        examples = {"portrait": ((1000, 1500), (832, 1216)), "landscape": ((1800, 1000), (1344, 768)),
+                    "square": ((1000, 1000), (1024, 1024))}
+        samples = []
+        for stem, (source_size, bucket) in examples.items():
+            canonical = resize_center_crop_geometry(source_size, bucket)
+            samples.append({"stem": stem, "bucket": list(bucket), "source_size": list(source_size),
+                            "resized_size": list(canonical.resized_size), "crop_box": list(canonical.crop_box)})
+
+        class Dataset:
+            records = [("unused", index, (1, 1), sample["stem"]) for index, sample in enumerate(samples)]
+            def __getitem__(self, index): return samples[index]
+
+        sidecar = {"records": [{"stem": sample["stem"], "source": "humanart", "status": "available", "people": []} for sample in samples]}
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            (output / "generation_results.json").write_text("{}")
+            for stem in examples:
+                directory = output / "fixed_pose" / stem; directory.mkdir(parents=True)
+                (directory / "metadata.json").write_text('{"prompt": "pose"}')
+                for step in (800, 1500): (directory / f"step_{step:06d}.png").touch()
+            args = SimpleNamespace(output_dir=output, reference_sidecar=output / "sidecar.json", clip_model_id="clip")
+            args.reference_sidecar.write_text(__import__("json").dumps(sidecar))
+            fake_clip = SimpleNamespace(to=lambda _device: fake_clip, eval=lambda: fake_clip)
+            with patch.object(turbo_benchmark, "_dataset_and_spec", return_value=(Dataset(), tuple(examples), {})), \
+                 patch.object(turbo_benchmark, "KeypointRCNNEstimator"), \
+                 patch.object(turbo_benchmark.CLIPProcessor, "from_pretrained", return_value=object()), \
+                 patch.object(turbo_benchmark.CLIPModel, "from_pretrained", return_value=fake_clip), \
+                 patch.object(turbo_benchmark, "score_authoritative_pck", return_value={"pck_005": 1.0}), \
+                 patch.object(turbo_benchmark, "_clip_score", return_value=.5), \
+                 patch.object(turbo_benchmark, "sample_turbo_pose_image") as generate:
+                turbo_benchmark.score(args)
+            generate.assert_not_called()
+            self.assertTrue((output / "pck_clip_results.json").is_file())
+
+    def test_prepared_dataset_exposes_persisted_paired_geometry_to_turbo_scoring(self):
+        canonical = resize_center_crop_geometry((1000, 1500), (832, 1216))
+        sample = {"stem": "portrait", "text": "pose", "bucket": [832, 1216], "source_size": [1000, 1500],
+                  "resized_size": list(canonical.resized_size), "crop_box": list(canonical.crop_box),
+                  "image_latent": torch.ones(16, 152, 104), "control_latent": torch.ones(16, 152, 104)}
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); (root / "diagnostic_val").mkdir()
+            (root / "shards.json").write_text('{"format_version": 1, "complete": true}')
+            torch.save({"format_version": 1, "split": "diagnostic_val", "samples": [sample]}, root / "diagnostic_val/diagnostic_val-00000.pt")
+            item = PreparedLatentShardDataset(root, "diagnostic_val")[0]
+        self.assertEqual(turbo_scoring_geometry(item), {"source_size": [1000, 1500],
+                                                         "resized_size": list(canonical.resized_size),
+                                                         "crop_box": list(canonical.crop_box)})
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 import torch
 from einops import rearrange
@@ -17,6 +17,7 @@ from einops import rearrange
 from pose_controlnet.diffusion import forward_pose_control, patchify_and_position
 from pose_controlnet.evaluation import ordered_checkpoints
 from pose_controlnet.model import trainable_state_dict
+from pose_controlnet.paired_preprocessing import resize_center_crop_geometry
 
 
 TURBO_STEPS = 8
@@ -57,6 +58,38 @@ def turbo_metadata() -> dict[str, Any]:
         "mu_resolution_dependent": False,
         "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
     }
+
+
+def turbo_scoring_geometry(sample: Mapping[str, Any]) -> dict[str, list[int]]:
+    """Return canonical persisted paired geometry for one Turbo PCK sample.
+
+    This consumes the source dimensions and bucket recorded in the prepared
+    shard, never generated-image pixels.  Recomputing through the shared
+    paired-preprocessing helper both preserves the canonical contract and
+    detects a malformed/stale shard geometry before PCK is run.
+    """
+    stem = sample.get("stem", "<unknown>")
+    fields = ("source_size", "resized_size", "crop_box", "bucket")
+    missing = [field for field in fields if sample.get(field) is None]
+    if missing:
+        raise ValueError(
+            f"Turbo scoring geometry for stem {stem!r} is missing persisted paired fields: {', '.join(missing)}"
+        )
+    try:
+        source_size = tuple(sample["source_size"])
+        bucket = tuple(sample["bucket"])
+        canonical = resize_center_crop_geometry(source_size, bucket)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Turbo scoring geometry for stem {stem!r} is malformed") from exc
+    geometry = {
+        "source_size": list(canonical.source_size),
+        "resized_size": list(canonical.resized_size),
+        "crop_box": list(canonical.crop_box),
+    }
+    persisted = {field: sample[field] for field in geometry}
+    if persisted != geometry:
+        raise ValueError(f"Turbo scoring geometry for stem {stem!r} disagrees with canonical paired preprocessing")
+    return geometry
 
 
 def assert_turbo_output_isolated(output_dir: str | Path) -> Path:

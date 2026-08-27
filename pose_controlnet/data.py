@@ -63,6 +63,11 @@ class PreparedLatentShardDataset(Dataset):
             self._cached_path, self._cached_samples = path, payload["samples"]
         sample = self._cached_samples[offset]  # type: ignore[index]
         item = {"latent": sample["image_latent"], "control": sample["control_latent"], "prompt": sample["text"], "stem": stem}
+        # Evaluation PCK maps authoritative source annotations through this
+        # persisted paired-preprocessing geometry.  Keep it available to
+        # read-only evaluators; training collation intentionally ignores it.
+        for key in ("bucket", "source_size", "resized_size", "crop_box"):
+            item[key] = sample.get(key)
         if self.text_conditioning is not None: item.update(self.text_conditioning.get(stem))
         return item
 

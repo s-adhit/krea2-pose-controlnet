@@ -70,6 +70,14 @@ class Post1500EvaluationTest(unittest.TestCase):
         self.assertEqual(result["single_person"]["pck_020"], 1.0)
         self.assertLess(result["multi_person"]["pck_020"], 1.0)
 
+    def test_pck_missing_geometry_fields_fails_clearly(self):
+        source = [[float(index), 0., 2. if index in (5, 6, 7, 9, 11, 13, 15) else 0.] for index in range(17)]
+        sidecar = {"records": [{"stem": "coco_1_1", "source": "coco", "status": "available", "mode": "single",
+                                "people": [{"annotation_id": 2, "keypoints": source}]}]}
+        with self.assertRaisesRegex(ValueError, "missing required fields: resized_size, crop_box"):
+            score_authoritative_pck(sidecar=sidecar, geometry_by_stem={"coco_1_1": {"source_size": [20, 20]}},
+                                    image_for=lambda stem: Path(f"{stem}.png"), detector=lambda _: [])
+
     def test_control_sensitivity_is_forward_only_and_repeatable(self):
         dataset, model = _Dataset(), _Model(); cfg = TrainConfig(raw_ckpt="raw", shard_dir="shards")
         def forward(_model, image, control, *_args, **_kwargs):

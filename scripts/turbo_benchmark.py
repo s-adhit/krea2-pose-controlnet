@@ -28,7 +28,7 @@ from pose_controlnet.post1500_evaluation import score_authoritative_pck
 from pose_controlnet.post500_evaluation import KeypointRCNNEstimator, aggregate, clip_feature_tensor, cosine_from_embeddings, prepare_clip_scoring_inputs
 from pose_controlnet.turbo_evaluation import (TURBO_CHECKPOINT_STEPS, assert_exact_diagnostic_stems,
     assert_turbo_output_isolated, exact_turbo_checkpoints, raw_to_turbo_control_compatibility,
-    sample_turbo_pose_image, turbo_metadata)
+    sample_turbo_pose_image, turbo_metadata, turbo_scoring_geometry)
 from pose_controlnet.vae_preprocessing import decode_normalized_latents, load_krea_vae
 from pose_controlnet.checkpointing import load_training_state
 
@@ -126,7 +126,7 @@ def score(args) -> None:
     output = assert_turbo_output_isolated(args.output_dir)
     dataset, stems, _ = _dataset_and_spec(args)
     sidecar = json.loads(Path(args.reference_sidecar).read_text())
-    geometry = {sample["stem"]: sample for sample in (_sample_by_stem(dataset, stem) for stem in stems)}
+    geometry = {stem: turbo_scoring_geometry(_sample_by_stem(dataset, stem)) for stem in stems}
     device = "cuda" if torch.cuda.is_available() else "cpu"
     detector = KeypointRCNNEstimator(device, .5)
     processor = CLIPProcessor.from_pretrained(args.clip_model_id); clip = CLIPModel.from_pretrained(args.clip_model_id).to(device).eval()
