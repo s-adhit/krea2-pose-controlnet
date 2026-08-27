@@ -8,7 +8,7 @@ import torch
 
 from pose_controlnet.data import PreparedLatentShardDataset
 from pose_controlnet.paired_preprocessing import resize_center_crop_geometry
-from pose_controlnet.turbo_evaluation import (TURBO_CFG, TURBO_MU, TURBO_STEPS, assert_exact_diagnostic_stems,
+from pose_controlnet.turbo_evaluation import (DEFAULT_TURBO_CHECKPOINT_STEPS, TURBO_CFG, TURBO_MU, TURBO_STEPS, TURBO_CHECKPOINT_STEPS, assert_exact_diagnostic_stems,
     assert_turbo_output_isolated, exact_turbo_checkpoints, raw_to_turbo_control_compatibility,
     sample_turbo_pose_image, turbo_schedule, turbo_scoring_geometry)
 
@@ -25,10 +25,24 @@ class TurboEvaluationTest(unittest.TestCase):
         with self.assertRaises(ValueError): turbo_schedule(image_sequence_length=1, steps=7)
         with self.assertRaises(ValueError): turbo_schedule(image_sequence_length=1, mu=1.14)
 
-    def test_exact_checkpoint_resolution_only_uses_800_and_1500_with_existing_validator(self):
-        with tempfile.TemporaryDirectory() as temp, patch("pose_controlnet.turbo_evaluation.ordered_checkpoints", return_value=[(800, Path("800.pt")), (1500, Path("1500.pt"))]) as resolved:
-            self.assertEqual(exact_turbo_checkpoints(checkpoint_dir=temp, hf_repo_id="private"), [(800, Path("800.pt")), (1500, Path("1500.pt"))])
-        self.assertEqual(resolved.call_args.kwargs["steps"], (800, 1500))
+    def test_exact_checkpoint_resolution_accepts_900_and_1200_with_existing_validator(self):
+        with tempfile.TemporaryDirectory() as temp, patch("pose_controlnet.turbo_evaluation.ordered_checkpoints", return_value=[(900, Path("900.pt")), (1200, Path("1200.pt"))]) as resolved:
+            self.assertEqual(exact_turbo_checkpoints(checkpoint_dir=temp, hf_repo_id="adhit-420/Krea-2-PoseControl-LoRA-checkpoints", steps=(900, 1200)), [(900, Path("900.pt")), (1200, Path("1200.pt"))])
+        self.assertEqual(resolved.call_args.kwargs["steps"], (900, 1200))
+        self.assertEqual(resolved.call_args.kwargs["hf_repo_id"], "adhit-420/Krea-2-PoseControl-LoRA-checkpoints")
+        self.assertEqual(DEFAULT_TURBO_CHECKPOINT_STEPS, (800, 1500))
+        self.assertEqual(TURBO_CHECKPOINT_STEPS, (800, 900, 1200, 1500))
+
+    def test_cli_steps_and_hf_archive_namespace_are_exact(self):
+        from scripts import turbo_benchmark
+        from pose_controlnet.evaluation import HF_ARCHIVE_RUNS
+
+        args = turbo_benchmark.parser().parse_args(["preflight", "--steps", "900", "1200"])
+        self.assertEqual(tuple(args.steps), (900, 1200))
+        self.assertEqual(HF_ARCHIVE_RUNS[900], "pose-learning-1500")
+        self.assertEqual(HF_ARCHIVE_RUNS[1200], "pose-learning-1500")
+        self.assertEqual("pose-learning-1500/full/step_000900.pt", f"{HF_ARCHIVE_RUNS[900]}/full/step_{900:06d}.pt")
+        self.assertEqual("pose-learning-1500/full/step_001200.pt", f"{HF_ARCHIVE_RUNS[1200]}/full/step_{1200:06d}.pt")
 
     def test_canonical_output_namespace_is_rejected_and_diagnostic_contract_is_exact(self):
         with self.assertRaises(ValueError): assert_turbo_output_isolated("/lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-500/turbo")
@@ -114,6 +128,29 @@ class TurboEvaluationTest(unittest.TestCase):
                 turbo_benchmark.score(args)
             generate.assert_not_called()
             self.assertTrue((output / "pck_clip_results.json").is_file())
+
+    def test_incremental_result_merging_preserves_legacy_steps_and_canonical_order(self):
+        from scripts import turbo_benchmark
+
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            (output / "generation_results.json").write_text('{"generated_steps": {"a": [800, 1500]}}')
+            self.assertEqual(turbo_benchmark._merged_generation_results(output, generated={"a": [900, 1200]}),
+                             {"a": [800, 900, 1200, 1500]})
+            (output / "pck_clip_results.json").write_text('{"checkpoints": [{"checkpoint_step": 1500}, {"checkpoint_step": 800}]}')
+            rows = turbo_benchmark._existing_result_rows(output)
+            rows[900] = {"checkpoint_step": 900}; rows[1200] = {"checkpoint_step": 1200}
+            self.assertEqual([rows[step]["checkpoint_step"] for step in TURBO_CHECKPOINT_STEPS], [800, 900, 1200, 1500])
+
+    def test_existing_800_and_1500_images_are_reused_and_only_900_1200_are_missing(self):
+        from scripts import turbo_benchmark
+
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            (directory / "step_000800.png").touch(); (directory / "step_001500.png").touch()
+            checkpoints = [(step, Path(f"{step}.pt")) for step in TURBO_CHECKPOINT_STEPS]
+            self.assertEqual(turbo_benchmark._missing_generation_checkpoints(directory, checkpoints),
+                             [(900, Path("900.pt")), (1200, Path("1200.pt"))])
 
     def test_prepared_dataset_exposes_persisted_paired_geometry_to_turbo_scoring(self):
         canonical = resize_center_crop_geometry((1000, 1500), (832, 1216))

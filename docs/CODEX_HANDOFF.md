@@ -2,67 +2,68 @@
 
 ## Current bounded objective and status
 
-Turbo benchmark PCK scoring geometry is repaired. This is an evaluation-only
-metadata fix: no training, optimizer, model/schedule change, checkpoint change,
-or Turbo image generation was performed. The existing Turbo images under
-`/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0/fixed_pose/` remain
-the inputs for the retry and **do not need to be regenerated**.
+Turbo benchmark support is extended for incremental evaluation of exact
+checkpoints 900 and 1200. No training, optimizer/backward work, model/sampler
+change, checkpoint mutation, or image generation was performed in this session.
 
-## Root cause and exact fix
+## Turbo contract and exact checkpoint routing
 
-- `scripts/turbo_benchmark.py score` built `geometry_by_stem` from
-  `PreparedLatentShardDataset.__getitem__()` values. That view exposed latents,
-  caption, and stem, but dropped the prepared shard's persisted
-  `source_size`, `resized_size`, and `crop_box`; PCK therefore raised
-  `KeyError: 'source_size'`.
-- `PreparedLatentShardDataset` now preserves `bucket`, `source_size`,
-  `resized_size`, and `crop_box` for read-only evaluators; training collation
-  continues to ignore metadata.
-- `turbo_scoring_geometry()` consumes the persisted source size/bucket and
-  reuses `resize_center_crop_geometry()` from project-owned paired
-  preprocessing. It verifies the persisted resize/crop values equal the
-  canonical contract (resize-to-cover using `round`, then integer center crop)
-  and returns the exact three fields required by `reference_people_from_sidecar`.
-  It never derives geometry from generated image pixels.
-- `score_authoritative_pck()` now reports missing geometry fields with a clear
-  `ValueError` instead of leaking a `KeyError`.
-
-## Evaluation rules still in force
-
-- Turbo remains Krea-2 Turbo, 8 steps, CFG 0, mu 1.15; no Turbo schedule/model
-  loading behavior changed.
-- Authoritative PCK semantics are unchanged: 21 Human-Art/COCO samples, three
-  unavailable Danbooru records excluded, source-visible AND rendered-control
-  joints, COCO-17 Keypoint R-CNN COCO_V1 at confidence >= 0.5, deterministic
-  Hungarian association, bbox-diagonal normalization, `<=` thresholds, and
-  unmatched reference people in denominators/failures.
-- Outputs remain isolated at
+- Turbo remains Krea-2 Turbo, 8 steps, CFG 0.0, mu 1.15, with
+  `mu_resolution_dependent=false`; schedule source remains
+  `https://github.com/krea-ai/krea-2/blob/main/sampling.py`.
+- Output root remains
   `/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0`.
+- `--steps` accepts an explicit unique subset of `800 900 1200 1500`; the
+  no-argument default remains the legacy `(800, 1500)` pair.
+- Exact 900/1200 recovery uses HF repo
+  `adhit-420/Krea-2-PoseControl-LoRA-checkpoints`, run namespace
+  `pose-learning-1500`, and therefore only
+  `pose-learning-1500/full/step_000900.pt` and
+  `pose-learning-1500/full/step_001200.pt` (plus matching completion markers).
+  Existing shared recovery performs exact filename, marker, SHA-256, full
+  deserialization/schema, and embedded `global_step` validation; no latest,
+  nearest, or timed substitution is permitted.
+
+## Incremental evaluation behavior
+
+- Generation skips existing per-stem step images, so existing 800/1500 images
+  remain untouched and `--steps 900 1200` generates only missing 900/1200
+  images.
+- Generation metadata merges prior generated-step records with new work.
+- Scoring merges requested rows with existing score rows in canonical numeric
+  order. Report requires and emits `800, 900, 1200, 1500`, including the
+  five-column control/grid order and `evaluation_summary.json`
+  `machine_readable_table` order.
+- Diagnostic stems, prompts, controls, seeds, buckets, paired geometry, VAE,
+  sampler, PCK, and CLIP semantics are unchanged.
 
 ## Files changed this session
 
-- `pose_controlnet/data.py`
 - `pose_controlnet/turbo_evaluation.py`
 - `scripts/turbo_benchmark.py`
-- `pose_controlnet/post1500_evaluation.py`
 - `tests/test_turbo_evaluation.py`
-- `tests/test_post1500_evaluation.py`
+- `docs/CODEX_HANDOFF.md`
 
 ## Verified tests
 
-- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_turbo_evaluation tests.test_post1500_evaluation tests.test_reference_pose` (27 tests).
-- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile scripts/turbo_benchmark.py pose_controlnet/turbo_evaluation.py pose_controlnet/post1500_evaluation.py tests/test_turbo_evaluation.py`.
+- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_turbo_evaluation tests.test_evaluation tests.test_post1500_evaluation` (30 tests).
+- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile scripts/turbo_benchmark.py pose_controlnet/turbo_evaluation.py tests/test_turbo_evaluation.py`.
+- Regression coverage verifies CLI 900/1200 selection, exact HF namespace/path,
+  legacy image reuse/only-missing generation, incremental result merging/canonical order, Turbo
+  schedule pinning, and absence of optimizer/backward paths.
 - PASS: `git diff --check`.
-- Regression coverage proves persisted Turbo geometry includes all required
-  fields, matches paired preprocessing for portrait/landscape/square examples,
-  saved Turbo outputs score without calling generation, missing fields fail
-  clearly, and canonical PCK pooling/exclusion semantics remain unchanged.
 
-## Exact GH200 retry (do not train or regenerate)
+## Exact GH200 commands (do not train)
 
 ```bash
 export UV_CACHE_DIR=/tmp/krea_uv_cache
 cd /home/ubuntu/Krea-2-Pose-ControlNet
-uv run python scripts/turbo_benchmark.py score --turbo-ckpt "$OSS_TURBO"
-uv run python scripts/turbo_benchmark.py report --turbo-ckpt "$OSS_TURBO"
+
+uv run python scripts/turbo_benchmark.py preflight --steps 900 1200
+uv run python scripts/turbo_benchmark.py generate --steps 900 1200
+uv run python scripts/turbo_benchmark.py score --steps 800 900 1200 1500
+uv run python scripts/turbo_benchmark.py report --steps 800 900 1200 1500
 ```
+
+Stop before expensive generation unless explicitly directed to run it. Before
+ending an implementation session, run `git diff --check` and `git status --short`.

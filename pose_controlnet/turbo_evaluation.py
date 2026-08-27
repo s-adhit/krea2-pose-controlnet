@@ -24,7 +24,11 @@ TURBO_STEPS = 8
 TURBO_CFG = 0.0
 TURBO_MU = 1.15
 TURBO_SIGMA = 1.0
-TURBO_CHECKPOINT_STEPS = (800, 1500)
+# The original two checkpoints remain the backwards-compatible default for
+# callers which do not pass ``--steps``.  Reports always use the full ordered
+# comparison set once every result is available.
+TURBO_CHECKPOINT_STEPS = (800, 900, 1200, 1500)
+DEFAULT_TURBO_CHECKPOINT_STEPS = (800, 1500)
 CANONICAL_EVALUATION_ROOT = Path("/lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-500")
 
 
@@ -102,15 +106,19 @@ def assert_turbo_output_isolated(output_dir: str | Path) -> Path:
 
 
 def exact_turbo_checkpoints(*, checkpoint_dir: str | Path, hf_repo_id: str,
-                            hf_recovery_dir: str | Path | None = None) -> list[tuple[int, Path]]:
-    """Resolve only complete, checksum-validated exact 800/1500 archive states."""
+                            hf_recovery_dir: str | Path | None = None,
+                            steps: Iterable[int] = DEFAULT_TURBO_CHECKPOINT_STEPS) -> list[tuple[int, Path]]:
+    """Resolve only complete, checksum-validated requested Turbo archive states."""
+    requested = tuple(steps)
+    if not requested or len(requested) != len(set(requested)) or any(step not in TURBO_CHECKPOINT_STEPS for step in requested):
+        raise ValueError(f"Turbo checkpoint steps must be a unique non-empty subset of {TURBO_CHECKPOINT_STEPS}")
     resolved = ordered_checkpoints(
-        checkpoint_dir, steps=TURBO_CHECKPOINT_STEPS,
+        checkpoint_dir, steps=requested,
         later_checkpoint_dir=checkpoint_dir, archive_checkpoint_dir=checkpoint_dir,
         hf_repo_id=hf_repo_id, hf_recovery_dir=hf_recovery_dir,
     )
-    if tuple(step for step, _ in resolved) != TURBO_CHECKPOINT_STEPS or any(path is None for _, path in resolved):
-        raise AssertionError("Turbo benchmark must resolve exactly checkpoints 800 and 1500")
+    if tuple(step for step, _ in resolved) != requested or any(path is None for _, path in resolved):
+        raise AssertionError(f"Turbo benchmark must resolve exactly requested checkpoints {requested}")
     return [(step, path) for step, path in resolved if path is not None]
 
 
