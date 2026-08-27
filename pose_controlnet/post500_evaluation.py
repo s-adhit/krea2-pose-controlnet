@@ -16,9 +16,10 @@ import numpy as np
 import torch
 from transformers.modeling_outputs import BaseModelOutputWithPooling
 
-CHECKPOINT_STEPS = (0, 20, 40, 60, 80, 100, 200, 225, 350, 475, 500)
+CHECKPOINT_STEPS = (0, 20, 40, 60, 80, 100, 200, 225, 350, 475, 500,
+                    600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500)
 PCK_THRESHOLDS = (0.05, 0.10, 0.20)
-GITHUB_EXPORT_NAMES = frozenset({"comparison_grid.png", "evaluation_summary.json", "fixed_flow_vs_step.png", "clip_similarity_vs_step.png"})
+GITHUB_EXPORT_NAMES = frozenset({"comparison_grid.png", "500_vs_800_vs_1100_vs_1500.png", "evaluation_summary.json", "fixed_flow_vs_step.png", "clip_similarity_vs_step.png", "pck_vs_step.png", "detection_coverage_vs_step.png", "timestep_distribution.png", "control_sensitivity_vs_timestep.png", "validation_loss_vs_step.png", "throughput_vs_step.png", "train_loss_vs_step.png", "gradient_norm_vs_step.png", "memory_vs_step.png"})
 POSE_METRIC_UNAVAILABLE_REASON = "authoritative_reference_pose_unavailable"
 
 
@@ -66,29 +67,39 @@ def pck_for_people(reference: list[dict], predicted: list[dict], confidence_thre
     """
     pairs = associate_people(reference, predicted, confidence_threshold); total = covered = 0
     thresholds = {f"pck_{int(t * 100):03d}": 0 for t in PCK_THRESHOLDS}; excluded = []
+    usable_reference: set[int] = set()
+    for ri, ref in enumerate(reference):
+        if _scale(ref, confidence_threshold) is None:
+            excluded.append({"reference_person": ri, "reason": "insufficient_reference_joints"})
+        else:
+            usable_reference.add(ri)
+            total += int(_valid_joints(ref, confidence_threshold).sum())
     for ri, pi in pairs:
         ref, pred = reference[ri], predicted[pi]; scale = _scale(ref, confidence_threshold)
-        if scale is None:
-            excluded.append({"reference_person": ri, "reason": "insufficient_reference_joints"}); continue
+        if scale is None: continue
         r, p = np.asarray(ref["keypoints"], float), np.asarray(pred["keypoints"], float)
         eligible = _valid_joints(ref, confidence_threshold)
         predicted_valid = _valid_joints(pred, confidence_threshold)
         shared = eligible & predicted_valid
-        total += int(eligible.sum()); covered += int(shared.sum())
+        covered += int(shared.sum())
         distances = np.linalg.norm(r[shared, :2] - p[shared, :2], axis=1)
         for threshold in PCK_THRESHOLDS:
             thresholds[f"pck_{int(threshold * 100):03d}"] += int((distances <= threshold * scale).sum())
-    for index in range(len(reference)):
-        if index not in {i for i, _ in pairs}: excluded.append({"reference_person": index, "reason": "no_matched_prediction"})
-    detection_coverage = len(pairs) / len(reference) if reference else 0.0
+    matched_reference = {i for i, _ in pairs}
+    for index in usable_reference:
+        if index not in matched_reference: excluded.append({"reference_person": index, "reason": "no_matched_prediction"})
+    usable_pairs = [(i, j) for i, j in pairs if i in usable_reference]
+    detection_coverage = len(usable_pairs) / len(usable_reference) if usable_reference else None
     return {key: (value / total if total else None) for key, value in thresholds.items()} | {
+        **{f"{key}_correct_count": value for key, value in thresholds.items()},
         "reference_people": len(reference),
         "predicted_people": len(predicted),
         "matched_people": len(pairs),
-        "unmatched_reference_people": len(reference) - len({i for i, _ in pairs}),
+        "unmatched_reference_people": len(reference) - len(matched_reference),
         "unmatched_predicted_people": len(predicted) - len({j for _, j in pairs}),
         "pck_eligible_joint_count": total,
         "evaluated_joint_count": total,
+        "joint_evaluation_covered_count": covered,
         "joint_evaluation_coverage": (covered / total if total else None),
         "excluded": excluded,
         "generated_person_detection_coverage": detection_coverage,
@@ -174,7 +185,9 @@ def choose_best(summary: dict[str, Any]) -> dict[str, int | None]:
             "highest_pck_010": _best_or_none(rows, lambda row: row["pose"].get("pck_010")),
             "highest_pck_020": _best_or_none(rows, lambda row: row["pose"].get("pck_020")),
             "highest_detection_coverage": _best_or_none(rows, lambda row: row["pose"].get("detection_coverage")),
-            "highest_clip_mean_cosine_similarity": max(rows, key=lambda row: row["clip"]["mean_cosine_similarity"])["checkpoint_step"]}
+            "highest_clip_mean_cosine_similarity": max(rows, key=lambda row: row["clip"]["mean_cosine_similarity"])["checkpoint_step"],
+            "highest_single_person_pck_020": _best_or_none(rows, lambda row: row["pose"].get("single_person", {}).get("pck_020")),
+            "highest_multi_person_pck_020": _best_or_none(rows, lambda row: row["pose"].get("multi_person", {}).get("pck_020"))}
 
 
 def plot_summary(summary_path: str | Path, output: str | Path) -> list[Path]:
@@ -187,6 +200,9 @@ def plot_summary(summary_path: str | Path, output: str | Path) -> list[Path]:
         axis.set_xticks(steps); axis.set_xlabel("optimizer step"); axis.set_ylabel(ylabel); axis.grid(True, alpha=.25); axis.legend(); figure.tight_layout(); path = output / name; figure.savefig(path, dpi=160); plt.close(figure); made.append(path)
     draw("fixed_flow_vs_step.png", [("mean fixed-flow MSE", [x["fixed_flow"]["mean"] for x in rows]), ("median", [x["fixed_flow"]["median"] for x in rows])], "fixed-flow MSE (lower is better)")
     draw("clip_similarity_vs_step.png", [("mean cosine similarity", [x["clip"]["mean_cosine_similarity"] for x in rows])], "CLIP cosine similarity (higher is better)")
+    if all(row["pose"].get("pck_005") is not None for row in rows):
+        draw("pck_vs_step.png", [("PCK@.05", [x["pose"]["pck_005"] for x in rows]), ("PCK@.10", [x["pose"]["pck_010"] for x in rows]), ("PCK@.20", [x["pose"]["pck_020"] for x in rows])], "pooled PCK (higher is better)")
+        draw("detection_coverage_vs_step.png", [("person detection", [x["pose"]["detection_coverage"] for x in rows]), ("joint evaluation", [x["pose"].get("joint_evaluation_coverage") for x in rows])], "coverage (higher is better)")
     return made
 
 

@@ -15,9 +15,9 @@ def joints(x=0, confidence=1): return [[x + i, 0, confidence] for i in range(17)
 class Post500EvaluationTest(unittest.TestCase):
  def test_order_pck_normalization_missing_and_low_confidence(self):
   ref=person(joints()); pred=person(joints(.5)); metric=pck_for_people([ref],[pred],.5)
-  self.assertEqual(tuple(CHECKPOINT_STEPS),(0,20,40,60,80,100,200,225,350,475,500)); self.assertEqual(metric["evaluated_joint_count"],17); self.assertEqual(metric["pck_020"],1.0)
-  missing=pck_for_people([ref],[],.5); self.assertEqual(missing["evaluated_joint_count"],0); self.assertEqual(missing["pck_005"],None)
-  low=pck_for_people([ref],[person(joints(confidence=.1))],.5); self.assertEqual(low["evaluated_joint_count"],0)
+  self.assertEqual(tuple(CHECKPOINT_STEPS),(0,20,40,60,80,100,200,225,350,475,500,600,700,800,900,1000,1100,1200,1300,1400,1500)); self.assertEqual(metric["evaluated_joint_count"],17); self.assertEqual(metric["pck_020"],1.0)
+  missing=pck_for_people([ref],[],.5); self.assertEqual(missing["evaluated_joint_count"],17); self.assertEqual(missing["pck_005"],0.0)
+  low=pck_for_people([ref],[person(joints(confidence=.1))],.5); self.assertEqual(low["evaluated_joint_count"],17); self.assertEqual(low["pck_020"],0.0)
  def test_deterministic_association_and_clip_cosine(self):
   refs=[person(joints(0)),person(joints(100))]; preds=[person(joints(101)),person(joints(1))]
   self.assertEqual(associate_people(refs,preds,.5),[(0,1),(1,0)])
@@ -52,7 +52,7 @@ class Post500EvaluationTest(unittest.TestCase):
   rows=[]
   for step in CHECKPOINT_STEPS: rows.append({"checkpoint_step":step,"fixed_flow":{"mean":float(500-step),"median":1,"std":0,"sample_count":1},"pose":unavailable_pose_result(),"clip":{"mean_cosine_similarity":step/500,"median_cosine_similarity":0,"std_cosine_similarity":0,"sample_count":1}})
   summary={"metadata":{"pose_metric_status":"unavailable","pose_metric_reason":POSE_METRIC_UNAVAILABLE_REASON},"checkpoints":rows}; best=choose_best(summary)
-  self.assertEqual(best["lowest_fixed_flow_mean"],500); self.assertEqual(best["highest_clip_mean_cosine_similarity"],500)
+  self.assertEqual(best["lowest_fixed_flow_mean"],1500); self.assertEqual(best["highest_clip_mean_cosine_similarity"],1500)
   self.assertIsNone(best["highest_pck_005"]); self.assertIsNone(best["highest_pck_010"]); self.assertIsNone(best["highest_pck_020"]); self.assertIsNone(best["highest_detection_coverage"])
   for row in rows:
    self.assertEqual(row["pose"]["pose_metric_reason"],POSE_METRIC_UNAVAILABLE_REASON)

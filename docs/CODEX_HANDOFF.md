@@ -2,94 +2,129 @@
 
 ## Current bounded objective and status
 
-The renderer-aware authoritative-reference PCK gate is implemented and green.
-This session was evaluation-only: no training, optimizer, model, image
-generation, checkpoint, or dataset mutation occurred. Danbooru remains
-unavailable (`authoritative_reference_pose_unavailable`) and must retain null
-pose metrics and no PCK denominator contribution.
+Post-1500 evaluation/audit tooling is implemented and unit-tested. This session
+did **not** train, construct an optimizer, start optimizer steps, alter
+model/LR/LoRA/checkpoint/data/sampler state, regenerate any images, or
+commit/push. The expensive GH200 evaluation has deliberately not been run.
 
-## Root cause and fixed rule
+## Training/archive facts in force
 
-The prior geometry failure was a false criterion: it required every visible
-COCO-17 source joint to occur in the rendered raster. Original rendering only
-draws endpoints of a limb when both unified endpoints have visibility > 0. For
-Human-Art annotation `10000000065251`, COCO left ankle 15 maps to unified 13
-but its left-knee neighbor (unified 12) is invisible; limb `(12,13)` is not
-drawn, so the ankle is intentionally absent. It is not a geometry mismatch.
+- Training is complete through step 1500.
+- Canonical trajectory is exactly:
+  `0,20,40,60,80,100,200,225,350,475,500,600,700,800,900,1000,1100,1200,1300,1400,1500`.
+  Never add 300 or 400.
+- Roots: `pose-learning-100` for <=100, `pose-learning-500` for 200..500,
+  `pose-learning-1500` for 600..1500.
+- A missing 600..1500 local state can recover only the same-numbered
+  `pose-learning-1500/full/step_XXXXXX.pt` from
+  `adhit-420/Krea-2-PoseControl-LoRA-checkpoints`. Resolution checks the
+  marker, SHA-256, full checkpoint schema, and embedded `global_step`; it
+  never substitutes a timed mirror.
+- PCK references: 24 diagnostic records, 21 authoritative Human-Art/COCO,
+  3 Danbooru unavailable/excluded. Eligibility remains
+  `source_visible AND rendered_in_control`; detector is torchvision Keypoint
+  R-CNN COCO_V1 at confidence >=0.5 with deterministic Hungarian matching,
+  reference bbox-diagonal normalization, and <= thresholds.
 
-`pose_controlnet.reference_pose` now retains all raw authoritative COCO-17
-joints and analytically records `source_visible`, `rendered_in_control`, and
-`pck_eligible` per joint. PCK eligibility is exactly:
+## What this session changed
 
-```text
-source_visible AND rendered_in_control
-```
+Three-archive canonical resolution, incremental/repeated fixed-flow,
+full-diagnostic and smoke specs, and fixed-pose reuse are in `evaluate.py` /
+`pose_controlnet.evaluation`. `post1500_evaluation` and `post1500_audit.py`
+provide read-only merging, timestep/data/telemetry audits, pooled authoritative
+PCK, CLIP, control sensitivity, plots, grids, and terminal summary. Unmatched
+reference people now remain in the PCK denominator.
 
-using the original supplied unified limbs, not raster keypoint parsing. Neck
-is synthesized from two visible shoulders for renderer topology only; it has no
-COCO identity and is never a PCK joint. Human-Art and COCO crowd recompute core
-visibility plus `MIN_LIMBS=5`; Human-Art sidecar construction guarantees only
-its prior `iscrowd==1` and `num_keypoints==0` removals. Those unavailable source
-fields are not invented. COCO single uses only the requested sidecar annotation.
+## Verified gates/tests
 
-## Corrected geometry result
+- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile evaluate.py pose_controlnet/evaluation.py pose_controlnet/post500_evaluation.py pose_controlnet/post1500_evaluation.py scripts/post1500_audit.py tests/test_evaluation.py tests/test_post500_evaluation.py tests/test_post1500_evaluation.py`
+- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache MPLCONFIGDIR=/tmp/krea_mpl uv run python -m unittest tests.test_evaluation tests.test_post500_evaluation tests.test_post1500_evaluation tests.test_reference_pose` (36 tests).
 
-`scripts/reference_pose_gate.py geometry` passed, checking source-space
-coordinates only for analytically renderer-represented joints against the
-existing source control PNGs (tolerance 1.5 px):
+Coverage: exact 0..1500/HF recovery, fixed-pose reuse, deterministic
+fixed-flow/timestep/control calculations, pooled PCK with single/multi and
+Danbooru exclusion, telemetry parsing, and no optimizer/backward in audit.
 
-- `real_human_humanart_17000000000288`: 34 joints, max 0.684 px.
-- `coco_156320_crowd`: 39 joints, max 0 px.
-- `coco_299468_426600`: 13 joints, max 0 px.
-- `painting_humanart_10000000000838`: 45 joints, max 0.648 px.
+## Important audit finding before host execution
 
-The former left ankle is excluded from the last record's raster validation. The
-persisted source-to-bucket resize/cover/center-crop transform is unchanged and
-is used to construct bucket-space PCK references.
+`sample_flow_timestep` currently samples `sigmoid(N(0,1))`, then applies the
+resolution shift; it is not a uniform-u sampler. The audit reports this actual
+implementation without changing it. Any mismatch with prior verbal
+descriptions is a decision gate, not a reason to alter training here.
 
-## One-sample real PCK smoke
+## Exact GH200 execution plan (do not train)
 
-Executed on the existing step-500 fixed-pose image for
-`real_human_humanart_17000000000288` with torchvision Keypoint R-CNN COCO_V1,
-confidence >= 0.5, deterministic Hungarian matching, and <= thresholds:
-
-- PCK@0.05: `0.029411764705882353`
-- PCK@0.10: `0.11764705882352941`
-- PCK@0.20: `0.35294117647058826`
-- reference/rendered reference/predicted/matched: `2/2/2/2`; unmatched `0/0`.
-- source-visible/rendered/PCK-eligible/evaluated joints: `34/34/34/34`.
-- joint evaluation coverage and generated-person detection coverage: `1.0`,
-  `1.0`.
-
-Exact GH200 command:
+Set once:
 
 ```bash
-UV_CACHE_DIR=/tmp/krea_uv_cache uv run python scripts/reference_pose_gate.py smoke --device cuda
+export UV_CACHE_DIR=/tmp/krea_uv_cache
+export MPLCONFIGDIR=/tmp/krea_mpl
+cd /home/ubuntu/Krea-2-Pose-ControlNet
 ```
 
-Exact command to print the smoke metrics:
+### A. Checkpoint recovery/status preflight
 
 ```bash
-UV_CACHE_DIR=/tmp/krea_uv_cache uv run python scripts/reference_pose_gate.py smoke --device cuda | python -m json.tool
+uv run python scripts/post1500_audit.py preflight
 ```
 
-## Files changed this session
+### B. Cheap timestep, telemetry, and source/data-balance audits
 
-- `pose_controlnet/reference_pose.py`
-- `pose_controlnet/post500_evaluation.py`
-- `scripts/reference_pose_gate.py`
-- `tests/test_reference_pose.py`
-- `tests/test_post500_evaluation.py`
-- `docs/CODEX_HANDOFF.md`
+```bash
+uv run python scripts/post1500_audit.py cheap
+```
 
-## Commands run
+### C. Deterministic fixed-flow extension and exact merge
 
-- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python scripts/reference_pose_gate.py geometry`
-- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python scripts/reference_pose_gate.py smoke --device cpu`
-- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_post500_evaluation tests.test_evaluation tests.test_reference_pose` (29 tests)
-- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile pose_controlnet/reference_pose.py pose_controlnet/post500_evaluation.py scripts/reference_pose_gate.py tests/test_reference_pose.py tests/test_post500_evaluation.py`
+```bash
+uv run python evaluate.py fixed-flow --steps 600 700 800 900 1000 1100 1200 1300 1400 1500 --verify-repeat
+uv run python scripts/post1500_audit.py merge-flow
+```
 
-## Exact next recommended action
+### D. One-sample new fixed-pose smoke at step 1500
 
-Review this one PCK-gate patch. Do not run full PCK, train, regenerate images,
-commit, or push as part of this milestone.
+```bash
+uv run python evaluate.py fixed-pose --steps 1500 --stems real_human_humanart_17000000000288 --spec-name fixed_pose_step1500_smoke_spec.json
+```
+
+### E. Authoritative PCK smoke at step 1500
+
+```bash
+uv run python scripts/reference_pose_gate.py smoke --step 1500 --device cuda
+```
+
+### F. Full fixed-pose generation, new checkpoints only
+
+```bash
+uv run python evaluate.py fixed-pose --full-diagnostic --steps 600 700 800 900 1000 1100 1200 1300 1400 1500
+```
+
+### G. Full authoritative PCK + unchanged CLIP scoring
+
+```bash
+uv run python scripts/post1500_audit.py pck-clip --allow-missing-images
+```
+
+`--allow-missing-images` permits the historical compact 0..500 image set; it
+reports each checkpoint's actual reference/evaluable sample count rather than
+treating absent historical full-set images or unavailable Danbooru as zero.
+Remove it only after every canonical step has all 24 images.
+
+### H. Fixed-timestep loss/control audit, grids, plots, report, and export
+
+```bash
+uv run python scripts/post1500_audit.py loss-control
+uv run python scripts/post1500_audit.py report
+```
+
+Products: `evaluation_summary.json`, fixed-flow/CLIP/PCK/coverage/timestep/
+control/telemetry plots, `500_vs_800_vs_1100_vs_1500.png`, and terminal table.
+
+## Decision gates after H
+
+Do not resume training automatically. Review independent winners (fixed-flow,
+CLIP, pooled PCK .05/.10/.20, single, multi), per-source coverage, loss and
+control sensitivity by timestep, actual timestep mass, gradient/throughput/
+memory telemetry, and compact versus full-set sample counts. Only then choose
+whether to stop, continue to 2000, alter LR/timestep/control exposure, or
+optimize runtime; all such changes are outside this milestone and require
+explicit authorization.

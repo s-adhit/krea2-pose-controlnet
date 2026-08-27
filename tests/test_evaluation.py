@@ -71,17 +71,17 @@ class EvaluationTest(unittest.TestCase):
 
     def test_missing_archived_checkpoint_uses_only_exact_validated_hf_step(self):
         with tempfile.TemporaryDirectory() as temp:
-            early, late, recovery = Path(temp) / "early", Path(temp) / "late", Path(temp) / "recovery"
+            early, late, archive, recovery = Path(temp) / "early", Path(temp) / "late", Path(temp) / "archive", Path(temp) / "recovery"
             def state(path):
                 return {"global_step": int(path.stem.split("_")[1])}
             with patch("pose_controlnet.evaluation.load_training_state", side_effect=state), patch(
                 "pose_controlnet.evaluation.validated_hf_checkpoint_for_step",
                 side_effect=lambda **kwargs: recovery / f"step_{kwargs['step']:06d}.pt",
             ) as fetch:
-                resolved = ordered_checkpoints(early, steps=(200, 225), later_checkpoint_dir=late,
+                resolved = ordered_checkpoints(early, steps=(600, 700), later_checkpoint_dir=late, archive_checkpoint_dir=archive,
                                                hf_repo_id="user/private", hf_recovery_dir=recovery)
-        self.assertEqual([path for _, path in resolved], [recovery / "step_000200.pt", recovery / "step_000225.pt"])
-        self.assertEqual([call.kwargs["step"] for call in fetch.call_args_list], [200, 225])
+        self.assertEqual([path for _, path in resolved], [recovery / "step_000600.pt", recovery / "step_000700.pt"])
+        self.assertEqual([call.kwargs["step"] for call in fetch.call_args_list], [600, 700])
 
     def test_baseline_and_checkpoint_loading_use_trainable_state_interface(self):
         with patch("pose_controlnet.evaluation.load_training_state", return_value={"global_step": 20, "model": {"x": torch.tensor(1)}}), patch("pose_controlnet.evaluation.load_trainable_state_dict") as load:
@@ -98,6 +98,14 @@ class EvaluationTest(unittest.TestCase):
             self.assertTrue((sample_dir / "step_000000.png").is_file()); self.assertTrue((sample_dir / "step_000020.png").is_file())
             metadata = json.loads((sample_dir / "metadata.json").read_text())
             self.assertEqual(metadata["stem"], "alpha"); self.assertEqual(metadata["prompt"], "prompt alpha"); self.assertEqual(metadata["seed"], pose_spec["per_stem_seeds"]["alpha"]["sampling"])
+
+    def test_pose_extension_reuses_an_existing_checkpoint_image(self):
+        pose_spec = make_evaluation_spec(self.dataset, split="diagnostic_val", count=1, seed=420200, kind="fixed_pose", stems=["alpha"])
+        with tempfile.TemporaryDirectory() as temp, patch("pose_controlnet.evaluation.load_trainable_state_dict"), patch("pose_controlnet.evaluation.sample_eval_image") as sample:
+            output = Path(temp); control = output / "source.png"; __import__("PIL").Image.new("RGB", (4, 4)).save(control)
+            directory = output / "fixed_pose" / "alpha"; directory.mkdir(parents=True); __import__("PIL").Image.new("RGB", (4, 4)).save(directory / "step_000600.png")
+            result = evaluate_fixed_pose(self.model, self.dataset, pose_spec, self.cfg, torch.device("cpu"), [(600, Path("step_000600.pt"))], object(), {"alpha": control}, output)
+        sample.assert_not_called(); self.assertEqual(result["reused_steps"], {"alpha": [600]})
 
     def test_comparison_grid_is_compact_preserves_aspect_ratio_and_is_deterministic(self):
         with tempfile.TemporaryDirectory() as temp:

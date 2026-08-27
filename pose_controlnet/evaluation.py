@@ -23,26 +23,37 @@ from pose_controlnet.vae_preprocessing import decode_normalized_latents
 EVALUATION_FORMAT_VERSION = 1
 DEFAULT_FIXED_FLOW_SEED = 420_100
 DEFAULT_FIXED_POSE_SEED = 420_200
-CHECKPOINT_STEPS = (0, 20, 40, 60, 80, 100, 200, 225, 350, 475, 500)
-COMPARISON_GRID_COLUMNS = ("Control", "Step 0", "Step 20", "Step 40", "Step 60", "Step 80", "Step 100", "Step 200", "Step 225", "Step 350", "Step 475", "Step 500")
+CHECKPOINT_STEPS = (0, 20, 40, 60, 80, 100, 200, 225, 350, 475, 500,
+                    600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500)
+POST_500_CHECKPOINT_STEPS = CHECKPOINT_STEPS[11:]
+COMPARISON_GRID_COLUMNS = ("Control", "Step 0", "Step 20", "Step 40", "Step 60", "Step 80", "Step 100", "Step 200", "Step 225", "Step 350", "Step 475", "Step 500", "Step 600", "Step 700", "Step 800", "Step 900", "Step 1000", "Step 1100", "Step 1200", "Step 1300", "Step 1400", "Step 1500")
 DEFAULT_COMPARISON_GRID_THUMBNAIL_WIDTH = 320
 DEFAULT_COMPARISON_GRID_THUMBNAIL_HEIGHT = 320
 
 
 def ordered_checkpoints(checkpoint_dir: str | Path, steps: Iterable[int] = CHECKPOINT_STEPS,
                         later_checkpoint_dir: str | Path | None = None, *, hf_repo_id: str = "",
-                        hf_run_name: str = "pose-learning-500",
-                        hf_recovery_dir: str | Path | None = None) -> list[tuple[int, Path | None]]:
-    """Baseline is always step 0; every trained state is full-schema validated."""
+                        hf_run_name: str = "pose-learning-1500",
+                        hf_recovery_dir: str | Path | None = None,
+                        archive_checkpoint_dir: str | Path | None = None) -> list[tuple[int, Path | None]]:
+    """Resolve only the canonical archive identities, validating every state.
+
+    The three local roots deliberately mirror the training archives: <=100,
+    200..500, and 600..1500.  Only the final archive may recover a missing
+    local file from HF, and recovery is exact-step/marker/checksum/schema
+    validated by ``validated_hf_checkpoint_for_step``.
+    """
     root = Path(checkpoint_dir)
     later_root = Path(later_checkpoint_dir) if later_checkpoint_dir is not None else root
+    archive_root = Path(archive_checkpoint_dir) if archive_checkpoint_dir is not None else later_root
     result: list[tuple[int, Path | None]] = []
     for step in steps:
         if step == 0:
             result.append((0, None)); continue
-        path = (root if step <= 100 else later_root) / f"step_{step:06d}.pt"
-        if not path.is_file() and step > 100 and hf_repo_id:
-            recovery_dir = Path(hf_recovery_dir) if hf_recovery_dir is not None else later_root / "hf-recovery"
+        local_root = root if step <= 100 else (later_root if step <= 500 else archive_root)
+        path = local_root / f"step_{step:06d}.pt"
+        if not path.is_file() and step >= 600 and hf_repo_id:
+            recovery_dir = Path(hf_recovery_dir) if hf_recovery_dir is not None else archive_root / "hf-recovery"
             recovered = validated_hf_checkpoint_for_step(repo_id=hf_repo_id, run_name=hf_run_name, step=step,
                                                          download_dir=recovery_dir)
             if recovered is None:
@@ -201,29 +212,45 @@ def make_contact_sheet(rows: list[tuple[str, list[Path]]], path: Path, *, thumbn
 
 
 def evaluate_fixed_pose(model, dataset, spec, cfg, device, checkpoints, vae, control_paths: dict[str, Path], output: Path, *,
+                        reuse_existing: bool = True,
                         thumbnail_width: int = DEFAULT_COMPARISON_GRID_THUMBNAIL_WIDTH,
                         thumbnail_height: int = DEFAULT_COMPARISON_GRID_THUMBNAIL_HEIGHT) -> dict[str, Any]:
     baseline = {name: value.detach().clone() for name, value in model.state_dict().items() if name.startswith("first.") or ".A" in name or ".B" in name}
-    rows = []
+    rows = []; generated_steps: dict[str, list[int]] = {}; reused_steps: dict[str, list[int]] = {}
     was_training = model.training; model.eval()
     try:
         for stem in spec["stems"]:
             sample, directory = dict(_sample_by_stem(dataset, stem)), output / "fixed_pose" / stem
             sample["unconditional_context"] = dataset.text_conditioning.unconditional["context"]
             sample["unconditional_mask"] = dataset.text_conditioning.unconditional["mask"]
-            directory.mkdir(parents=True, exist_ok=True); control_file = directory / "control.png"; shutil.copy2(control_paths[stem], control_file)
+            directory.mkdir(parents=True, exist_ok=True); control_file = directory / "control.png"
+            if not control_file.exists(): shutil.copy2(control_paths[stem], control_file)
             metadata = {"stem": stem, "prompt": sample["prompt"], "control_path": str(control_paths[stem]), "seed": spec["per_stem_seeds"][stem]["sampling"], "bucket": [sample["latent"].shape[-1] * 8, sample["latent"].shape[-2] * 8], "eval_steps": cfg.eval_steps, "eval_guidance": cfg.eval_guidance}
-            (directory / "metadata.json").write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            metadata_path = directory / "metadata.json"
+            if metadata_path.exists():
+                existing = json.loads(metadata_path.read_text(encoding="utf-8"))
+                if any(existing.get(key) != value for key, value in metadata.items()):
+                    raise ValueError(f"Existing fixed-pose metadata conflicts with immutable contract: {metadata_path}")
+            else:
+                metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
             paths = [control_file]
             for step, checkpoint in checkpoints:
+                image_path = directory / f"step_{step:06d}.png"
+                if reuse_existing and image_path.exists():
+                    paths.append(image_path); reused_steps.setdefault(stem, []).append(step); continue
                 if checkpoint is None: load_trainable_state_dict(model, baseline)
                 else: load_comparison_state(model, checkpoint)
                 pixels = sample_eval_image(model, lambda latent: decode_normalized_latents(vae, latent), None, sample, cfg, device, int(spec["per_stem_seeds"][stem]["sampling"]))
-                image_path = directory / f"step_{step:06d}.png"; save_image(pixels, image_path); paths.append(image_path)
+                save_image(pixels, image_path); paths.append(image_path); generated_steps.setdefault(stem, []).append(step)
             rows.append((stem, paths))
     finally:
         model.train(was_training)
+    # An incremental call cannot claim to make a longitudinal grid.  Build one
+    # only when all selected images are present, which avoids overwriting the
+    # historical 0..500 outputs simply to extend the series.
     labels = ("control", *(f"step{step}" for step, _ in checkpoints))
-    make_contact_sheet(rows, output / "fixed_pose" / "comparison_grid.png", thumbnail_width=thumbnail_width,
-                       thumbnail_height=thumbnail_height, column_labels=labels)
-    return {"format_version": EVALUATION_FORMAT_VERSION, "kind": "fixed_pose", "spec": spec, "checkpoints": [step for step, _ in checkpoints], "output": str(output / "fixed_pose")}
+    comparison_grid = output / "fixed_pose" / "comparison_grid.png"
+    if rows and not (reuse_existing and comparison_grid.exists()):
+        make_contact_sheet(rows, output / "fixed_pose" / "comparison_grid.png", thumbnail_width=thumbnail_width,
+                           thumbnail_height=thumbnail_height, column_labels=labels)
+    return {"format_version": EVALUATION_FORMAT_VERSION, "kind": "fixed_pose", "spec": spec, "checkpoints": [step for step, _ in checkpoints], "output": str(output / "fixed_pose"), "generated_steps": generated_steps, "reused_steps": reused_steps}
