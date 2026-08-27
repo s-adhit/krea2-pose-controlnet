@@ -1,0 +1,6200 @@
+{
+  "aggregate": {
+    "both_projection_output_rms": 0.4244456564910637,
+    "control_input_rms": 0.7642445238641162,
+    "control_latent_rms": 0.76424453374983,
+    "control_only_projection_output_rms": 0.1467460298694048,
+    "control_to_image_projection_ratio": 0.35021205434190644,
+    "element_count": {
+      "both_projection_output": 2978119680,
+      "control_input": 31022080,
+      "control_latent": 31022080,
+      "control_only_projection_output": 2978119680,
+      "image_input": 31022080,
+      "image_only_projection_output": 2978119680,
+      "noisy_image_latent": 31022080
+    },
+    "image_input_rms": 0.6558564453907205,
+    "image_only_projection_output_rms": 0.4190204992948044,
+    "l2": {
+      "both_projection_output": 23162.91251656406,
+      "control_input": 4256.648531268467,
+      "control_latent": 4256.648586329391,
+      "control_only_projection_output": 8008.246521164917,
+      "image_input": 3652.954372351833,
+      "image_only_projection_output": 22866.85001809388,
+      "noisy_image_latent": 3652.9603769579817
+    },
+    "noisy_image_latent_rms": 0.6558575234659558,
+    "rms": {
+      "both_projection_output": 0.4244456564910637,
+      "control_input": 0.7642445238641162,
+      "control_latent": 0.76424453374983,
+      "control_only_projection_output": 0.1467460298694048,
+      "image_input": 0.6558564453907205,
+      "image_only_projection_output": 0.4190204992948044,
+      "noisy_image_latent": 0.6558575234659558
+    }
+  },
+  "checkpoint": {
+    "hf_namespace": "pose-learning-900-lr5e5-to1500/full/",
+    "hf_repo_id": "adhit-420/Krea-2-PoseControl-LoRA-checkpoints",
+    "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt",
+    "raw_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors",
+    "step": 1500
+  },
+  "deterministic_noise_seed": 420500,
+  "diagnostic_spec_sha256": "da833b92bdb49c0f7a4ba43a0346d102b250d30fd98aff64f7f3ae7476ad308e",
+  "feature_ordering": {
+    "before_projection": "BF16 cast then patchify; no positional encoding or normalization",
+    "concatenation": "[noisy_image_patch_tokens, clean_control_patch_tokens]",
+    "projection": "model.first (ControlInputLayer)"
+  },
+  "fixed_timesteps": [
+    0.1,
+    0.3,
+    0.5,
+    0.7,
+    0.9
+  ],
+  "format_version": 1,
+  "measurement_definitions": {
+    "l2": "sqrt(sum(x^2)), computed in float32",
+    "noisy_image": "x_t = timestep * deterministic_noise + (1 - timestep) * clean_image_latent",
+    "projection_paths": {
+      "both": "[image, control]",
+      "control_only": "[zeros_like(image), control]",
+      "image_only": "[image, zeros_like(control)]"
+    },
+    "rms": "sqrt(sum(x^2) / element_count), computed in float32"
+  },
+  "per_bucket": {
+    "1024x1024": {
+      "both_projection_output_rms": 0.4338666314955824,
+      "control_input_rms": 0.7631822269986362,
+      "control_latent_rms": 0.7631822335069818,
+      "control_only_projection_output_rms": 0.14681457038423876,
+      "control_to_image_projection_ratio": 0.3426141738609271,
+      "element_count": {
+        "both_projection_output": 754974720,
+        "control_input": 7864320,
+        "control_latent": 7864320,
+        "control_only_projection_output": 754974720,
+        "image_input": 7864320,
+        "image_only_projection_output": 754974720,
+        "noisy_image_latent": 7864320
+      },
+      "image_input_rms": 0.660647551423223,
+      "image_only_projection_output_rms": 0.42851283334189577,
+      "l2": {
+        "both_projection_output": 11921.268095299258,
+        "control_input": 2140.222060616608,
+        "control_latent": 2140.222078868219,
+        "control_only_projection_output": 4033.9950731254,
+        "image_input": 1852.6800203522735,
+        "image_only_projection_output": 11774.16283648226,
+        "noisy_image_latent": 1852.6831777266318
+      },
+      "noisy_image_latent_rms": 0.660648677311998,
+      "rms": {
+        "both_projection_output": 0.4338666314955824,
+        "control_input": 0.7631822269986362,
+        "control_latent": 0.7631822335069818,
+        "control_only_projection_output": 0.14681457038423876,
+        "image_input": 0.660647551423223,
+        "image_only_projection_output": 0.42851283334189577,
+        "noisy_image_latent": 0.660648677311998
+      }
+    },
+    "1152x896": {
+      "both_projection_output_rms": 0.43034397518737366,
+      "control_input_rms": 0.7651722925514302,
+      "control_latent_rms": 0.7651722727680587,
+      "control_only_projection_output_rms": 0.14657938249447977,
+      "control_to_image_projection_ratio": 0.3449550872469542,
+      "element_count": {
+        "both_projection_output": 247726080,
+        "control_input": 2580480,
+        "control_latent": 2580480,
+        "control_only_projection_output": 247726080,
+        "image_input": 2580480,
+        "image_only_projection_output": 247726080,
+        "noisy_image_latent": 2580480
+      },
+      "image_input_rms": 0.663746389167631,
+      "image_only_projection_output_rms": 0.4249230926388491,
+      "l2": {
+        "both_projection_output": 6773.319976200741,
+        "control_input": 1229.1630155313005,
+        "control_latent": 1229.1629837515447,
+        "control_only_projection_output": 2307.0592753546666,
+        "image_input": 1066.233737419943,
+        "image_only_projection_output": 6687.9989907295885,
+        "noisy_image_latent": 1066.2336824659967
+      },
+      "noisy_image_latent_rms": 0.6637463549579806,
+      "rms": {
+        "both_projection_output": 0.43034397518737366,
+        "control_input": 0.7651722925514302,
+        "control_latent": 0.7651722727680587,
+        "control_only_projection_output": 0.14657938249447977,
+        "image_input": 0.663746389167631,
+        "image_only_projection_output": 0.4249230926388491,
+        "noisy_image_latent": 0.6637463549579806
+      }
+    },
+    "1216x832": {
+      "both_projection_output_rms": 0.4089566279608946,
+      "control_input_rms": 0.7640183159861774,
+      "control_latent_rms": 0.7640183564148367,
+      "control_only_projection_output_rms": 0.14686170843118895,
+      "control_to_image_projection_ratio": 0.36401925635742693,
+      "element_count": {
+        "both_projection_output": 242810880,
+        "control_input": 2529280,
+        "control_latent": 2529280,
+        "control_only_projection_output": 242810880,
+        "image_input": 2529280,
+        "image_only_projection_output": 242810880,
+        "noisy_image_latent": 2529280
+      },
+      "image_input_rms": 0.6446769139971282,
+      "image_only_projection_output_rms": 0.4034448888796885,
+      "l2": {
+        "both_projection_output": 6372.521694745338,
+        "control_input": 1215.0725929959906,
+        "control_latent": 1215.0726572925587,
+        "control_only_projection_output": 2288.456425737663,
+        "image_input": 1025.2754850831557,
+        "image_only_projection_output": 6286.6356264698525,
+        "noisy_image_latent": 1025.2812647634794
+      },
+      "noisy_image_latent_rms": 0.6446805481681673,
+      "rms": {
+        "both_projection_output": 0.4089566279608946,
+        "control_input": 0.7640183159861774,
+        "control_latent": 0.7640183564148367,
+        "control_only_projection_output": 0.14686170843118895,
+        "image_input": 0.6446769139971282,
+        "image_only_projection_output": 0.4034448888796885,
+        "noisy_image_latent": 0.6446805481681673
+      }
+    },
+    "1344x768": {
+      "both_projection_output_rms": 0.3912233102380002,
+      "control_input_rms": 0.7687053593124019,
+      "control_latent_rms": 0.768705379004846,
+      "control_only_projection_output_rms": 0.14670408749277156,
+      "control_to_image_projection_ratio": 0.38108817707690296,
+      "element_count": {
+        "both_projection_output": 247726080,
+        "control_input": 2580480,
+        "control_latent": 2580480,
+        "control_only_projection_output": 247726080,
+        "image_input": 2580480,
+        "image_only_projection_output": 247726080,
+        "noisy_image_latent": 2580480
+      },
+      "image_input_rms": 0.6323096434600203,
+      "image_only_projection_output_rms": 0.384961004610665,
+      "l2": {
+        "both_projection_output": 6157.587453702951,
+        "control_input": 1234.8384889328645,
+        "control_latent": 1234.8385205665556,
+        "control_only_projection_output": 2309.0220467765134,
+        "image_input": 1015.7341499040239,
+        "image_only_projection_output": 6059.023044187899,
+        "noisy_image_latent": 1015.737607218887
+      },
+      "noisy_image_latent_rms": 0.632311795690039,
+      "rms": {
+        "both_projection_output": 0.3912233102380002,
+        "control_input": 0.7687053593124019,
+        "control_latent": 0.768705379004846,
+        "control_only_projection_output": 0.14670408749277156,
+        "image_input": 0.6323096434600203,
+        "image_only_projection_output": 0.384961004610665,
+        "noisy_image_latent": 0.632311795690039
+      }
+    },
+    "1472x704": {
+      "both_projection_output_rms": 0.4141438400528644,
+      "control_input_rms": 0.7647171811089913,
+      "control_latent_rms": 0.7647171909674431,
+      "control_only_projection_output_rms": 0.14666387617924745,
+      "control_to_image_projection_ratio": 0.35895653828293395,
+      "element_count": {
+        "both_projection_output": 497418240,
+        "control_input": 5181440,
+        "control_latent": 5181440,
+        "control_only_projection_output": 497418240,
+        "image_input": 5181440,
+        "image_only_projection_output": 497418240,
+        "noisy_image_latent": 5181440
+      },
+      "image_input_rms": 0.6472392684969389,
+      "image_only_projection_output_rms": 0.4085839385481403,
+      "l2": {
+        "both_projection_output": 9236.598359244597,
+        "control_input": 1740.708638026479,
+        "control_latent": 1740.7086604670524,
+        "control_only_projection_output": 3271.026119583884,
+        "image_input": 1473.2962896278705,
+        "image_only_projection_output": 9112.596570133015,
+        "noisy_image_latent": 1473.297578191945
+      },
+      "noisy_image_latent_rms": 0.6472398345808114,
+      "rms": {
+        "both_projection_output": 0.4141438400528644,
+        "control_input": 0.7647171811089913,
+        "control_latent": 0.7647171909674431,
+        "control_only_projection_output": 0.14666387617924745,
+        "image_input": 0.6472392684969389,
+        "image_only_projection_output": 0.4085839385481403,
+        "noisy_image_latent": 0.6472398345808114
+      }
+    },
+    "704x1472": {
+      "both_projection_output_rms": 0.41346817982352185,
+      "control_input_rms": 0.7663243127844722,
+      "control_latent_rms": 0.7663243259015076,
+      "control_only_projection_output_rms": 0.14665050371384977,
+      "control_to_image_projection_ratio": 0.3597836369997418,
+      "element_count": {
+        "both_projection_output": 373063680,
+        "control_input": 3886080,
+        "control_latent": 3886080,
+        "control_only_projection_output": 373063680,
+        "image_input": 3886080,
+        "image_only_projection_output": 373063680,
+        "noisy_image_latent": 3886080
+      },
+      "image_input_rms": 0.650554528925401,
+      "image_only_projection_output_rms": 0.40760748581224393,
+      "l2": {
+        "both_projection_output": 7986.078543315236,
+        "control_input": 1510.6660627435172,
+        "control_latent": 1510.6660886013162,
+        "control_only_projection_output": 2832.5334287524306,
+        "image_input": 1282.4474343515994,
+        "image_only_projection_output": 7872.880079742102,
+        "noisy_image_latent": 1282.4466500234034
+      },
+      "noisy_image_latent_rms": 0.6505541310546997,
+      "rms": {
+        "both_projection_output": 0.41346817982352185,
+        "control_input": 0.7663243127844722,
+        "control_latent": 0.7663243259015076,
+        "control_only_projection_output": 0.14665050371384977,
+        "image_input": 0.650554528925401,
+        "image_only_projection_output": 0.40760748581224393,
+        "noisy_image_latent": 0.6505541310546997
+      }
+    },
+    "832x1216": {
+      "both_projection_output_rms": 0.4125009058043546,
+      "control_input_rms": 0.7611432193599164,
+      "control_latent_rms": 0.7611432396506027,
+      "control_only_projection_output_rms": 0.1468066967542286,
+      "control_to_image_projection_ratio": 0.3603309074441807,
+      "element_count": {
+        "both_projection_output": 242810880,
+        "control_input": 2529280,
+        "control_latent": 2529280,
+        "control_only_projection_output": 242810880,
+        "image_input": 2529280,
+        "image_only_projection_output": 242810880,
+        "noisy_image_latent": 2529280
+      },
+      "image_input_rms": 0.6496205421291097,
+      "image_only_projection_output_rms": 0.40742188283410186,
+      "l2": {
+        "both_projection_output": 6427.750014585197,
+        "control_input": 1210.5001226249422,
+        "control_latent": 1210.5001548946618,
+        "control_only_projection_output": 2287.59921232938,
+        "image_input": 1033.1376880270484,
+        "image_only_projection_output": 6348.606697536082,
+        "noisy_image_latent": 1033.1395246256675
+      },
+      "noisy_image_latent_rms": 0.6496216969531029,
+      "rms": {
+        "both_projection_output": 0.4125009058043546,
+        "control_input": 0.7611432193599164,
+        "control_latent": 0.7611432396506027,
+        "control_only_projection_output": 0.1468066967542286,
+        "image_input": 0.6496205421291097,
+        "image_only_projection_output": 0.40742188283410186,
+        "noisy_image_latent": 0.6496216969531029
+      }
+    },
+    "896x1152": {
+      "both_projection_output_rms": 0.46281322621084886,
+      "control_input_rms": 0.7622436685513843,
+      "control_latent_rms": 0.7622436685513843,
+      "control_only_projection_output_rms": 0.1468362526008192,
+      "control_to_image_projection_ratio": 0.3205485695375959,
+      "element_count": {
+        "both_projection_output": 371589120,
+        "control_input": 3870720,
+        "control_latent": 3870720,
+        "control_only_projection_output": 371589120,
+        "image_input": 3870720,
+        "image_only_projection_output": 371589120,
+        "noisy_image_latent": 3870720
+      },
+      "image_input_rms": 0.6836799876514015,
+      "image_only_projection_output_rms": 0.45807801548650284,
+      "l2": {
+        "both_projection_output": 8921.487193848345,
+        "control_input": 1499.6492819156085,
+        "control_latent": 1499.6492819156085,
+        "control_only_projection_output": 2830.5106098546953,
+        "image_input": 1345.0819532420692,
+        "image_only_projection_output": 8830.20820819079,
+        "noisy_image_latent": 1345.0848645973049
+      },
+      "noisy_image_latent_rms": 0.6836814674387904,
+      "rms": {
+        "both_projection_output": 0.46281322621084886,
+        "control_input": 0.7622436685513843,
+        "control_latent": 0.7622436685513843,
+        "control_only_projection_output": 0.1468362526008192,
+        "image_input": 0.6836799876514015,
+        "image_only_projection_output": 0.45807801548650284,
+        "noisy_image_latent": 0.6836814674387904
+      }
+    }
+  },
+  "per_record": [
+    {
+      "bucket": [
+        1344,
+        768
+      ],
+      "control_to_image_projection_ratio": 0.3824795405775847,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 1945.5939967012646,
+          "rms": 0.39090061374627644
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 390.35778860553046,
+          "rms": 0.7684446659132117
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 390.35778860553046,
+          "rms": 0.7684446659132117
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.6545866550076,
+          "rms": 0.14680006560681672
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 203.5378976536065,
+          "rms": 0.4006775740836011
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 1910.310249671503,
+          "rms": 0.38381155076983475
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 203.54028701340675,
+          "rms": 0.4006822776935893
+        }
+      },
+      "noise_seed": 7208350869315005144,
+      "stem": "coco_156320_crowd",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.33347664666528004,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2243.3705668034427,
+          "rms": 0.4471934564328383
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 392.33145266470797,
+          "rms": 0.7662723684857577
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 392.33147257771714,
+          "rms": 0.7662724073783538
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 737.5353805072676,
+          "rms": 0.14702029211362633
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 227.33025947946305,
+          "rms": 0.4440044130458263
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2211.6552624674578,
+          "rms": 0.4408713281238994
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 227.3288676400338,
+          "rms": 0.444001694609441
+        }
+      },
+      "noise_seed": 3272399698322234260,
+      "stem": "coco_299468_426600",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.33731233562629925,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2223.3373563181995,
+          "rms": 0.4432000365436277
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 391.6524288192274,
+          "rms": 0.7649461500375535
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 391.6524288192274,
+          "rms": 0.7649461500375535
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 738.0609730909771,
+          "rms": 0.1471250637316829
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 226.37943466114584,
+          "rms": 0.44214733332255046
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2188.063984439212,
+          "rms": 0.4361686431019809
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 226.378606404183,
+          "rms": 0.4421457156331699
+        }
+      },
+      "noise_seed": 5015081854238155574,
+      "stem": "coco_379542_449327",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        1344,
+        768
+      ],
+      "control_to_image_projection_ratio": 0.3264753759676856,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2272.1955241571973,
+          "rms": 0.4565200275342798
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 390.62259999262716,
+          "rms": 0.7689659643318099
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 390.62261999274955,
+          "rms": 0.76896600370335
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 729.6988676844716,
+          "rms": 0.14660804654591045
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 230.0862440205846,
+          "rms": 0.45293971858287874
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2235.0808710201068,
+          "rms": 0.44906310655545933
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 230.0868297377101,
+          "rms": 0.4529408716050906
+        }
+      },
+      "noise_seed": 6043694936672508263,
+      "stem": "coco_64240_crowd",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.33037341290922306,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2247.351774867477,
+          "rms": 0.4506352928885662
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 386.37926639507975,
+          "rms": 0.7591080110498728
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 386.37926639507975,
+          "rms": 0.7591080110498728
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 732.1353614598875,
+          "rms": 0.1468065821893895
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 226.38293746437694,
+          "rms": 0.4447679167610721
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2216.084384674916,
+          "rms": 0.44436560707664347
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 226.3816088212556,
+          "rms": 0.44476530641490464
+        }
+      },
+      "noise_seed": 932064152266842116,
+      "stem": "danbooru_anime_11903560",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.2733723231710834,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2716.985461867619,
+          "rms": 0.5416038427844848
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 390.00745185188447,
+          "rms": 0.7617333043982119
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 390.00745185188447,
+          "rms": 0.7617333043982119
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 736.2119684574545,
+          "rms": 0.14675648317470275
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 280.05258992732064,
+          "rms": 0.5469777147017981
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2693.0742655931344,
+          "rms": 0.5368373852639748
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 280.05441714513273,
+          "rms": 0.5469812834865874
+        }
+      },
+      "noise_seed": 507393710517204179,
+      "stem": "danbooru_anime_11910154",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        896,
+        1152
+      ],
+      "control_to_image_projection_ratio": 0.22391350168390492,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 3279.5417362796284,
+          "rms": 0.6589118180318256
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 386.3371260958491,
+          "rms": 0.7605297305662342
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 386.3371260958491,
+          "rms": 0.7605297305662342
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.0851405829322,
+          "rms": 0.1466856548821501
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 345.07374664700296,
+          "rms": 0.6793000875039275
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 3260.567741973781,
+          "rms": 0.6550996424021981
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 345.0714260301771,
+          "rms": 0.6792955192189502
+        }
+      },
+      "noise_seed": 5736381579528637436,
+      "stem": "danbooru_anime_11917323",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.29301300463932667,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2528.8925441781826,
+          "rms": 0.507089386305198
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 392.531527396208,
+          "rms": 0.7711951777749393
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 392.531527396208,
+          "rms": 0.7711951777749393
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 731.4545440422119,
+          "rms": 0.14667006579714112
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 262.537735382935,
+          "rms": 0.5158001877054537
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2496.3210931288468,
+          "rms": 0.5005582123485581
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 262.5362028606722,
+          "rms": 0.5157971768039172
+        }
+      },
+      "noise_seed": 5242866326122554713,
+      "stem": "painting_humanart_10000000000555",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        704,
+        1472
+      ],
+      "control_to_image_projection_ratio": 0.3400240235606271,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2187.846201175942,
+          "rms": 0.4387033328238948
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 390.6772165099982,
+          "rms": 0.7675520675691769
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 390.6772165099982,
+          "rms": 0.7675520675691769
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 731.4251072392854,
+          "rms": 0.14666416317768616
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 226.03409069485514,
+          "rms": 0.444082547745691
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2151.0983241125914,
+          "rms": 0.4313347087710571
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 226.03306243224685,
+          "rms": 0.44408052754830646
+        }
+      },
+      "noise_seed": 5047611568816010867,
+      "stem": "painting_humanart_10000000000838",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.24595628704998793,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 3020.538197076806,
+          "rms": 0.6021140406432641
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 390.27170022946837,
+          "rms": 0.7622494145106804
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 390.27170022946837,
+          "rms": 0.7622494145106804
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 736.3090383799455,
+          "rms": 0.14677583309165218
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 315.2040509733338,
+          "rms": 0.6156329120572925
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2993.6581301143924,
+          "rms": 0.5967557684826393
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 315.206430375397,
+          "rms": 0.6156375593269473
+        }
+      },
+      "noise_seed": 3018529359470592762,
+      "stem": "painting_humanart_1000000000218",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        896,
+        1152
+      ],
+      "control_to_image_projection_ratio": 0.2768692320578518,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2664.4900074873617,
+          "rms": 0.5353381954372647
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 385.6946655062784,
+          "rms": 0.7592650051591182
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 385.6946655062784,
+          "rms": 0.7592650051591182
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.6239627879721,
+          "rms": 0.14679391278745166
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 279.6658441336732,
+          "rms": 0.5505403822742941
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2638.8774128405435,
+          "rms": 0.5301922199747319
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 279.6690287196636,
+          "rms": 0.5505466513386983
+        }
+      },
+      "noise_seed": 2136201672371340190,
+      "stem": "painting_humanart_1000000001225",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        1152,
+        896
+      ],
+      "control_to_image_projection_ratio": 0.25753061866244686,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2863.720220272923,
+          "rms": 0.5753666970602758
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 385.2786937724431,
+          "rms": 0.7584461377780464
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 385.2786937724431,
+          "rms": 0.7584461377780464
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.4454120603401,
+          "rms": 0.1467580391215509
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 307.60722216001363,
+          "rms": 0.6055448000913638
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2836.3439495237526,
+          "rms": 0.5698663711669604
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 307.61014287568605,
+          "rms": 0.6055505497099051
+        }
+      },
+      "noise_seed": 2682167362300337327,
+      "stem": "painting_humanart_1000000002653",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.3770458818508471,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1971.366023852496,
+          "rms": 0.3952950826319673
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 391.4298308764931,
+          "rms": 0.769030706938644
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 391.42985083536996,
+          "rms": 0.7690307461512639
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 730.9450646252426,
+          "rms": 0.14656790581984955
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 197.2057539094638,
+          "rms": 0.38744436008305977
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1938.6103914918026,
+          "rms": 0.388726976940778
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 197.20719988758017,
+          "rms": 0.3874472009538502
+        }
+      },
+      "noise_seed": 8744355066415898748,
+      "stem": "painting_humanart_6000000000319",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        1152,
+        896
+      ],
+      "control_to_image_projection_ratio": 0.3435776862301761,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2150.994653642821,
+          "rms": 0.4321688552182772
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 392.08248095904514,
+          "rms": 0.7718398348533119
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 392.08246103339025,
+          "rms": 0.7718397956283657
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 728.6659042386984,
+          "rms": 0.1464005078479011
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 227.9882638152675,
+          "rms": 0.44880970825638666
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2120.818474080231,
+          "rms": 0.42610598334905164
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 227.99050830023603,
+          "rms": 0.44881412667085707
+        }
+      },
+      "noise_seed": 6319842815168321578,
+      "stem": "painting_humanart_6000000002434",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        704,
+        1472
+      ],
+      "control_to_image_projection_ratio": 0.30723763608370785,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2407.2671226932835,
+          "rms": 0.4827012562196111
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 392.34670573358966,
+          "rms": 0.7708320640757542
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 392.34670573358966,
+          "rms": 0.7708320640757542
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 730.4546529388392,
+          "rms": 0.14646956927262547
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 263.0700061295472,
+          "rms": 0.5168459244282613
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2377.490799140977,
+          "rms": 0.47673055664547354
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 263.0719364546511,
+          "rms": 0.5168497168813709
+        }
+      },
+      "noise_seed": 3640548660668953307,
+      "stem": "painting_humanart_9000000000608",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        704,
+        1472
+      ],
+      "control_to_image_projection_ratio": 0.29954270829742397,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2474.6198697981877,
+          "rms": 0.4962067186300332
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 387.11466728218915,
+          "rms": 0.7605528316013128
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 387.1146874635474,
+          "rms": 0.7605528712510355
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 732.1901648479035,
+          "rms": 0.14681757127489273
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 256.0917194092773,
+          "rms": 0.5031358892025531
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2444.3598343942735,
+          "rms": 0.490139025948559
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 256.0916278893162,
+          "rms": 0.5031357093959702
+        }
+      },
+      "noise_seed": 3205854797493998108,
+      "stem": "painting_humanart_9000000002722",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        1216,
+        832
+      ],
+      "control_to_image_projection_ratio": 0.27649907633193666,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 2648.0581564610698,
+          "rms": 0.5373947846542927
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 387.6931575034566,
+          "rms": 0.7708851525919305
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 387.69317765470157,
+          "rms": 0.7708851926604622
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.643645035317,
+          "rms": 0.14685565716952137
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 276.0771518072439,
+          "rms": 0.5489490159396876
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 2617.1647827372276,
+          "rms": 0.5311253083291367
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 276.07940150887754,
+          "rms": 0.5489534892236585
+        }
+      },
+      "noise_seed": 5485063483243626201,
+      "stem": "real_human_humanart_15000000000201",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.2784285014747298,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2650.0074528197088,
+          "rms": 0.5313751491925255
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 386.5566743700075,
+          "rms": 0.7594565592943174
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 386.5566743700075,
+          "rms": 0.7594565592943174
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 731.1591823946411,
+          "rms": 0.14661084036387803
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 276.56606636118613,
+          "rms": 0.5433612380863525
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2626.021325122856,
+          "rms": 0.5265654901970747
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 276.56698442691965,
+          "rms": 0.5433630417831695
+        }
+      },
+      "noise_seed": 5316811420161872895,
+      "stem": "real_human_humanart_15000000002196",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        832,
+        1216
+      ],
+      "control_to_image_projection_ratio": 0.2581050313521992,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 2829.0722861036975,
+          "rms": 0.574129646002159
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 384.1139764119499,
+          "rms": 0.7637683451155033
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 384.11399675096453,
+          "rms": 0.7637683855573942
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.6947733678888,
+          "rms": 0.14686603311206065
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 301.3246536130092,
+          "rms": 0.5991508931340997
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 2803.8770479462896,
+          "rms": 0.5690165447090936
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 301.32281277726054,
+          "rms": 0.5991472328349183
+        }
+      },
+      "noise_seed": 1583563680838901493,
+      "stem": "real_human_humanart_17000000000288",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        1216,
+        832
+      ],
+      "control_to_image_projection_ratio": 0.3927605503055213,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 1869.392147196516,
+          "rms": 0.37937293330433186
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 380.7549039408422,
+          "rms": 0.7570891993933244
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 380.75492445929046,
+          "rms": 0.7570892401919994
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.703280011912,
+          "rms": 0.14686775944353184
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 190.38177105489905,
+          "rms": 0.37855318772054763
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 1842.6068490049634,
+          "rms": 0.3739371465114968
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 190.38153509794483,
+          "rms": 0.3785527185461267
+        }
+      },
+      "noise_seed": 9059743048218716976,
+      "stem": "real_human_humanart_17000000001552",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        832,
+        1216
+      ],
+      "control_to_image_projection_ratio": 0.4354297638334534,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 1688.132400020804,
+          "rms": 0.3425882265325736
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 381.4689535204667,
+          "rms": 0.758509008354338
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 381.4689535204667,
+          "rms": 0.758509008354338
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.1098853217262,
+          "rms": 0.1467473364041173
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 172.2451638925604,
+          "rms": 0.34249054150344316
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 1660.680884456734,
+          "rms": 0.33701723812395695
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 172.24623544507438,
+          "rms": 0.3424926721676224
+        }
+      },
+      "noise_seed": 869749192525037796,
+      "stem": "real_human_humanart_17000000001695",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.3379979268893316,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2204.6465703146164,
+          "rms": 0.4394742155312309
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 391.0735224992866,
+          "rms": 0.7638154736314191
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 391.0735224992866,
+          "rms": 0.7638154736314191
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 735.1970824207615,
+          "rms": 0.146554175806785
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 216.21941618989726,
+          "rms": 0.4223035472458931
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2175.1526383221935,
+          "rms": 0.4335948955532211
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 216.21912713148205,
+          "rms": 0.4223029826786759
+        }
+      },
+      "noise_seed": 7370289479482802065,
+      "stem": "sculpture_humanart_14000000000243",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        896,
+        1152
+      ],
+      "control_to_image_projection_ratio": 0.288046535028343,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2564.9557501056424,
+          "rms": 0.515340188471134
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 389.5803431257794,
+          "rms": 0.7669142139806725
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 389.5803431257794,
+          "rms": 0.7669142139806725
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 731.7939429921513,
+          "rms": 0.14702898031986597
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 266.87459016361976,
+          "rms": 0.525359967868469
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2540.540690483032,
+          "rms": 0.5104348167402837
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 266.8755562055094,
+          "rms": 0.5253618695846862
+        }
+      },
+      "noise_seed": 2442028620016564955,
+      "stem": "sculpture_humanart_14000000001143",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.25032171857177277,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2962.067183572986,
+          "rms": 0.5904584296546782
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 389.1505974555352,
+          "rms": 0.7600597606553422
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 389.1505974555352,
+          "rms": 0.7600597606553422
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 735.7017058563885,
+          "rms": 0.14665476743516523
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 314.5266036045282,
+          "rms": 0.6143097726650941
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2939.024668150984,
+          "rms": 0.5858651349627741
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 314.52753506251247,
+          "rms": 0.6143115919189697
+        }
+      },
+      "noise_seed": 7736000870947884764,
+      "stem": "sculpture_humanart_14000000004479",
+      "timestep": 0.1
+    },
+    {
+      "bucket": [
+        1344,
+        768
+      ],
+      "control_to_image_projection_ratio": 0.4314343730067862,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 1729.7592318007728,
+          "rms": 0.3475359949149921
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 390.35778860553046,
+          "rms": 0.7684446659132117
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 390.35778860553046,
+          "rms": 0.7684446659132117
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.6545866550076,
+          "rms": 0.14680006560681672
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 216.52096463160328,
+          "rms": 0.42623558485642427
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 1693.5474602148001,
+          "rms": 0.3402604771236149
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 216.51975588269076,
+          "rms": 0.42623320535566533
+        }
+      },
+      "noise_seed": 9047536045835061858,
+      "stem": "coco_156320_crowd",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.38683190640168524,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 1940.1523780363232,
+          "rms": 0.38674994705699584
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 392.33145266470797,
+          "rms": 0.7662723684857577
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 392.33147257771714,
+          "rms": 0.7662724073783538
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 737.5353805072676,
+          "rms": 0.14702029211362633
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 230.8716330290493,
+          "rms": 0.4509211582598619
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 1906.6043113346827,
+          "rms": 0.3800624759245191
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 230.87223367319424,
+          "rms": 0.4509223313929575
+        }
+      },
+      "noise_seed": 1302390116108513754,
+      "stem": "coco_299468_426600",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.3911869998730983,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 1923.4901871337945,
+          "rms": 0.3834285061627869
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 391.6524288192274,
+          "rms": 0.7649461500375535
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 391.6524288192274,
+          "rms": 0.7649461500375535
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 738.0609730909771,
+          "rms": 0.1471250637316829
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 229.9875675987726,
+          "rms": 0.44919446796635276
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 1886.7216275857973,
+          "rms": 0.37609906203276317
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 229.9879242753845,
+          "rms": 0.44919516460036035
+        }
+      },
+      "noise_seed": 296039175631868072,
+      "stem": "coco_379542_449327",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        1344,
+        768
+      ],
+      "control_to_image_projection_ratio": 0.38017408195271,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 1957.554533084583,
+          "rms": 0.39330367472451805
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 390.62259999262716,
+          "rms": 0.7689659643318099
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 390.62261999274955,
+          "rms": 0.76896600370335
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 729.6988676844716,
+          "rms": 0.14660804654591045
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 231.57352369172085,
+          "rms": 0.45586752523453683
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 1919.380889766281,
+          "rms": 0.3856339858647888
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 231.57328753550138,
+          "rms": 0.45586706034567726
+        }
+      },
+      "noise_seed": 913888428405026378,
+      "stem": "coco_64240_crowd",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.38311693568797844,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1943.8923581309743,
+          "rms": 0.38978610823036497
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 386.37926639507975,
+          "rms": 0.7591080110498728
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 386.37926639507975,
+          "rms": 0.7591080110498728
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 732.1353614598875,
+          "rms": 0.1468065821893895
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 229.59299076027997,
+          "rms": 0.45107461431125945
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1910.997121923526,
+          "rms": 0.3831900094047344
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 229.59362877701986,
+          "rms": 0.4510758678040334
+        }
+      },
+      "noise_seed": 906363157360085796,
+      "stem": "danbooru_anime_11903560",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.32673303526541553,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2279.5468847996963,
+          "rms": 0.45440484314047874
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 390.00745185188447,
+          "rms": 0.7617333043982119
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 390.00745185188447,
+          "rms": 0.7617333043982119
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 736.2119684574545,
+          "rms": 0.14675648317470275
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 263.3796125604638,
+          "rms": 0.5144133057821558
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2253.252316097778,
+          "rms": 0.44916328419465706
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 263.3791527911805,
+          "rms": 0.5144124077952744
+        }
+      },
+      "noise_seed": 1394720784433485168,
+      "stem": "danbooru_anime_11910154",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        896,
+        1152
+      ],
+      "control_to_image_projection_ratio": 0.27428342701054514,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2683.2344288190698,
+          "rms": 0.5391042462244827
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 386.3371260958491,
+          "rms": 0.7605297305662342
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 386.3371260958491,
+          "rms": 0.7605297305662342
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.0851405829322,
+          "rms": 0.1466856548821501
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 305.6799030440176,
+          "rms": 0.6017507472059572
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2661.7909384472705,
+          "rms": 0.5347959097671279
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 305.67826734166107,
+          "rms": 0.6017475272196072
+        }
+      },
+      "noise_seed": 7833531672215380648,
+      "stem": "danbooru_anime_11917323",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.34822716792269215,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2134.78535220757,
+          "rms": 0.42806365839322486
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 392.531527396208,
+          "rms": 0.7711951777749393
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 392.531527396208,
+          "rms": 0.7711951777749393
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 731.4545440422119,
+          "rms": 0.14667006579714112
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 251.69284666533534,
+          "rms": 0.4944935529543631
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2100.509700049014,
+          "rms": 0.4211907608245617
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 251.69422793341926,
+          "rms": 0.4944962666912509
+        }
+      },
+      "noise_seed": 1916694626648973489,
+      "stem": "painting_humanart_10000000000555",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        704,
+        1472
+      ],
+      "control_to_image_projection_ratio": 0.3936786492907366,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1895.7261801220134,
+          "rms": 0.3801279051946293
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 390.6772165099982,
+          "rms": 0.7675520675691769
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 390.6772165099982,
+          "rms": 0.7675520675691769
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 731.4251072392854,
+          "rms": 0.14666416317768616
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 229.42685040661652,
+          "rms": 0.4507482032318005
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1857.9242449572587,
+          "rms": 0.37254792313964896
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 229.42609274284823,
+          "rms": 0.45074671467201943
+        }
+      },
+      "noise_seed": 4289568174701869419,
+      "stem": "painting_humanart_10000000000838",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.2976660776756654,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2502.6692749942013,
+          "rms": 0.4988820571839932
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 390.27170022946837,
+          "rms": 0.7622494145106804
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 390.27170022946837,
+          "rms": 0.7622494145106804
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 736.3090383799455,
+          "rms": 0.14677583309165218
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 286.56442883756523,
+          "rms": 0.5596961500733696
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2473.6074870520583,
+          "rms": 0.4930888807947339
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 286.56452425675445,
+          "rms": 0.5596963364389735
+        }
+      },
+      "noise_seed": 824473251758310284,
+      "stem": "painting_humanart_1000000000218",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        896,
+        1152
+      ],
+      "control_to_image_projection_ratio": 0.3292703449713765,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2246.672205730066,
+          "rms": 0.45139198907665534
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 385.6946655062784,
+          "rms": 0.7592650051591182
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 385.6946655062784,
+          "rms": 0.7592650051591182
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.6239627879721,
+          "rms": 0.14679391278745166
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 263.19461668126877,
+          "rms": 0.5181157010041735
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2218.918204891744,
+          "rms": 0.44581577123264005
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 263.1937558624824,
+          "rms": 0.5181140064264707
+        }
+      },
+      "noise_seed": 6022397822535673267,
+      "stem": "painting_humanart_1000000001225",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        1152,
+        896
+      ],
+      "control_to_image_projection_ratio": 0.3099429614485251,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2386.08591630729,
+          "rms": 0.4794024090932064
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 385.2786937724431,
+          "rms": 0.7584461377780464
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 385.2786937724431,
+          "rms": 0.7584461377780464
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.4454120603401,
+          "rms": 0.1467580391215509
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 280.85383209064463,
+          "rms": 0.5528790137435546
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2356.7091462460953,
+          "rms": 0.4735001512396798
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 280.85349828691824,
+          "rms": 0.5528783566292342
+        }
+      },
+      "noise_seed": 6303843763128735861,
+      "stem": "painting_humanart_1000000002653",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.4258751126391843,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1750.3738172173394,
+          "rms": 0.3509820877208805
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 391.4298308764931,
+          "rms": 0.769030706938644
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 391.42985083536996,
+          "rms": 0.7690307461512639
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 730.9450646252426,
+          "rms": 0.14656790581984955
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 212.83106563657478,
+          "rms": 0.4181429516971167
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1716.3366511264624,
+          "rms": 0.34415701098746004
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 212.83107481345388,
+          "rms": 0.41814296972666193
+        }
+      },
+      "noise_seed": 32943886515735793,
+      "stem": "painting_humanart_6000000000319",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        1152,
+        896
+      ],
+      "control_to_image_projection_ratio": 0.39715556441340905,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 1866.5889343934298,
+          "rms": 0.37502724684775735
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 392.08248095904514,
+          "rms": 0.7718398348533119
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 392.08246103339025,
+          "rms": 0.7718397956283657
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 728.6659042386984,
+          "rms": 0.1464005078479011
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 230.64664532570163,
+          "rms": 0.45404290495768207
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 1834.7115577114566,
+          "rms": 0.3686225775638616
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 230.64657758137233,
+          "rms": 0.45404277159856893
+        }
+      },
+      "noise_seed": 1467508355521102088,
+      "stem": "painting_humanart_6000000002434",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        704,
+        1472
+      ],
+      "control_to_image_projection_ratio": 0.3613649874663454,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2052.933267303153,
+          "rms": 0.411650812541971
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 392.34670573358966,
+          "rms": 0.7708320640757542
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 392.34670573358966,
+          "rms": 0.7708320640757542
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 730.4546529388392,
+          "rms": 0.14646956927262547
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 252.55203671718826,
+          "rms": 0.4961815784466756
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2021.3763875142106,
+          "rms": 0.4053230787508612
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 252.55185111180634,
+          "rms": 0.49618121379322616
+        }
+      },
+      "noise_seed": 53967814417271218,
+      "stem": "painting_humanart_9000000000608",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        704,
+        1472
+      ],
+      "control_to_image_projection_ratio": 0.35274596275839165,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2107.7310075054643,
+          "rms": 0.4226387655548704
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 387.11466728218915,
+          "rms": 0.7605528316013128
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 387.1146874635474,
+          "rms": 0.7605528712510355
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 732.1901648479035,
+          "rms": 0.14681757127489273
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 248.20577243237113,
+          "rms": 0.48764260049496777
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2075.686874265962,
+          "rms": 0.4162133285008094
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 248.2046156903614,
+          "rms": 0.4876403278778719
+        }
+      },
+      "noise_seed": 6250360167687835847,
+      "stem": "painting_humanart_9000000002722",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        1216,
+        832
+      ],
+      "control_to_image_projection_ratio": 0.3316174677813302,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 2215.0621887432417,
+          "rms": 0.44952293249721176
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 387.6931575034566,
+          "rms": 0.7708851525919305
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 387.69317765470157,
+          "rms": 0.7708851926604622
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.643645035317,
+          "rms": 0.14685565716952137
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 259.1618702664418,
+          "rms": 0.5153148412338818
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 2182.1638343625805,
+          "rms": 0.4428465670160612
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 259.16419144048433,
+          "rms": 0.5153194566328676
+        }
+      },
+      "noise_seed": 5805111663143222359,
+      "stem": "real_human_humanart_15000000000201",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.3320527787186247,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2228.246844494568,
+          "rms": 0.44680440357675866
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 386.5566743700075,
+          "rms": 0.7594565592943174
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 386.5566743700075,
+          "rms": 0.7594565592943174
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 731.1591823946411,
+          "rms": 0.14661084036387803
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 260.9740169058981,
+          "rms": 0.5127279958820662
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2201.9366475900256,
+          "rms": 0.4415287260345841
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 260.97388219417667,
+          "rms": 0.5127277312178986
+        }
+      },
+      "noise_seed": 8230241622912545537,
+      "stem": "real_human_humanart_15000000002196",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        832,
+        1216
+      ],
+      "control_to_image_projection_ratio": 0.31224090626997353,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 2345.2667225712303,
+          "rms": 0.47594653548598287
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 384.1139764119499,
+          "rms": 0.7637683451155033
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 384.11399675096453,
+          "rms": 0.7637683855573942
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.6947733678888,
+          "rms": 0.14686603311206065
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 275.5770791675171,
+          "rms": 0.5479546765614399
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 2317.7449169397396,
+          "rms": 0.4703612824678248
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 275.5784966438782,
+          "rms": 0.5479574950570976
+        }
+      },
+      "noise_seed": 6251318762156669842,
+      "stem": "real_human_humanart_17000000000288",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        1216,
+        832
+      ],
+      "control_to_image_projection_ratio": 0.4391067723309134,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 1676.8799897428557,
+          "rms": 0.3403046714741601
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 380.7549039408422,
+          "rms": 0.7570891993933244
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 380.75492445929046,
+          "rms": 0.7570892401919994
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.703280011912,
+          "rms": 0.14686775944353184
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 207.84295829423715,
+          "rms": 0.41327283579510354
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 1648.1259812283768,
+          "rms": 0.33446935619761164
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 207.84385101861926,
+          "rms": 0.41327461087923445
+        }
+      },
+      "noise_seed": 6082563963765565016,
+      "stem": "real_human_humanart_17000000001552",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        832,
+        1216
+      ],
+      "control_to_image_projection_ratio": 0.4738410962367555,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 1555.118644991436,
+          "rms": 0.3155945224609097
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 381.4689535204667,
+          "rms": 0.758509008354338
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 381.4689535204667,
+          "rms": 0.758509008354338
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.1098853217262,
+          "rms": 0.1467473364041173
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 198.2031194570358,
+          "rms": 0.39410507776493686
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 1526.0598775932745,
+          "rms": 0.30969735966252016
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 198.2035037688537,
+          "rms": 0.394105841926668
+        }
+      },
+      "noise_seed": 8996505702181101883,
+      "stem": "real_human_humanart_17000000001695",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.389528561154262,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 1918.6241163917439,
+          "rms": 0.38245850369124473
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 391.0735224992866,
+          "rms": 0.7638154736314191
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 391.0735224992866,
+          "rms": 0.7638154736314191
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 735.1970824207615,
+          "rms": 0.146554175806785
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 224.10199268413479,
+          "rms": 0.43769920446120075
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 1887.4022491244414,
+          "rms": 0.37623473712046057
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 224.103230258959,
+          "rms": 0.4377016215995293
+        }
+      },
+      "noise_seed": 5386791951442962568,
+      "stem": "sculpture_humanart_14000000000243",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        896,
+        1152
+      ],
+      "control_to_image_projection_ratio": 0.3428034800342093,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2161.572691352294,
+          "rms": 0.4342941503414504
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 389.5803431257794,
+          "rms": 0.7669142139806725
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 389.5803431257794,
+          "rms": 0.7669142139806725
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 731.7939429921513,
+          "rms": 0.14702898031986597
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 253.98571256568744,
+          "rms": 0.4999873750091829
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2134.7331214931764,
+          "rms": 0.4289016561476959
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 253.98902689141906,
+          "rms": 0.4999938994746961
+        }
+      },
+      "noise_seed": 3397853199631257084,
+      "stem": "sculpture_humanart_14000000001143",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.30346313695990557,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2449.783663918102,
+          "rms": 0.4883398402347968
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 389.1505974555352,
+          "rms": 0.7600597606553422
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 389.1505974555352,
+          "rms": 0.7600597606553422
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 735.7017058563885,
+          "rms": 0.14665476743516523
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 285.95097645837825,
+          "rms": 0.55849800089527
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2424.3528002334974,
+          "rms": 0.4832704522346702
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 285.9501704842996,
+          "rms": 0.5584964267271476
+        }
+      },
+      "noise_seed": 7925053521705485366,
+      "stem": "sculpture_humanart_14000000004479",
+      "timestep": 0.3
+    },
+    {
+      "bucket": [
+        1344,
+        768
+      ],
+      "control_to_image_projection_ratio": 0.4422768368846281,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 1685.7619197265076,
+          "rms": 0.3386962388702177
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 390.35778860553046,
+          "rms": 0.7684446659132117
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 390.35778860553046,
+          "rms": 0.7684446659132117
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.6545866550076,
+          "rms": 0.14680006560681672
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 276.05840358065535,
+          "rms": 0.5434389011933904
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 1652.0299634086543,
+          "rms": 0.3319189551975358
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 276.0575404240935,
+          "rms": 0.5434372020136247
+        }
+      },
+      "noise_seed": 7310675895308992158,
+      "stem": "coco_156320_crowd",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.41552809074034264,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 1807.4400404992693,
+          "rms": 0.3602950716063291
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 392.33145266470797,
+          "rms": 0.7662723684857577
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 392.33147257771714,
+          "rms": 0.7662724073783538
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 737.5353805072676,
+          "rms": 0.14702029211362633
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 283.15577923203335,
+          "rms": 0.5530386313125651
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 1774.9350692349283,
+          "rms": 0.3538155311032802
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 283.1517923305449,
+          "rms": 0.5530308443955955
+        }
+      },
+      "noise_seed": 8192881459669250500,
+      "stem": "coco_299468_426600",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.4185600944219676,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 1798.3933107081998,
+          "rms": 0.3584916966202487
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 391.6524288192274,
+          "rms": 0.7649461500375535
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 391.6524288192274,
+          "rms": 0.7649461500375535
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 738.0609730909771,
+          "rms": 0.1471250637316829
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 283.5533321749191,
+          "rms": 0.5538151019041389
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 1763.3333490863263,
+          "rms": 0.3515028443761772
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 283.555191938007,
+          "rms": 0.5538187342539199
+        }
+      },
+      "noise_seed": 1259729985405012,
+      "stem": "coco_379542_449327",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        1344,
+        768
+      ],
+      "control_to_image_projection_ratio": 0.4106932279370905,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 1812.6031694775336,
+          "rms": 0.36418065260714694
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 390.62259999262716,
+          "rms": 0.7689659643318099
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 390.62261999274955,
+          "rms": 0.76896600370335
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 729.6988676844716,
+          "rms": 0.14660804654591045
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 283.0302545665392,
+          "rms": 0.55716344277557
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 1776.7492085266283,
+          "rms": 0.3569770246330132
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 283.0340913653336,
+          "rms": 0.5571709957632489
+        }
+      },
+      "noise_seed": 705172466514793257,
+      "stem": "coco_64240_crowd",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.4104422030707521,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1815.5327730448712,
+          "rms": 0.364047654701548
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 386.37926639507975,
+          "rms": 0.7591080110498728
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 386.37926639507975,
+          "rms": 0.7591080110498728
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 732.1353614598875,
+          "rms": 0.1468065821893895
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 282.73804959272815,
+          "rms": 0.5554871524990019
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1783.772126702287,
+          "rms": 0.3576790619752203
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 282.73883709175857,
+          "rms": 0.5554886996752474
+        }
+      },
+      "noise_seed": 4512729752617980896,
+      "stem": "danbooru_anime_11903560",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.37169578021907984,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2008.139561883088,
+          "rms": 0.4003025113045027
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 390.00745185188447,
+          "rms": 0.7617333043982119
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 390.00745185188447,
+          "rms": 0.7617333043982119
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 736.2119684574545,
+          "rms": 0.14675648317470275
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 297.95907332215944,
+          "rms": 0.5819513150823427
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 1980.684225211076,
+          "rms": 0.39482956488826304
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 297.9611184785693,
+          "rms": 0.5819553095284556
+        }
+      },
+      "noise_seed": 2222882420762244370,
+      "stem": "danbooru_anime_11910154",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        896,
+        1152
+      ],
+      "control_to_image_projection_ratio": 0.32767632833074317,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2251.5277035826143,
+          "rms": 0.45236753541048597
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 386.3371260958491,
+          "rms": 0.7605297305662342
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 386.3371260958491,
+          "rms": 0.7605297305662342
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.0851405829322,
+          "rms": 0.1466856548821501
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 317.59272760093234,
+          "rms": 0.6252019162460908
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2228.0679971670525,
+          "rms": 0.4476541092528709
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 317.5968725247464,
+          "rms": 0.6252100757978879
+        }
+      },
+      "noise_seed": 6088218921258221084,
+      "stem": "danbooru_anime_11917323",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.38772496020853975,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1920.207671060607,
+          "rms": 0.3850368936150614
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 392.531527396208,
+          "rms": 0.7711951777749393
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 392.531527396208,
+          "rms": 0.7711951777749393
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 731.4545440422119,
+          "rms": 0.14667006579714112
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 293.0316749090446,
+          "rms": 0.575710736215763
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1886.5294193306395,
+          "rms": 0.37828378580077465
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 293.03250139702936,
+          "rms": 0.5757123599924633
+        }
+      },
+      "noise_seed": 1541303505461859614,
+      "stem": "painting_humanart_10000000000555",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        704,
+        1472
+      ],
+      "control_to_image_projection_ratio": 0.4207916189204589,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1773.7284177686279,
+          "rms": 0.35566511392862493
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 390.6772165099982,
+          "rms": 0.7675520675691769
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 390.6772165099982,
+          "rms": 0.7675520675691769
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 731.4251072392854,
+          "rms": 0.14666416317768616
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 282.4093604592454,
+          "rms": 0.5548413865998643
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1738.212156211088,
+          "rms": 0.34854345139751863
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 282.4086965286303,
+          "rms": 0.5548400821948598
+        }
+      },
+      "noise_seed": 5549343603555642887,
+      "stem": "painting_humanart_10000000000838",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.3484968959578898,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2142.8065708318145,
+          "rms": 0.42714703092618206
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 390.27170022946837,
+          "rms": 0.7622494145106804
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 390.27170022946837,
+          "rms": 0.7622494145106804
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 736.3090383799455,
+          "rms": 0.14677583309165218
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 309.24031159035525,
+          "rms": 0.6039849835749126
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2112.81376368103,
+          "rms": 0.42116826518129924
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 309.24038738091764,
+          "rms": 0.6039851316033548
+        }
+      },
+      "noise_seed": 5499482135035346752,
+      "stem": "painting_humanart_1000000000218",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        896,
+        1152
+      ],
+      "control_to_image_projection_ratio": 0.3736761903166756,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 1983.705875375682,
+          "rms": 0.39855789311191625
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 385.6946655062784,
+          "rms": 0.7592650051591182
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 385.6946655062784,
+          "rms": 0.7592650051591182
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.6239627879721,
+          "rms": 0.14679391278745166
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 296.55037514729264,
+          "rms": 0.5837786784543495
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 1955.2328505832752,
+          "rms": 0.3928372119803772
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 296.54792508968933,
+          "rms": 0.5837738553567928
+        }
+      },
+      "noise_seed": 881173786748790401,
+      "stem": "painting_humanart_1000000001225",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        1152,
+        896
+      ],
+      "control_to_image_projection_ratio": 0.35922155565653197,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2063.437423330303,
+          "rms": 0.41457722247006895
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 385.2786937724431,
+          "rms": 0.7584461377780464
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 385.2786937724431,
+          "rms": 0.7584461377780464
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.4454120603401,
+          "rms": 0.1467580391215509
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 304.0211752493566,
+          "rms": 0.5984854337852551
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2033.41197252303,
+          "rms": 0.4085446343923551
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 304.02243441068623,
+          "rms": 0.5984879125261321
+        }
+      },
+      "noise_seed": 3426231087323499702,
+      "stem": "painting_humanart_1000000002653",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.4384832087990029,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1698.7864786370299,
+          "rms": 0.3406378791770933
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 391.4298308764931,
+          "rms": 0.769030706938644
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 391.42985083536996,
+          "rms": 0.7690307461512639
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 730.9450646252426,
+          "rms": 0.14656790581984955
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 275.9530077748746,
+          "rms": 0.5421567798646317
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1666.9853028746234,
+          "rms": 0.33426115955795943
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 275.9554425083876,
+          "rms": 0.5421615633141468
+        }
+      },
+      "noise_seed": 8781697257992005530,
+      "stem": "painting_humanart_6000000000319",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        1152,
+        896
+      ],
+      "control_to_image_projection_ratio": 0.42133098640389655,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 1759.9306804530684,
+          "rms": 0.35359791626949527
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 392.08248095904514,
+          "rms": 0.7718398348533119
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 392.08246103339025,
+          "rms": 0.7718397956283657
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 728.6659042386984,
+          "rms": 0.1464005078479011
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 282.2339455132922,
+          "rms": 0.5555958566731586
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 1729.4382035794167,
+          "rms": 0.3474714952665707
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 282.23267218732843,
+          "rms": 0.555593350048279
+        }
+      },
+      "noise_seed": 2114855494791042840,
+      "stem": "painting_humanart_6000000002434",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        704,
+        1472
+      ],
+      "control_to_image_projection_ratio": 0.39885518583614477,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1862.4471804590862,
+          "rms": 0.3734548547501674
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 392.34670573358966,
+          "rms": 0.7708320640757542
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 392.34670573358966,
+          "rms": 0.7708320640757542
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 730.4546529388392,
+          "rms": 0.14646956927262547
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 291.93191361600054,
+          "rms": 0.573550067462542
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1831.3781013215157,
+          "rms": 0.3672249339458186
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 291.9326094109735,
+          "rms": 0.5735514344705156
+        }
+      },
+      "noise_seed": 2668696027555808226,
+      "stem": "painting_humanart_9000000000608",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        704,
+        1472
+      ],
+      "control_to_image_projection_ratio": 0.39223338708249883,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1898.389448980372,
+          "rms": 0.3806619394991156
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 387.11466728218915,
+          "rms": 0.7605528316013128
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 387.1146874635474,
+          "rms": 0.7605528712510355
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 732.1901648479035,
+          "rms": 0.14681757127489273
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 289.60153120278903,
+          "rms": 0.568971633492253
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1866.7206539812003,
+          "rms": 0.3743117646535593
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 289.59961584919273,
+          "rms": 0.5689678704532252
+        }
+      },
+      "noise_seed": 1399561885041931908,
+      "stem": "painting_humanart_9000000002722",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        1216,
+        832
+      ],
+      "control_to_image_projection_ratio": 0.37876453466219895,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 1943.3507146163813,
+          "rms": 0.3943820252742207
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 387.6931575034566,
+          "rms": 0.7708851525919305
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 387.69317765470157,
+          "rms": 0.7708851926604622
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.643645035317,
+          "rms": 0.14685565716952137
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 292.7556308168982,
+          "rms": 0.5821123348879824
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 1910.5369664049947,
+          "rms": 0.38772282970076527
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 292.75424313748215,
+          "rms": 0.5821095756402689
+        }
+      },
+      "noise_seed": 4686587647041276642,
+      "stem": "real_human_humanart_15000000000201",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.37619471603515686,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1970.6502099560946,
+          "rms": 0.3951515488031889
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 386.5566743700075,
+          "rms": 0.7594565592943174
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 386.5566743700075,
+          "rms": 0.7594565592943174
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 731.1591823946411,
+          "rms": 0.14661084036387803
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 295.74632816824624,
+          "rms": 0.5810441358453785
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1943.5657951301778,
+          "rms": 0.3897206263529142
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 295.7481772978491,
+          "rms": 0.5810477687760688
+        }
+      },
+      "noise_seed": 1806962543499192274,
+      "stem": "real_human_humanart_15000000002196",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        832,
+        1216
+      ],
+      "control_to_image_projection_ratio": 0.3631505185768903,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 2021.4823768709932,
+          "rms": 0.41023800174118485
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 384.1139764119499,
+          "rms": 0.7637683451155033
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 384.11399675096453,
+          "rms": 0.7637683855573942
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.6947733678888,
+          "rms": 0.14686603311206065
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 300.2101217272662,
+          "rms": 0.5969347692067593
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 1992.823185834609,
+          "rms": 0.4044219286471004
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 300.2111106163461,
+          "rms": 0.5969367355038024
+        }
+      },
+      "noise_seed": 833652755635348546,
+      "stem": "real_human_humanart_17000000000288",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        1216,
+        832
+      ],
+      "control_to_image_projection_ratio": 0.4438754844590361,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 1658.162537268286,
+          "rms": 0.3365061667784434
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 380.7549039408422,
+          "rms": 0.7570891993933244
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 380.75492445929046,
+          "rms": 0.7570892401919994
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.703280011912,
+          "rms": 0.14686775944353184
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 271.38314704491137,
+          "rms": 0.5396155043534128
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 1630.4195779001184,
+          "rms": 0.3308760329994882
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 271.3853061147563,
+          "rms": 0.5396197974260519
+        }
+      },
+      "noise_seed": 7276166463270619152,
+      "stem": "real_human_humanart_17000000001552",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        832,
+        1216
+      ],
+      "control_to_image_projection_ratio": 0.46317891367003244,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 1588.8746803949014,
+          "rms": 0.3224449450364739
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 381.4689535204667,
+          "rms": 0.758509008354338
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 381.4689535204667,
+          "rms": 0.758509008354338
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.1098853217262,
+          "rms": 0.1467473364041173
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 267.4049480656631,
+          "rms": 0.5317052937453457
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 1561.1891301184492,
+          "rms": 0.31682646181224855
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 267.4049480656631,
+          "rms": 0.5317052937453457
+        }
+      },
+      "noise_seed": 4900639961434655884,
+      "stem": "real_human_humanart_17000000001695",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.4153777316307455,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 1800.1808242507195,
+          "rms": 0.3588480195440352
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 391.0735224992866,
+          "rms": 0.7638154736314191
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 391.0735224992866,
+          "rms": 0.7638154736314191
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 735.1970824207615,
+          "rms": 0.146554175806785
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 281.437493060182,
+          "rms": 0.549682603633168
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 1769.9482337062855,
+          "rms": 0.3528214553809204
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 281.4402134557178,
+          "rms": 0.5496879169056988
+        }
+      },
+      "noise_seed": 305516499006535793,
+      "stem": "sculpture_humanart_14000000000243",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        896,
+        1152
+      ],
+      "control_to_image_projection_ratio": 0.38463033952462444,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 1930.3788488273487,
+          "rms": 0.3878436498307637
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 389.5803431257794,
+          "rms": 0.7669142139806725
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 389.5803431257794,
+          "rms": 0.7669142139806725
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 731.7939429921513,
+          "rms": 0.14702898031986597
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 293.436242010083,
+          "rms": 0.5776483050684849
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 1902.5902738109432,
+          "rms": 0.38226048548739877
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 293.4393170870257,
+          "rms": 0.5776543585572145
+        }
+      },
+      "noise_seed": 3662867001608327213,
+      "stem": "sculpture_humanart_14000000001143",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.3551277259900211,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2098.6705315508675,
+          "rms": 0.41834895349244544
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 389.1505974555352,
+          "rms": 0.7600597606553422
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 389.1505974555352,
+          "rms": 0.7600597606553422
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 735.7017058563885,
+          "rms": 0.14665476743516523
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 308.44571290990575,
+          "rms": 0.6024330330271597
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2071.653807951512,
+          "rms": 0.4129634401997836
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 308.443433326923,
+          "rms": 0.6024285807166465
+        }
+      },
+      "noise_seed": 4283133871510741289,
+      "stem": "sculpture_humanart_14000000004479",
+      "timestep": 0.5
+    },
+    {
+      "bucket": [
+        1344,
+        768
+      ],
+      "control_to_image_projection_ratio": 0.40628640218862117,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 1825.7403977564827,
+          "rms": 0.3668201296027962
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 390.35778860553046,
+          "rms": 0.7684446659132117
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 390.35778860553046,
+          "rms": 0.7684446659132117
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.6545866550076,
+          "rms": 0.14680006560681672
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 360.6470313894182,
+          "rms": 0.7099571102158525
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 1798.3732232214759,
+          "rms": 0.3613216312828107
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 360.64620821519804,
+          "rms": 0.7099554897439239
+        }
+      },
+      "noise_seed": 1224028793627756683,
+      "stem": "coco_156320_crowd",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.39652634660306746,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 1887.629465758574,
+          "rms": 0.3762800304810317
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 392.33145266470797,
+          "rms": 0.7662723684857577
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 392.33147257771714,
+          "rms": 0.7662724073783538
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 737.5353805072676,
+          "rms": 0.14702029211362633
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 366.7438223746925,
+          "rms": 0.7162965280755713
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 1859.990860192598,
+          "rms": 0.37077055124611236
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 366.7436519559677,
+          "rms": 0.7162961952264995
+        }
+      },
+      "noise_seed": 2555817188607413477,
+      "stem": "coco_299468_426600",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.3970151564902568,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 1888.356428220054,
+          "rms": 0.3764249431676189
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 391.6524288192274,
+          "rms": 0.7649461500375535
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 391.6524288192274,
+          "rms": 0.7649461500375535
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 738.0609730909771,
+          "rms": 0.1471250637316829
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 366.3492612930999,
+          "rms": 0.7155259009630858
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 1859.0246770820445,
+          "rms": 0.37057795231878893
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 366.3484296062971,
+          "rms": 0.715524276574799
+        }
+      },
+      "noise_seed": 3671228011069569568,
+      "stem": "coco_379542_449327",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        1344,
+        768
+      ],
+      "control_to_image_projection_ratio": 0.39289960090598347,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 1886.6251614987011,
+          "rms": 0.37905284185159144
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 390.62259999262716,
+          "rms": 0.7689659643318099
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 390.62261999274955,
+          "rms": 0.76896600370335
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 729.6988676844716,
+          "rms": 0.14660804654591045
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 363.13765038205554,
+          "rms": 0.7148600555024095
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 1857.2145810325742,
+          "rms": 0.37314379095282446
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 363.1387906159297,
+          "rms": 0.7148623001268644
+        }
+      },
+      "noise_seed": 5356240039505125047,
+      "stem": "coco_64240_crowd",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.3931558320097978,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1889.2702294801556,
+          "rms": 0.3788333685578185
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 386.37926639507975,
+          "rms": 0.7591080110498728
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 386.37926639507975,
+          "rms": 0.7591080110498728
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 732.1353614598875,
+          "rms": 0.1468065821893895
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 363.7971189413132,
+          "rms": 0.7147415283480413
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1862.2014525824,
+          "rms": 0.373405581799257
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 363.7989657764299,
+          "rms": 0.714745156770822
+        }
+      },
+      "noise_seed": 6470864139638210132,
+      "stem": "danbooru_anime_11903560",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.3801315737961154,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 1961.9069804656897,
+          "rms": 0.3910865091915221
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 390.00745185188447,
+          "rms": 0.7617333043982119
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 390.00745185188447,
+          "rms": 0.7617333043982119
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 736.2119684574545,
+          "rms": 0.14675648317470275
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 369.7554090206119,
+          "rms": 0.7221785332433827
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 1936.7293305983674,
+          "rms": 0.3860675968300807
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 369.7584515599339,
+          "rms": 0.7221844757029959
+        }
+      },
+      "noise_seed": 3314188468354245279,
+      "stem": "danbooru_anime_11910154",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        896,
+        1152
+      ],
+      "control_to_image_projection_ratio": 0.360827555611244,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2046.906751662127,
+          "rms": 0.4112559490123567
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 386.3371260958491,
+          "rms": 0.7605297305662342
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 386.3371260958491,
+          "rms": 0.7605297305662342
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.0851405829322,
+          "rms": 0.1466856548821501
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 373.5859798961947,
+          "rms": 0.7354282709119843
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2023.3630420663515,
+          "rms": 0.4065256452868843
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 373.5855407400024,
+          "rms": 0.7354274064044907
+        }
+      },
+      "noise_seed": 9102501090614305414,
+      "stem": "danbooru_anime_11917323",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.3875263068795495,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1916.3585259548904,
+          "rms": 0.3842650693499494
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 392.531527396208,
+          "rms": 0.7711951777749393
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 392.531527396208,
+          "rms": 0.7711951777749393
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 731.4545440422119,
+          "rms": 0.14667006579714112
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 366.0419204134958,
+          "rms": 0.7191518239538307
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1887.4964900629616,
+          "rms": 0.37847770123830315
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 366.04102399867696,
+          "rms": 0.7191500627939306
+        }
+      },
+      "noise_seed": 8611711856392343068,
+      "stem": "painting_humanart_10000000000555",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        704,
+        1472
+      ],
+      "control_to_image_projection_ratio": 0.39840929596418795,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1864.7179411374793,
+          "rms": 0.3739101839580071
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 390.6772165099982,
+          "rms": 0.7675520675691769
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 390.6772165099982,
+          "rms": 0.7675520675691769
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 731.4251072392854,
+          "rms": 0.14666416317768616
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 363.28565723133084,
+          "rms": 0.7137366745291103
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1835.8635570215995,
+          "rms": 0.3681243501679475
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 363.2858722824217,
+          "rms": 0.7137370970336803
+        }
+      },
+      "noise_seed": 5951717606703014074,
+      "stem": "painting_humanart_10000000000838",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.370646599937474,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2013.938430041991,
+          "rms": 0.40145845759966753
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 390.27170022946837,
+          "rms": 0.7622494145106804
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 390.27170022946837,
+          "rms": 0.7622494145106804
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 736.3090383799455,
+          "rms": 0.14677583309165218
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 373.4936411774637,
+          "rms": 0.7294797679247338
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 1986.5527931570307,
+          "rms": 0.39599940513797355
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 373.4947707130583,
+          "rms": 0.729481974048942
+        }
+      },
+      "noise_seed": 4972620607310467327,
+      "stem": "painting_humanart_1000000000218",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        896,
+        1152
+      ],
+      "control_to_image_projection_ratio": 0.3799400049972221,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 1948.964853454264,
+          "rms": 0.3915778721957949
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 385.6946655062784,
+          "rms": 0.7592650051591182
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 385.6946655062784,
+          "rms": 0.7592650051591182
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.6239627879721,
+          "rms": 0.14679391278745166
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 367.25374402448233,
+          "rms": 0.7229628532337453
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 1922.9982449289962,
+          "rms": 0.38636076974448885
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 367.2557436582851,
+          "rms": 0.7229667896427894
+        }
+      },
+      "noise_seed": 1989235535526689118,
+      "stem": "painting_humanart_1000000001225",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        1152,
+        896
+      ],
+      "control_to_image_projection_ratio": 0.37396451241474743,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 1980.4702724353124,
+          "rms": 0.3979078092931061
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 385.2786937724431,
+          "rms": 0.7584461377780464
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 385.2786937724431,
+          "rms": 0.7584461377780464
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.4454120603401,
+          "rms": 0.1467580391215509
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 369.1166397630971,
+          "rms": 0.726630084515603
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 1953.2479361309972,
+          "rms": 0.3924384112650456
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 369.11238549390345,
+          "rms": 0.7266217097103227
+        }
+      },
+      "noise_seed": 8683627219004627008,
+      "stem": "painting_humanart_1000000002653",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.40245175125507204,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1842.6691238526791,
+          "rms": 0.36948899126975143
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 391.4298308764931,
+          "rms": 0.769030706938644
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 391.42985083536996,
+          "rms": 0.7690307461512639
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 730.9450646252426,
+          "rms": 0.14656790581984955
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 361.37129235386146,
+          "rms": 0.7099755780082798
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1816.2302992737457,
+          "rms": 0.36418752151722034
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 361.36860077350383,
+          "rms": 0.7099702899393032
+        }
+      },
+      "noise_seed": 3065370340392674331,
+      "stem": "painting_humanart_6000000000319",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        1152,
+        896
+      ],
+      "control_to_image_projection_ratio": 0.39933672199618064,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 1850.5986193661768,
+          "rms": 0.37181453958779076
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 392.08248095904514,
+          "rms": 0.7718398348533119
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 392.08246103339025,
+          "rms": 0.7718397956283657
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 728.6659042386984,
+          "rms": 0.1464005078479011
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 362.2393028096206,
+          "rms": 0.7130915999461882
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 1824.6904532002134,
+          "rms": 0.36660917913104246
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 362.24007922923164,
+          "rms": 0.7130931283786315
+        }
+      },
+      "noise_seed": 3357720879124070095,
+      "stem": "painting_humanart_6000000002434",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        704,
+        1472
+      ],
+      "control_to_image_projection_ratio": 0.39068209822619554,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1896.525111882255,
+          "rms": 0.3802881056811756
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 392.34670573358966,
+          "rms": 0.7708320640757542
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 392.34670573358966,
+          "rms": 0.7708320640757542
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 730.4546529388392,
+          "rms": 0.14646956927262547
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 366.1689330077034,
+          "rms": 0.7194013618720186
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1869.6906161180784,
+          "rms": 0.374907296591366
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 366.1660099941009,
+          "rms": 0.7193956191129344
+        }
+      },
+      "noise_seed": 5191552293068160834,
+      "stem": "painting_humanart_9000000000608",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        704,
+        1472
+      ],
+      "control_to_image_projection_ratio": 0.3870538915710999,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1919.3022820806523,
+          "rms": 0.3848553465013773
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 387.11466728218915,
+          "rms": 0.7605528316013128
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 387.1146874635474,
+          "rms": 0.7605528712510355
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 732.1901648479035,
+          "rms": 0.14681757127489273
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 365.62358974087,
+          "rms": 0.7183299419521877
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1891.7008220117684,
+          "rms": 0.3793207469867877
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 365.62279913867513,
+          "rms": 0.7183283886792462
+        }
+      },
+      "noise_seed": 6907831949555276770,
+      "stem": "painting_humanart_9000000002722",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        1216,
+        832
+      ],
+      "control_to_image_projection_ratio": 0.3836081718849646,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 1914.9642294309313,
+          "rms": 0.3886212948853859
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 387.6931575034566,
+          "rms": 0.7708851525919305
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 387.69317765470157,
+          "rms": 0.7708851926604622
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.643645035317,
+          "rms": 0.14685565716952137
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 363.2715065897682,
+          "rms": 0.7223253889572636
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 1886.4135283654007,
+          "rms": 0.3828272386584091
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 363.2734851320696,
+          "rms": 0.7223293230707614
+        }
+      },
+      "noise_seed": 5323068079701848651,
+      "stem": "real_human_humanart_15000000000201",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.3810325567715503,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 1943.930104196136,
+          "rms": 0.3897936770094585
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 386.5566743700075,
+          "rms": 0.7594565592943174
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 386.5566743700075,
+          "rms": 0.7594565592943174
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 731.1591823946411,
+          "rms": 0.14661084036387803
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 367.632459121879,
+          "rms": 0.7222767086990282
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 1918.8890014797626,
+          "rms": 0.38477247615294774
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 367.6339891794555,
+          "rms": 0.7222797147582677
+        }
+      },
+      "noise_seed": 4646919219634943309,
+      "stem": "real_human_humanart_15000000002196",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        832,
+        1216
+      ],
+      "control_to_image_projection_ratio": 0.37755303861898465,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 1943.2808597832686,
+          "rms": 0.3943678489907784
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 384.1139764119499,
+          "rms": 0.7637683451155033
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 384.11399675096453,
+          "rms": 0.7637683855573942
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.6947733678888,
+          "rms": 0.14686603311206065
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 364.7993026994432,
+          "rms": 0.7253632432870133
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 1916.8029371847279,
+          "rms": 0.3889944407526634
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 364.80476370930245,
+          "rms": 0.7253741019037754
+        }
+      },
+      "noise_seed": 2762327829468038637,
+      "stem": "real_human_humanart_17000000000288",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        1216,
+        832
+      ],
+      "control_to_image_projection_ratio": 0.4056810714080903,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 1807.997441922969,
+          "rms": 0.36691354137636745
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 380.7549039408422,
+          "rms": 0.7570891993933244
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 380.75492445929046,
+          "rms": 0.7570892401919994
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.703280011912,
+          "rms": 0.14686775944353184
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 357.4543458611183,
+          "rms": 0.710758605409073
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 1783.9217331486266,
+          "rms": 0.3620276364725725
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 357.4551982416817,
+          "rms": 0.7107603002739629
+        }
+      },
+      "noise_seed": 6662782125288483508,
+      "stem": "real_human_humanart_17000000001552",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        832,
+        1216
+      ],
+      "control_to_image_projection_ratio": 0.4108578230686154,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 1783.5463268443575,
+          "rms": 0.36195145182022703
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 381.4689535204667,
+          "rms": 0.758509008354338
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 381.4689535204667,
+          "rms": 0.758509008354338
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.1098853217262,
+          "rms": 0.1467473364041173
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 355.6647824848561,
+          "rms": 0.7072002556944007
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 1760.0002840908862,
+          "rms": 0.3571730369111403
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 355.6647715019018,
+          "rms": 0.7072002338560054
+        }
+      },
+      "noise_seed": 2949013590621942545,
+      "stem": "real_human_humanart_17000000001695",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.3942068142149579,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 1890.953595411585,
+          "rms": 0.37694266243812247
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 391.0735224992866,
+          "rms": 0.7638154736314191
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 391.0735224992866,
+          "rms": 0.7638154736314191
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 735.1970824207615,
+          "rms": 0.146554175806785
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 364.94087706092887,
+          "rms": 0.7127751505096267
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 1865.0034852514352,
+          "rms": 0.3717697678530492
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 364.94243981071867,
+          "rms": 0.7127782027553099
+        }
+      },
+      "noise_seed": 2863936682162411899,
+      "stem": "sculpture_humanart_14000000000243",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        896,
+        1152
+      ],
+      "control_to_image_projection_ratio": 0.386494233943339,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 1919.084156570524,
+          "rms": 0.38557436747136403
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 389.5803431257794,
+          "rms": 0.7669142139806725
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 389.5803431257794,
+          "rms": 0.7669142139806725
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 731.7939429921513,
+          "rms": 0.14702898031986597
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 366.13993653383403,
+          "rms": 0.7207702508314713
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 1893.414904346113,
+          "rms": 0.380417008605155
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 366.14273173176605,
+          "rms": 0.7207757533601865
+        }
+      },
+      "noise_seed": 4042330993969299678,
+      "stem": "sculpture_humanart_14000000001143",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.3743922017129665,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 1990.455412713382,
+          "rms": 0.3967773532640533
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 389.1505974555352,
+          "rms": 0.7600597606553422
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 389.1505974555352,
+          "rms": 0.7600597606553422
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 735.7017058563885,
+          "rms": 0.14665476743516523
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 372.89618193271974,
+          "rms": 0.7283128553373432
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 1965.0561696806533,
+          "rms": 0.39171426852421554
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 372.8963704905158,
+          "rms": 0.7283132236142886
+        }
+      },
+      "noise_seed": 4178897688700512738,
+      "stem": "sculpture_humanart_14000000004479",
+      "timestep": 0.7
+    },
+    {
+      "bucket": [
+        1344,
+        768
+      ],
+      "control_to_image_projection_ratio": 0.3463291720166275,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2130.52693012785,
+          "rms": 0.4280565657593476
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 390.35778860553046,
+          "rms": 0.7684446659132117
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 390.35778860553046,
+          "rms": 0.7684446659132117
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.6545866550076,
+          "rms": 0.14680006560681672
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 456.43763265094606,
+          "rms": 0.89852713170049
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2109.711354664424,
+          "rms": 0.42387438734086413
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 456.43855692743574,
+          "rms": 0.8985289511988043
+        }
+      },
+      "noise_seed": 5261915121967885846,
+      "stem": "coco_156320_crowd",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.34490509861647056,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2159.598342284972,
+          "rms": 0.4304943024054846
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 392.33145266470797,
+          "rms": 0.7662723684857577
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 392.33147257771714,
+          "rms": 0.7662724073783538
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 737.5353805072676,
+          "rms": 0.14702029211362633
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 461.73795328086254,
+          "rms": 0.9018319400016847
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2138.3719274251616,
+          "rms": 0.42626302917345604
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 461.7405927574486,
+          "rms": 0.9018370952293918
+        }
+      },
+      "noise_seed": 3643998546557115423,
+      "stem": "coco_299468_426600",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.34631587957018367,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2152.9086139453298,
+          "rms": 0.42916077205473907
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 391.6524288192274,
+          "rms": 0.7649461500375535
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 391.6524288192274,
+          "rms": 0.7649461500375535
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 738.0609730909771,
+          "rms": 0.1471250637316829
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 461.15774822721994,
+          "rms": 0.900698727006289
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2131.1785471893245,
+          "rms": 0.4248291008609868
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 461.15795151986697,
+          "rms": 0.9006991240622402
+        }
+      },
+      "noise_seed": 5778442831722757463,
+      "stem": "coco_379542_449327",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        1344,
+        768
+      ],
+      "control_to_image_projection_ratio": 0.3441957602490594,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2141.1298419292557,
+          "rms": 0.43018685848110483
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 390.62259999262716,
+          "rms": 0.7689659643318099
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 390.62261999274955,
+          "rms": 0.76896600370335
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 729.6988676844716,
+          "rms": 0.14660804654591045
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 458.53676924538996,
+          "rms": 0.9026594184541014
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2120.0112028005888,
+          "rms": 0.42594378977772746
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 458.5407390570657,
+          "rms": 0.9026672332862782
+        }
+      },
+      "noise_seed": 7123269717202692362,
+      "stem": "coco_64240_crowd",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.3438258938521971,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2150.320906283525,
+          "rms": 0.43117882222271336
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 386.37926639507975,
+          "rms": 0.7591080110498728
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 386.37926639507975,
+          "rms": 0.7591080110498728
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 732.1353614598875,
+          "rms": 0.1468065821893895
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 459.7726510189574,
+          "rms": 0.9033018409772842
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2129.3781956242533,
+          "rms": 0.4269794242213133
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 459.7745711215443,
+          "rms": 0.9033056133465144
+        }
+      },
+      "noise_seed": 7718514632453823517,
+      "stem": "danbooru_anime_11903560",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.3431512941178807,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2165.973222364487,
+          "rms": 0.4317650709085969
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 390.00745185188447,
+          "rms": 0.7617333043982119
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 390.00745185188447,
+          "rms": 0.7617333043982119
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 736.2119684574545,
+          "rms": 0.14675648317470275
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 461.6180103722124,
+          "rms": 0.9015976765082273
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2145.4442430415197,
+          "rms": 0.42767282446642435
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 461.622749114469,
+          "rms": 0.9016069318641973
+        }
+      },
+      "noise_seed": 6267238989222319711,
+      "stem": "danbooru_anime_11910154",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        896,
+        1152
+      ],
+      "control_to_image_projection_ratio": 0.3422429805540792,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2153.5189806453996,
+          "rms": 0.43267603244861264
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 386.3371260958491,
+          "rms": 0.7605297305662342
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 386.3371260958491,
+          "rms": 0.7605297305662342
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.0851405829322,
+          "rms": 0.1466856548821501
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 458.9425855975887,
+          "rms": 0.9034582943066914
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2133.236273833726,
+          "rms": 0.4286009157723885
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 458.94164934117714,
+          "rms": 0.9034564512251227
+        }
+      },
+      "noise_seed": 4906007770945352395,
+      "stem": "danbooru_anime_11917323",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.344200945169367,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2146.016775330519,
+          "rms": 0.4303157649415484
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 392.531527396208,
+          "rms": 0.7711951777749393
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 392.531527396208,
+          "rms": 0.7711951777749393
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 731.4545440422119,
+          "rms": 0.14667006579714112
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 458.83762787068804,
+          "rms": 0.9014648284248493
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2125.0799984941746,
+          "rms": 0.4261175567805918
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 458.83681058738085,
+          "rms": 0.9014632227323089
+        }
+      },
+      "noise_seed": 3082123285709755790,
+      "stem": "painting_humanart_10000000000555",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        704,
+        1472
+      ],
+      "control_to_image_projection_ratio": 0.34488214526680816,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2142.002684405414,
+          "rms": 0.4295108660111961
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 390.6772165099982,
+          "rms": 0.7675520675691769
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 390.6772165099982,
+          "rms": 0.7675520675691769
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 731.4251072392854,
+          "rms": 0.14666416317768616
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 458.86956888641026,
+          "rms": 0.9015275820015151
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2120.7972557507705,
+          "rms": 0.4252587882281457
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 458.8714246659951,
+          "rms": 0.90153122799723
+        }
+      },
+      "noise_seed": 2232647570507245885,
+      "stem": "painting_humanart_10000000000838",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.342728698425056,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2169.6972138987503,
+          "rms": 0.4325074113273298
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 390.27170022946837,
+          "rms": 0.7622494145106804
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 390.27170022946837,
+          "rms": 0.7622494145106804
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 736.3090383799455,
+          "rms": 0.14677583309165218
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 462.77336515836777,
+          "rms": 0.903854228824937
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2148.3728726643335,
+          "rms": 0.4282566174531995
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 462.7698705890434,
+          "rms": 0.9038474034942254
+        }
+      },
+      "noise_seed": 9017590521234192360,
+      "stem": "painting_humanart_1000000000218",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        896,
+        1152
+      ],
+      "control_to_image_projection_ratio": 0.3440817928640175,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2144.0731097609523,
+          "rms": 0.4307782075517642
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 385.6946655062784,
+          "rms": 0.7592650051591182
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 385.6946655062784,
+          "rms": 0.7592650051591182
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.6239627879721,
+          "rms": 0.14679391278745166
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 457.7547958514471,
+          "rms": 0.901120053028326
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2123.401987377802,
+          "rms": 0.42662505204239387
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 457.7571681579656,
+          "rms": 0.9011247230678212
+        }
+      },
+      "noise_seed": 7599141326900068378,
+      "stem": "painting_humanart_1000000001225",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        1152,
+        896
+      ],
+      "control_to_image_projection_ratio": 0.3439891611343526,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2144.318073421012,
+          "rms": 0.43082742462645973
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 385.2786937724431,
+          "rms": 0.7584461377780464
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 385.2786937724431,
+          "rms": 0.7584461377780464
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 730.4454120603401,
+          "rms": 0.1467580391215509
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 457.0579148204306,
+          "rms": 0.8997481974468767
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2123.4547322700337,
+          "rms": 0.4266356493256812
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 457.060376208658,
+          "rms": 0.899753042849503
+        }
+      },
+      "noise_seed": 1919596100883312368,
+      "stem": "painting_humanart_1000000002653",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.3466576124091737,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2128.761846708081,
+          "rms": 0.4268558349472767
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 391.4298308764931,
+          "rms": 0.769030706938644
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 391.42985083536996,
+          "rms": 0.7690307461512639
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 730.9450646252426,
+          "rms": 0.14656790581984955
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 458.2103603968378,
+          "rms": 0.9002324544185696
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2108.550449953712,
+          "rms": 0.42280307881094403
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 458.2100705462507,
+          "rms": 0.9002318849576232
+        }
+      },
+      "noise_seed": 4348796263035736632,
+      "stem": "painting_humanart_6000000000319",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        1152,
+        896
+      ],
+      "control_to_image_projection_ratio": 0.34399691793867015,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2138.3227071702718,
+          "rms": 0.4296228606984144
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 392.08248095904514,
+          "rms": 0.7718398348533119
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 392.08246103339025,
+          "rms": 0.7718397956283657
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 728.6659042386984,
+          "rms": 0.1464005078479011
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 457.95803574126745,
+          "rms": 0.9015201439546302
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2118.2338161779967,
+          "rms": 0.4255866846865246
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 457.9553744634951,
+          "rms": 0.9015149050564492
+        }
+      },
+      "noise_seed": 6459662611701257179,
+      "stem": "painting_humanart_6000000002434",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        704,
+        1472
+      ],
+      "control_to_image_projection_ratio": 0.343178216736057,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2148.9993020008174,
+          "rms": 0.43091381629899417
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 392.34670573358966,
+          "rms": 0.7708320640757542
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 392.34670573358966,
+          "rms": 0.7708320640757542
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 730.4546529388392,
+          "rms": 0.14646956927262547
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 458.4873737356352,
+          "rms": 0.9007766943996914
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2128.4994714587083,
+          "rms": 0.42680322389249203
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 458.48986152912914,
+          "rms": 0.9007815820945948
+        }
+      },
+      "noise_seed": 9108025408016937194,
+      "stem": "painting_humanart_9000000000608",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        704,
+        1472
+      ],
+      "control_to_image_projection_ratio": 0.3433162613742923,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2153.712724575866,
+          "rms": 0.4318589440650912
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 387.11466728218915,
+          "rms": 0.7605528316013128
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 387.1146874635474,
+          "rms": 0.7605528712510355
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 732.1901648479035,
+          "rms": 0.14681757127489273
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 459.79217452018474,
+          "rms": 0.903340198227464
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2132.6987597877014,
+          "rms": 0.4276452583026017
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 459.7901695338864,
+          "rms": 0.9033362590896958
+        }
+      },
+      "noise_seed": 3014920637012178692,
+      "stem": "painting_humanart_9000000002722",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        1216,
+        832
+      ],
+      "control_to_image_projection_ratio": 0.3461528091468611,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 2111.8896751487755,
+          "rms": 0.42858518587330924
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 387.6931575034566,
+          "rms": 0.7708851525919305
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 387.69317765470157,
+          "rms": 0.7708851926604622
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.643645035317,
+          "rms": 0.14685565716952137
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 451.72814003557494,
+          "rms": 0.8982116641000774
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 2090.532348470121,
+          "rms": 0.42425094723762713
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 451.73159896115305,
+          "rms": 0.8982185417927073
+        }
+      },
+      "noise_seed": 4227267600249765570,
+      "stem": "real_human_humanart_15000000000201",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        1472,
+        704
+      ],
+      "control_to_image_projection_ratio": 0.34166350506835974,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24870912,
+          "l2": 2159.968634031522,
+          "rms": 0.4331133687712546
+        },
+        "control_input": {
+          "element_count": 259072,
+          "l2": 386.5566743700075,
+          "rms": 0.7594565592943174
+        },
+        "control_latent": {
+          "element_count": 259072,
+          "l2": 386.5566743700075,
+          "rms": 0.7594565592943174
+        },
+        "control_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 731.1591823946411,
+          "rms": 0.14661084036387803
+        },
+        "image_input": {
+          "element_count": 259072,
+          "l2": 460.65089818646834,
+          "rms": 0.9050273074257289
+        },
+        "image_only_projection_output": {
+          "element_count": 24870912,
+          "l2": 2139.9978971952287,
+          "rms": 0.4291088693670817
+        },
+        "noisy_image_latent": {
+          "element_count": 259072,
+          "l2": 460.6500502008005,
+          "rms": 0.9050256414131612
+        }
+      },
+      "noise_seed": 9056257852440049856,
+      "stem": "real_human_humanart_15000000002196",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        832,
+        1216
+      ],
+      "control_to_image_projection_ratio": 0.34394760335427416,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 2124.996117643512,
+          "rms": 0.43124499673314926
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 384.1139764119499,
+          "rms": 0.7637683451155033
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 384.11399675096453,
+          "rms": 0.7637683855573942
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.6947733678888,
+          "rms": 0.14686603311206065
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 453.37960088649777,
+          "rms": 0.9014954121503685
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 2104.084361426604,
+          "rms": 0.42700118180729163
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 453.3804969338668,
+          "rms": 0.9014971938418931
+        }
+      },
+      "noise_seed": 3660690874715311734,
+      "stem": "real_human_humanart_17000000000288",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        1216,
+        832
+      ],
+      "control_to_image_projection_ratio": 0.34583038721043885,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 2112.257323339181,
+          "rms": 0.42865979610028987
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 380.7549039408422,
+          "rms": 0.7570891993933244
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 380.75492445929046,
+          "rms": 0.7570892401919994
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.703280011912,
+          "rms": 0.14686775944353184
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 453.00072433716923,
+          "rms": 0.9007420578522856
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 2092.6538175245328,
+          "rms": 0.42468147645499515
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 453.00469092493955,
+          "rms": 0.9007499449752832
+        }
+      },
+      "noise_seed": 5426016089364371029,
+      "stem": "real_human_humanart_17000000001552",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        832,
+        1216
+      ],
+      "control_to_image_projection_ratio": 0.34563926281370394,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24281088,
+          "l2": 2111.8615011406405,
+          "rms": 0.42857946826284155
+        },
+        "control_input": {
+          "element_count": 252928,
+          "l2": 381.4689535204667,
+          "rms": 0.758509008354338
+        },
+        "control_latent": {
+          "element_count": 252928,
+          "l2": 381.4689535204667,
+          "rms": 0.758509008354338
+        },
+        "control_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 723.1098853217262,
+          "rms": 0.1467473364041173
+        },
+        "image_input": {
+          "element_count": 252928,
+          "l2": 452.6817659791479,
+          "rms": 0.9001078442796832
+        },
+        "image_only_projection_output": {
+          "element_count": 24281088,
+          "l2": 2092.094166140712,
+          "rms": 0.4245679012549354
+        },
+        "noisy_image_latent": {
+          "element_count": 252928,
+          "l2": 452.67979853313534,
+          "rms": 0.9001039322299339
+        }
+      },
+      "noise_seed": 5599078471676269925,
+      "stem": "real_human_humanart_17000000001695",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.3435957895585622,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2159.781470427043,
+          "rms": 0.4305308071666839
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 391.0735224992866,
+          "rms": 0.7638154736314191
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 391.0735224992866,
+          "rms": 0.7638154736314191
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 735.1970824207615,
+          "rms": 0.146554175806785
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 461.501963701131,
+          "rms": 0.9013710228537715
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2139.715051122462,
+          "rms": 0.42653076743190543
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 461.5057217955158,
+          "rms": 0.9013783628818668
+        }
+      },
+      "noise_seed": 8749506554347127796,
+      "stem": "sculpture_humanart_14000000000243",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        896,
+        1152
+      ],
+      "control_to_image_projection_ratio": 0.34443964455539355,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 24772608,
+          "l2": 2145.3806189112456,
+          "rms": 0.431040906825197
+        },
+        "control_input": {
+          "element_count": 258048,
+          "l2": 389.5803431257794,
+          "rms": 0.7669142139806725
+        },
+        "control_latent": {
+          "element_count": 258048,
+          "l2": 389.5803431257794,
+          "rms": 0.7669142139806725
+        },
+        "control_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 731.7939429921513,
+          "rms": 0.14702898031986597
+        },
+        "image_input": {
+          "element_count": 258048,
+          "l2": 458.1856542385412,
+          "rms": 0.9019682257534282
+        },
+        "image_only_projection_output": {
+          "element_count": 24772608,
+          "l2": 2124.592666842282,
+          "rms": 0.4268642783836703
+        },
+        "noisy_image_latent": {
+          "element_count": 258048,
+          "l2": 458.18502335301184,
+          "rms": 0.9019669838142791
+        }
+      },
+      "noise_seed": 4656089955343263632,
+      "stem": "sculpture_humanart_14000000001143",
+      "timestep": 0.9
+    },
+    {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "control_to_image_projection_ratio": 0.3429348791633982,
+      "measurements": {
+        "both_projection_output": {
+          "element_count": 25165824,
+          "l2": 2165.6077668867,
+          "rms": 0.43169222101892546
+        },
+        "control_input": {
+          "element_count": 262144,
+          "l2": 389.1505974555352,
+          "rms": 0.7600597606553422
+        },
+        "control_latent": {
+          "element_count": 262144,
+          "l2": 389.1505974555352,
+          "rms": 0.7600597606553422
+        },
+        "control_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 735.7017058563885,
+          "rms": 0.14665476743516523
+        },
+        "image_input": {
+          "element_count": 262144,
+          "l2": 462.3437404950996,
+          "rms": 0.9030151181544914
+        },
+        "image_only_projection_output": {
+          "element_count": 25165824,
+          "l2": 2145.3102339754964,
+          "rms": 0.427646111101136
+        },
+        "noisy_image_latent": {
+          "element_count": 262144,
+          "l2": 462.341915550602,
+          "rms": 0.9030115538097695
+        }
+      },
+      "noise_seed": 2300085015725309703,
+      "stem": "sculpture_humanart_14000000004479",
+      "timestep": 0.9
+    }
+  ],
+  "per_timestep": {
+    "0.1": {
+      "both_projection_output_rms": 0.49636038026838,
+      "control_input_rms": 0.7642445238641162,
+      "control_latent_rms": 0.76424453374983,
+      "control_only_projection_output_rms": 0.1467460298694048,
+      "control_to_image_projection_ratio": 0.29905726755868867,
+      "element_count": {
+        "both_projection_output": 595623936,
+        "control_input": 6204416,
+        "control_latent": 6204416,
+        "control_only_projection_output": 595623936,
+        "image_input": 6204416,
+        "image_only_projection_output": 595623936,
+        "noisy_image_latent": 6204416
+      },
+      "image_input_rms": 0.5062668558312687,
+      "image_only_projection_output_rms": 0.4906954145182462,
+      "l2": {
+        "both_projection_output": 12113.877558403832,
+        "control_input": 1903.6310944481863,
+        "control_latent": 1903.63111907218,
+        "control_only_projection_output": 3581.3967203801926,
+        "image_input": 1261.0431592968478,
+        "image_only_projection_output": 11975.621758388997,
+        "noisy_image_latent": 1261.046062550849
+      },
+      "noisy_image_latent_rms": 0.5062680213911183,
+      "rms": {
+        "both_projection_output": 0.49636038026838,
+        "control_input": 0.7642445238641162,
+        "control_latent": 0.76424453374983,
+        "control_only_projection_output": 0.1467460298694048,
+        "image_input": 0.5062668558312687,
+        "image_only_projection_output": 0.4906954145182462,
+        "noisy_image_latent": 0.5062680213911183
+      }
+    },
+    "0.3": {
+      "both_projection_output_rms": 0.42142142015770484,
+      "control_input_rms": 0.7642445238641162,
+      "control_latent_rms": 0.76424453374983,
+      "control_only_projection_output_rms": 0.1467460298694048,
+      "control_to_image_projection_ratio": 0.35331048005035076,
+      "element_count": {
+        "both_projection_output": 595623936,
+        "control_input": 6204416,
+        "control_latent": 6204416,
+        "control_only_projection_output": 595623936,
+        "image_input": 6204416,
+        "image_only_projection_output": 595623936,
+        "noisy_image_latent": 6204416
+      },
+      "image_input_rms": 0.4888277585582802,
+      "image_only_projection_output_rms": 0.4153458166553447,
+      "l2": {
+        "both_projection_output": 10284.961667405474,
+        "control_input": 1903.6310944481863,
+        "control_latent": 1903.63111907218,
+        "control_only_projection_output": 3581.3967203801926,
+        "image_input": 1217.604695832149,
+        "image_only_projection_output": 10136.684085538032,
+        "noisy_image_latent": 1217.6055748630179
+      },
+      "noisy_image_latent_rms": 0.48882811145991634,
+      "rms": {
+        "both_projection_output": 0.42142142015770484,
+        "control_input": 0.7642445238641162,
+        "control_latent": 0.76424453374983,
+        "control_only_projection_output": 0.1467460298694048,
+        "image_input": 0.4888277585582802,
+        "image_only_projection_output": 0.4153458166553447,
+        "noisy_image_latent": 0.48882811145991634
+      }
+    },
+    "0.5": {
+      "both_projection_output_rms": 0.38018548528033325,
+      "control_input_rms": 0.7642445238641162,
+      "control_latent_rms": 0.76424453374983,
+      "control_only_projection_output_rms": 0.1467460298694048,
+      "control_to_image_projection_ratio": 0.3922494722188286,
+      "element_count": {
+        "both_projection_output": 595623936,
+        "control_input": 6204416,
+        "control_latent": 6204416,
+        "control_only_projection_output": 595623936,
+        "image_input": 6204416,
+        "image_only_projection_output": 595623936,
+        "noisy_image_latent": 6204416
+      },
+      "image_input_rms": 0.5708603837492233,
+      "image_only_projection_output_rms": 0.37411402758379736,
+      "l2": {
+        "both_projection_output": 9278.581855542365,
+        "control_input": 1903.6310944481863,
+        "control_latent": 1903.63111907218,
+        "control_only_projection_output": 3581.3967203801926,
+        "image_input": 1421.9370151311205,
+        "image_only_projection_output": 9130.405453757243,
+        "noisy_image_latent": 1421.939883135008
+      },
+      "noisy_image_latent_rms": 0.5708615351573254,
+      "rms": {
+        "both_projection_output": 0.38018548528033325,
+        "control_input": 0.7642445238641162,
+        "control_latent": 0.76424453374983,
+        "control_only_projection_output": 0.1467460298694048,
+        "image_input": 0.5708603837492233,
+        "image_only_projection_output": 0.37411402758379736,
+        "noisy_image_latent": 0.5708615351573254
+      }
+    },
+    "0.7": {
+      "both_projection_output_rms": 0.383390212744392,
+      "control_input_rms": 0.7642445238641162,
+      "control_latent_rms": 0.76424453374983,
+      "control_only_projection_output_rms": 0.1467460298694048,
+      "control_to_image_projection_ratio": 0.38816909526549437,
+      "element_count": {
+        "both_projection_output": 595623936,
+        "control_input": 6204416,
+        "control_latent": 6204416,
+        "control_only_projection_output": 595623936,
+        "image_input": 6204416,
+        "image_only_projection_output": 595623936,
+        "noisy_image_latent": 6204416
+      },
+      "image_input_rms": 0.7188601033561646,
+      "image_only_projection_output_rms": 0.37804665971420404,
+      "l2": {
+        "both_projection_output": 9356.794536592111,
+        "control_input": 1903.6310944481863,
+        "control_latent": 1903.63111907218,
+        "control_only_projection_output": 3581.3967203801926,
+        "image_input": 1790.584561061694,
+        "image_only_projection_output": 9226.382945119934,
+        "noisy_image_latent": 1790.5867426105053
+      },
+      "noisy_image_latent_rms": 0.7188609791754015,
+      "rms": {
+        "both_projection_output": 0.383390212744392,
+        "control_input": 0.7642445238641162,
+        "control_latent": 0.76424453374983,
+        "control_only_projection_output": 0.1467460298694048,
+        "image_input": 0.7188601033561646,
+        "image_only_projection_output": 0.37804665971420404,
+        "noisy_image_latent": 0.7188609791754015
+      }
+    },
+    "0.9": {
+      "both_projection_output_rms": 0.43043219867559845,
+      "control_input_rms": 0.7642445238641162,
+      "control_latent_rms": 0.76424453374983,
+      "control_only_projection_output_rms": 0.1467460298694048,
+      "control_to_image_projection_ratio": 0.3442465273667854,
+      "element_count": {
+        "both_projection_output": 595623936,
+        "control_input": 6204416,
+        "control_latent": 6204416,
+        "control_only_projection_output": 595623936,
+        "image_input": 6204416,
+        "image_only_projection_output": 595623936,
+        "noisy_image_latent": 6204416
+      },
+      "image_input_rms": 0.9015754278044731,
+      "image_only_projection_output_rms": 0.4262818015678945,
+      "l2": {
+        "both_projection_output": 10504.873392859145,
+        "control_input": 1903.6310944481863,
+        "control_latent": 1903.63111907218,
+        "control_only_projection_output": 3581.3967203801926,
+        "image_input": 2245.704044670624,
+        "image_only_projection_output": 10403.58125839367,
+        "noisy_image_latent": 2245.708149726941
+      },
+      "noisy_image_latent_rms": 0.9015770758479514,
+      "rms": {
+        "both_projection_output": 0.43043219867559845,
+        "control_input": 0.7642445238641162,
+        "control_latent": 0.76424453374983,
+        "control_only_projection_output": 0.1467460298694048,
+        "image_input": 0.9015754278044731,
+        "image_only_projection_output": 0.4262818015678945,
+        "noisy_image_latent": 0.9015770758479514
+      }
+    }
+  },
+  "record_count": 120,
+  "sample_count": 24
+}

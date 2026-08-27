@@ -1,0 +1,213 @@
+{
+  "checkpoint_step": 1500,
+  "control_scale_results": [
+    {
+      "cfg": 0.0,
+      "clip_mean": 0.3346260312313938,
+      "coco_pck": {
+        "pck_005": 0.032520325203252036,
+        "pck_010": 0.10569105691056911,
+        "pck_020": 0.4065040650406504
+      },
+      "control_scale": 0.75,
+      "detection_coverage": 0.8653846153846154,
+      "human_art_pck": {
+        "pck_005": 0.05420827389443652,
+        "pck_010": 0.15834522111269614,
+        "pck_020": 0.3651925820256776
+      },
+      "joint_coverage": 0.8652912621359223,
+      "matched_people": 45,
+      "model": "Krea-2 Turbo",
+      "mu": 1.15,
+      "mu_resolution_dependent": false,
+      "multi_person_pck": {
+        "pck_005": 0.036127167630057806,
+        "pck_010": 0.12138728323699421,
+        "pck_020": 0.33959537572254334
+      },
+      "pck_005": 0.050970873786407765,
+      "pck_010": 0.15048543689320387,
+      "pck_020": 0.3713592233009709,
+      "predicted_people": 79,
+      "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+      "single_person_pck": {
+        "pck_005": 0.12878787878787878,
+        "pck_010": 0.30303030303030304,
+        "pck_020": 0.5378787878787878
+      },
+      "steps": 8,
+      "unmatched_predicted_people": 34,
+      "unmatched_reference_people": 7
+    },
+    {
+      "cfg": 0.0,
+      "clip_mean": 0.33684297981215466,
+      "coco_pck": {
+        "pck_005": 0.032520325203252036,
+        "pck_010": 0.0975609756097561,
+        "pck_020": 0.4146341463414634
+      },
+      "control_scale": 1.0,
+      "detection_coverage": 0.9230769230769231,
+      "human_art_pck": {
+        "pck_005": 0.05848787446504993,
+        "pck_010": 0.19543509272467904,
+        "pck_020": 0.4122681883024251
+      },
+      "joint_coverage": 0.9271844660194175,
+      "matched_people": 48,
+      "model": "Krea-2 Turbo",
+      "mu": 1.15,
+      "mu_resolution_dependent": false,
+      "multi_person_pck": {
+        "pck_005": 0.04335260115606936,
+        "pck_010": 0.157514450867052,
+        "pck_020": 0.38439306358381503
+      },
+      "pck_005": 0.05461165048543689,
+      "pck_010": 0.1808252427184466,
+      "pck_020": 0.41262135922330095,
+      "predicted_people": 79,
+      "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+      "single_person_pck": {
+        "pck_005": 0.11363636363636363,
+        "pck_010": 0.30303030303030304,
+        "pck_020": 0.5606060606060606
+      },
+      "steps": 8,
+      "unmatched_predicted_people": 31,
+      "unmatched_reference_people": 4
+    },
+    {
+      "cfg": 0.0,
+      "clip_mean": 0.33723724800127847,
+      "coco_pck": {
+        "pck_005": 0.032520325203252036,
+        "pck_010": 0.0975609756097561,
+        "pck_020": 0.4146341463414634
+      },
+      "control_scale": 1.25,
+      "detection_coverage": 0.8846153846153846,
+      "human_art_pck": {
+        "pck_005": 0.05706134094151213,
+        "pck_010": 0.16547788873038516,
+        "pck_020": 0.3780313837375178
+      },
+      "joint_coverage": 0.8859223300970874,
+      "matched_people": 46,
+      "model": "Krea-2 Turbo",
+      "mu": 1.15,
+      "mu_resolution_dependent": false,
+      "multi_person_pck": {
+        "pck_005": 0.04046242774566474,
+        "pck_010": 0.13005780346820808,
+        "pck_020": 0.3569364161849711
+      },
+      "pck_005": 0.05339805825242718,
+      "pck_010": 0.1553398058252427,
+      "pck_020": 0.38349514563106796,
+      "predicted_people": 73,
+      "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+      "single_person_pck": {
+        "pck_005": 0.12121212121212122,
+        "pck_010": 0.2878787878787879,
+        "pck_020": 0.5227272727272727
+      },
+      "steps": 8,
+      "unmatched_predicted_people": 27,
+      "unmatched_reference_people": 6
+    },
+    {
+      "cfg": 0.0,
+      "clip_mean": 0.3344816674098418,
+      "coco_pck": {
+        "pck_005": 0.04878048780487805,
+        "pck_010": 0.11382113821138211,
+        "pck_020": 0.4065040650406504
+      },
+      "control_scale": 1.5,
+      "detection_coverage": 0.9038461538461539,
+      "human_art_pck": {
+        "pck_005": 0.05563480741797432,
+        "pck_010": 0.1754636233951498,
+        "pck_020": 0.39372325249643364
+      },
+      "joint_coverage": 0.9065533980582524,
+      "matched_people": 47,
+      "model": "Krea-2 Turbo",
+      "mu": 1.15,
+      "mu_resolution_dependent": false,
+      "multi_person_pck": {
+        "pck_005": 0.03901734104046243,
+        "pck_010": 0.1416184971098266,
+        "pck_020": 0.3670520231213873
+      },
+      "pck_005": 0.05461165048543689,
+      "pck_010": 0.1662621359223301,
+      "pck_020": 0.39563106796116504,
+      "predicted_people": 78,
+      "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+      "single_person_pck": {
+        "pck_005": 0.13636363636363635,
+        "pck_010": 0.29545454545454547,
+        "pck_020": 0.5454545454545454
+      },
+      "steps": 8,
+      "unmatched_predicted_people": 31,
+      "unmatched_reference_people": 5
+    },
+    {
+      "cfg": 0.0,
+      "clip_mean": 0.33624838396061035,
+      "coco_pck": {
+        "pck_005": 0.04065040650406504,
+        "pck_010": 0.10569105691056911,
+        "pck_020": 0.4146341463414634
+      },
+      "control_scale": 2.0,
+      "detection_coverage": 0.9038461538461539,
+      "human_art_pck": {
+        "pck_005": 0.04850213980028531,
+        "pck_010": 0.17118402282453637,
+        "pck_020": 0.3980028530670471
+      },
+      "joint_coverage": 0.9065533980582524,
+      "matched_people": 47,
+      "model": "Krea-2 Turbo",
+      "mu": 1.15,
+      "mu_resolution_dependent": false,
+      "multi_person_pck": {
+        "pck_005": 0.036127167630057806,
+        "pck_010": 0.14017341040462428,
+        "pck_020": 0.3699421965317919
+      },
+      "pck_005": 0.04733009708737864,
+      "pck_010": 0.16140776699029127,
+      "pck_020": 0.40048543689320387,
+      "predicted_people": 75,
+      "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+      "single_person_pck": {
+        "pck_005": 0.10606060606060606,
+        "pck_010": 0.2727272727272727,
+        "pck_020": 0.5606060606060606
+      },
+      "steps": 8,
+      "unmatched_predicted_people": 28,
+      "unmatched_reference_people": 5
+    }
+  ],
+  "metadata": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "qualitative_grids": {
+    "full": "turbo_control_scale_full_contact_sheet.png",
+    "selection": "turbo_control_scale_selection_grid.png"
+  },
+  "spec_sha256": "7f28a99c0f67b5d80beb110513b656cb3d3c1b6ec123b712db1ddd0a0bcd39a7"
+}
