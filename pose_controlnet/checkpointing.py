@@ -281,15 +281,10 @@ def newest_valid_hf_checkpoint(*, repo_id: str, run_name: str, download_dir: str
     return None
 
 
-def validated_hf_checkpoint_for_step(*, repo_id: str, run_name: str, step: int,
-                                     download_dir: str | Path, api: object | None = None,
-                                     download_fn: Callable[..., str] | None = None) -> Path | None:
-    """Return one exact completion-marked HF checkpoint, or ``None``.
-
-    This is deliberately stricter than newest-checkpoint recovery: evaluation
-    comparisons must never silently replace an unavailable archived step with a
-    different checkpoint.
-    """
+def _validated_hf_marker_for_step(*, repo_id: str, run_name: str, step: int,
+                                  download_dir: str | Path, api: object | None = None,
+                                  download_fn: Callable[..., str] | None = None) -> tuple[dict[str, object], str] | None:
+    """Read one exact completion marker and return it with its checkpoint path."""
     if not repo_id or step < 0:
         return None
     remote = f"{run_name}/full/step_{step:06d}.pt"
@@ -312,12 +307,57 @@ def validated_hf_checkpoint_for_step(*, repo_id: str, run_name: str, step: int,
         expected = {"format": 1, "checkpoint": remote, "sha256": marker.get("sha256"), "global_step": step}
         if marker != expected or not isinstance(marker["sha256"], str):
             return None
+        return marker, remote
+    except Exception:
+        return None
+
+
+def validated_hf_checkpoint_for_step(*, repo_id: str, run_name: str, step: int,
+                                     download_dir: str | Path, api: object | None = None,
+                                     download_fn: Callable[..., str] | None = None) -> Path | None:
+    """Return one exact completion-marked HF checkpoint, or ``None``.
+
+    This is deliberately stricter than newest-checkpoint recovery: evaluation
+    comparisons must never silently replace an unavailable archived step with a
+    different checkpoint.
+    """
+    marker_result = _validated_hf_marker_for_step(repo_id=repo_id, run_name=run_name, step=step,
+                                                   download_dir=download_dir, api=api, download_fn=download_fn)
+    if marker_result is None:
+        return None
+    marker, remote = marker_result
+    try:
+        if download_fn is None:
+            from huggingface_hub import hf_hub_download
+            download_fn = hf_hub_download
         checkpoint = Path(download_fn(repo_id=repo_id, repo_type="model", filename=remote,
-                                      local_dir=str(target)))
+                                      local_dir=str(download_dir)))
         if _sha256(checkpoint) != marker["sha256"]:
             return None
         state = load_training_state(checkpoint)
         return checkpoint if state["global_step"] == step else None
+    except Exception:
+        return None
+
+
+def validated_local_checkpoint_for_hf_step(*, checkpoint: str | Path, repo_id: str, run_name: str,
+                                           step: int, marker_download_dir: str | Path,
+                                           api: object | None = None,
+                                           download_fn: Callable[..., str] | None = None) -> Path | None:
+    """Validate one local exact-step checkpoint against its HF completion marker."""
+    marker_result = _validated_hf_marker_for_step(repo_id=repo_id, run_name=run_name, step=step,
+                                                   download_dir=marker_download_dir, api=api, download_fn=download_fn)
+    if marker_result is None:
+        return None
+    marker, _ = marker_result
+    path = Path(checkpoint)
+    if path.name != f"step_{step:06d}.pt":
+        return None
+    try:
+        if _sha256(path) != marker["sha256"]:
+            return None
+        state = load_training_state(path)
+        return path if state["global_step"] == step else None
     except Exception:
         return None
 

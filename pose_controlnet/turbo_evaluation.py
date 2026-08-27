@@ -16,7 +16,11 @@ from einops import rearrange
 
 from pose_controlnet.diffusion import forward_pose_control, patchify_and_position
 from pose_controlnet.evaluation import ordered_checkpoints
-from pose_controlnet.checkpointing import load_training_state, validated_hf_checkpoint_for_step
+from pose_controlnet.checkpointing import (
+    load_training_state,
+    validated_hf_checkpoint_for_step,
+    validated_local_checkpoint_for_hf_step,
+)
 from pose_controlnet.model import trainable_state_dict
 from pose_controlnet.paired_preprocessing import resize_center_crop_geometry
 
@@ -37,6 +41,11 @@ LR5E5_CHECKPOINT_ROOT = Path("/lambda/nfs/adhit/krea2-pose/checkpoints/pose-lear
 LR5E5_HF_RUN_NAME = "pose-learning-900-lr5e5-to1500"
 LR5E5_HF_REPO_ID = "adhit-420/Krea-2-PoseControl-LoRA-checkpoints"
 LR5E5_TURBO_CHECKPOINT_STEPS = (1000, 1100, 1200, 1300, 1400, 1500)
+TIMESTEP_TURBO_EVALUATION_ROOT = Path("/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0-timestep-lowmid20")
+TIMESTEP_CHECKPOINT_ROOT = Path("/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-timestep-lowmid20-to1800")
+TIMESTEP_HF_RUN_NAME = "pose-learning-1500-timestep-lowmid20-to1800"
+TIMESTEP_HF_REPO_ID = "adhit-420/Krea-2-PoseControl-LoRA-checkpoints"
+TIMESTEP_TURBO_CHECKPOINT_STEPS = (1600, 1700, 1800)
 
 
 def turbo_schedule(*, image_sequence_length: int, steps: int = TURBO_STEPS,
@@ -138,6 +147,15 @@ def assert_lr5e5_turbo_output_isolated(output_dir: str | Path) -> Path:
     return output
 
 
+def assert_timestep_turbo_output_isolated(output_dir: str | Path) -> Path:
+    """Keep the timestep-exposure Turbo branch separate from both predecessors."""
+    output = assert_lr5e5_turbo_output_isolated(output_dir)
+    lr5e5 = LR5E5_TURBO_EVALUATION_ROOT.resolve()
+    if output == lr5e5 or lr5e5 in output.parents:
+        raise ValueError(f"Timestep Turbo output must not collide with LR=5e-5 Turbo results: {lr5e5}")
+    return output
+
+
 def exact_lr5e5_turbo_checkpoints(*, checkpoint_dir: str | Path, hf_repo_id: str,
                                    hf_recovery_dir: str | Path | None = None,
                                    steps: Iterable[int] = LR5E5_TURBO_CHECKPOINT_STEPS) -> list[tuple[int, Path]]:
@@ -173,17 +191,66 @@ def exact_lr5e5_turbo_checkpoints(*, checkpoint_dir: str | Path, hf_repo_id: str
     return resolved
 
 
-def assert_lr5e5_diagnostic_contract(spec: Mapping[str, Any], original_spec: Mapping[str, Any]) -> None:
+def exact_timestep_turbo_checkpoints(*, checkpoint_dir: str | Path, hf_repo_id: str,
+                                     hf_recovery_dir: str | Path | None = None,
+                                     steps: Iterable[int] = TIMESTEP_TURBO_CHECKPOINT_STEPS) -> list[tuple[int, Path]]:
+    """Resolve only the three completion-marked timestep-exposure states.
+
+    Steps 1600 and 1700 are obtained only through the existing exact-step HF
+    validator.  Local step 1800 is accepted only after its exact HF completion
+    marker validates its checksum, complete training-state schema, and
+    embedded ``global_step``. It cannot select a nearest/latest file, a timed
+    mirror, the original branch, or the LR-only continuation.
+    """
+    requested = tuple(steps)
+    if requested != TIMESTEP_TURBO_CHECKPOINT_STEPS:
+        raise ValueError(
+            f"Timestep Turbo evaluation requires exactly {TIMESTEP_TURBO_CHECKPOINT_STEPS}, got {requested}"
+        )
+    if Path(checkpoint_dir).resolve() != TIMESTEP_CHECKPOINT_ROOT.resolve():
+        raise ValueError(f"Timestep Turbo evaluation requires checkpoint root {TIMESTEP_CHECKPOINT_ROOT}")
+    if hf_repo_id != TIMESTEP_HF_REPO_ID:
+        raise ValueError(f"Timestep Turbo evaluation requires HF repo {TIMESTEP_HF_REPO_ID}")
+    recovery_root = Path(hf_recovery_dir) if hf_recovery_dir is not None else TIMESTEP_CHECKPOINT_ROOT / "hf-recovery-turbo"
+    resolved: list[tuple[int, Path]] = []
+    for step in requested:
+        if step == 1800:
+            checkpoint = validated_local_checkpoint_for_hf_step(
+                checkpoint=TIMESTEP_CHECKPOINT_ROOT / "step_001800.pt",
+                repo_id=TIMESTEP_HF_REPO_ID, run_name=TIMESTEP_HF_RUN_NAME, step=step,
+                marker_download_dir=recovery_root / TIMESTEP_HF_RUN_NAME,
+            )
+        else:
+            checkpoint = validated_hf_checkpoint_for_step(
+                repo_id=TIMESTEP_HF_REPO_ID, run_name=TIMESTEP_HF_RUN_NAME, step=step,
+                download_dir=recovery_root / TIMESTEP_HF_RUN_NAME,
+            )
+        if checkpoint is None:
+            remote = f"{TIMESTEP_HF_RUN_NAME}/full/step_{step:06d}.pt"
+            raise FileNotFoundError(f"Required exact completion-marked timestep checkpoint is unavailable: {remote}")
+        state = load_training_state(checkpoint)
+        if state["global_step"] != step:
+            raise ValueError(f"Timestep checkpoint filename/embedded step mismatch: {checkpoint} has {state['global_step']}")
+        resolved.append((step, checkpoint))
+    return resolved
+
+
+def assert_turbo_diagnostic_contract(spec: Mapping[str, Any], original_spec: Mapping[str, Any], *, branch_name: str) -> None:
     """Require exactly the established Turbo diagnostic inputs and seeds."""
     required = ("stems", "per_stem_seeds", "sample_identities")
     if spec.get("kind") != "turbo_fixed_pose" or original_spec.get("kind") != "turbo_fixed_pose":
-        raise ValueError("LR=5e-5 Turbo evaluation requires the established turbo_fixed_pose diagnostic spec")
+        raise ValueError(f"{branch_name} Turbo evaluation requires the established turbo_fixed_pose diagnostic spec")
     if spec.get("seed") != 420200 or original_spec.get("seed") != 420200:
-        raise ValueError("LR=5e-5 Turbo evaluation requires the immutable diagnostic seed 420200")
+        raise ValueError(f"{branch_name} Turbo evaluation requires the immutable diagnostic seed 420200")
     if any(spec.get(key) != original_spec.get(key) for key in required):
-        raise ValueError("LR=5e-5 Turbo diagnostic stems, inputs, or per-stem seeds differ from original Turbo evaluation")
+        raise ValueError(f"{branch_name} Turbo diagnostic stems, inputs, or per-stem seeds differ from original Turbo evaluation")
     if spec.get("turbo") != turbo_metadata() or original_spec.get("turbo") != turbo_metadata():
-        raise ValueError("LR=5e-5 Turbo contract differs from the established 8-step CFG-0 mu=1.15 contract")
+        raise ValueError(f"{branch_name} Turbo contract differs from the established 8-step CFG-0 mu=1.15 contract")
+
+
+def assert_lr5e5_diagnostic_contract(spec: Mapping[str, Any], original_spec: Mapping[str, Any]) -> None:
+    """Backward-compatible name for the LR-only continuation contract."""
+    assert_turbo_diagnostic_contract(spec, original_spec, branch_name="LR=5e-5")
 
 
 @torch.inference_mode()

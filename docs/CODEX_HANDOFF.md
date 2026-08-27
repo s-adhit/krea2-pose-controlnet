@@ -2,74 +2,126 @@
 
 ## Current bounded objective and status
 
-The interrupted timestep-exposure continuation is ready for a **validated recovery only**. No training/resume, checkpoint write, HF upload, W&B action, commit, or push occurred in this session. Do not use the original `--timestep-lowmid-1500-to1800` selector: it is intentionally locked to the immutable step-1500 source and would restart the experiment from 1500.
+The timestep-exposure continuation completed through step 1800. Its Turbo
+evaluation is implemented but has **not** been run: no Turbo preflight,
+generation, scoring, training, resume, checkpoint mutation, HF upload,
+commit, or push occurred in this session.
 
-The new narrow selector is:
+The new read-only staged entrypoint is:
 
 ```bash
-uv run python train.py --recover-timestep-lowmid-1500-to1800
+scripts/turbo_timestep_benchmark.py
 ```
 
-It selects only the newest fully validated local continuation checkpoint from the fixed namespace below; it does not accept `--resume`, an arbitrary path, or mutable timestep flags.
+It is isolated from the original and LR-only Turbo trees and exposes only
+`preflight`, `generate`, `score`, and `report`.
 
-## Recovery checkpoint audit
+## Immutable Turbo evaluation contract
 
-Immutable source remains:
+- Base: Krea-2 Turbo.
+- Inference remains exactly 8 steps, CFG `0.0`, `mu=1.15`, with
+  `mu_resolution_dependent=false` and the existing official schedule.
+- Diagnostic samples remain the exact existing 24 stems, prompts, controls,
+  bucket/crop geometry, sample identities, and seeds (fixed seed `420200`).
+- PCK remains `score_authoritative_pck` with confidence threshold `0.5`; CLIP
+  remains the shared `_clip_score` implementation.
+- The evaluation entrypoint cannot construct an optimizer, backward pass, or
+  training operation.
 
-`/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt`
+## Exact checkpoint identities
 
-Audited local run:
+HF repo:
 
-`/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-timestep-lowmid20-to1800`
+```text
+adhit-420/Krea-2-PoseControl-LoRA-checkpoints
+```
 
-Both checkpoints fully deserialized through `load_training_state` and passed the recovery semantic validator, including schema, model structure/finiteness, finite AdamW moments, optimizer identities, scheduler, config compatibility, CPU/CUDA RNG, and flow-generator state:
+Only this namespace is accepted:
 
-| checkpoint | global step | epoch | batch position | scheduler / warmup |
-|---|---:|---:|---:|---:|
-| `step_001525.pt` | 1525 | 2 | 7902 | 1525 / 200 |
-| `step_001526.pt` | 1526 | 2 | 7918 | 1526 / 200 |
+```text
+pose-learning-1500-timestep-lowmid20-to1800/full/
+```
 
-Both have one AdamW group, 450 complete parameter moment entries, LR/base LR `5e-5`, betas `(0.9, 0.99)`, weight decay `0.0`, one CUDA RNG state, and a 16-byte CUDA flow-generator state. Both exactly match the fixed continuation configuration: run/max steps `pose-learning-1500-timestep-lowmid20-to1800` / `1800`, seed 42, BF16 path, original buckets/model/data/dropout settings, and auxiliary pre-shift sampler `prob=0.20`, support `[0.04359494981207863, 0.3773562340267345)`.
+Only these exact checkpoints are accepted:
 
-Selected checkpoint:
+```text
+step_001600.pt
+step_001700.pt
+step_001800.pt
+```
 
-`/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-timestep-lowmid20-to1800/step_001526.pt`
+Steps 1600 and 1700 use `validated_hf_checkpoint_for_step` only. Local step
+1800 uses `validated_local_checkpoint_for_hf_step`, which requires its exact
+HF `.complete.json` marker, SHA-256, complete training-state
+deserialization/schema, and matching embedded `global_step`. Neither path has
+a nearest/latest/timed-mirror/original-branch/LR-only fallback. The run root
+is fixed to:
 
-The selector keeps the same local directory, W&B run name/config semantics, and HF target:
+```text
+/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-timestep-lowmid20-to1800
+```
 
-`adhit-420/Krea-2-PoseControl-LoRA-checkpoints/pose-learning-1500-timestep-lowmid20-to1800/full/`
+The local step-1800 checkpoint is at:
 
-The preserved `save_every=25` and `hf_mirror_every_steps=100` produce and mirror checkpoints 1600, 1700, and 1800 normally.
+```text
+/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-timestep-lowmid20-to1800/step_001800.pt
+```
 
-## Files changed and validation
+Steps 1600 and 1700 were pruned locally after their successful mirrors;
+preflight recovers only their exact completion-marked HF paths.
 
-- `train.py`: added the fixed `--recover-timestep-lowmid-1500-to1800` selector and a semantic validator for only this interrupted continuation.
-- `tests/test_train_mechanics.py`: focused acceptance, rejection, and newest-valid-local-selection coverage.
-- `docs/CODEX_HANDOFF.md`
+## User-run commands
 
-PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile train.py tests/test_train_mechanics.py`
-
-PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_train_mechanics` — 42 tests.
-
-PASS: direct semantic validation of both real checkpoints; selected step 1526.
-
-PASS: `git diff --check`.
-
-## Exact next action
-
-Only with explicit authorization to resume training on the GH200 host:
+Run from the GH200 host only when evaluation is authorized:
 
 ```bash
 cd /home/ubuntu/Krea-2-Pose-ControlNet
-tmux new-session -d -s pose-learning-1500-timestep-lowmid20-to1800 \
-  'cd /home/ubuntu/Krea-2-Pose-ControlNet && export UV_CACHE_DIR=/tmp/krea_uv_cache && exec uv run python train.py --recover-timestep-lowmid-1500-to1800'
+export UV_CACHE_DIR=/tmp/krea_uv_cache
+uv run python scripts/turbo_timestep_benchmark.py preflight
+uv run python scripts/turbo_timestep_benchmark.py generate
+uv run python scripts/turbo_timestep_benchmark.py score
+uv run python scripts/turbo_timestep_benchmark.py report
 ```
 
-Immediately verify:
+Evaluation output is fixed to:
 
-```bash
-tmux capture-pane -pt pose-learning-1500-timestep-lowmid20-to1800 -S -200 \
-  | rg '\[timestep-recovery\]|effective_batch|runtime'
+```text
+/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0-timestep-lowmid20
 ```
 
-Expected recovery fields: selected `step_001526.pt`, global/scheduler step 1526, warmup 200, LR `5e-5`, preserved AdamW/RNG/data state, auxiliary probability/support, `(1600, 1700, 1800)` checkpoint cadence, the existing HF namespace, and the existing W&B run name. This continues the same experiment; it does not restart from 1500.
+It rejects both:
+
+```text
+/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0
+/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0-lr5e5
+```
+
+Expected outputs are `turbo_spec.json`, `checkpoint_preflight.json`, per-stem
+`fixed_pose/<stem>/control.png`, `metadata.json`, and step-1600/1700/1800
+PNGs, `generation_results.json`, `pck_clip_results.json`,
+`turbo_timestep_checkpoint_selection_grid.png`,
+`turbo_timestep_full_contact_sheet.png`, and `evaluation_summary.json`.
+The report reads existing machine-readable original step-900 @ `1e-4` and
+LR-only step-1500 @ `5e-5` results, then reports those plus timestep 1600,
+1700, and 1800; it does not recompute either baseline.
+
+## Files changed and validation
+
+- `pose_controlnet/turbo_evaluation.py`: strict timestep namespace/step/output
+  guards and shared diagnostic-contract assertion.
+- `scripts/turbo_timestep_benchmark.py`: staged read-only Turbo evaluation.
+- `tests/test_turbo_timestep_evaluation.py`: focused acceptance/rejection,
+  immutable Turbo/PCK/CLIP/input contract, and no-training coverage.
+- `docs/CODEX_HANDOFF.md`
+
+PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile
+pose_controlnet/turbo_evaluation.py scripts/turbo_timestep_benchmark.py
+tests/test_turbo_timestep_evaluation.py`
+
+PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest
+tests.test_train_mechanics tests.test_turbo_evaluation
+tests.test_turbo_lr5e5_evaluation tests.test_turbo_timestep_evaluation` — 69 tests.
+
+No generation, score, preflight, report, training, or checkpoint operation was
+executed by Codex. Before ending this session: run `git diff --check` and
+`git status --short`.
