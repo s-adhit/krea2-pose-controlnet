@@ -2,91 +2,120 @@
 
 ## Current bounded objective and status
 
-Evaluation support is complete for the finished LR=5e-5 continuation branch.
-No training, training resume, checkpoint creation/change, HF upload, W&B run,
-commit, push, GH200 generation, detector scoring, or CLIP scoring was started
-in this session.
+The timestep-exposure-only continuation is implemented and validated, but has
+**not** been launched. No training/resume, optimizer update, checkpoint write,
+HF upload, W&B run, commit, or push occurred in this session.
 
-## Completed LR continuation branch
+The prior completed LR=5e-5 branch remains immutable:
 
-- Run name and sole allowed HF namespace:
-  `pose-learning-900-lr5e5-to1500/full/` in
+- Run/HF namespace: `pose-learning-900-lr5e5-to1500/full/` in
   `adhit-420/Krea-2-PoseControl-LoRA-checkpoints`.
-- Exact evaluated steps are only `1000, 1100, 1200, 1300, 1400, 1500`.
-- The evaluator rejects any different step list, local checkpoint root, or HF
-  repository. It resolves every checkpoint only through
-  `validated_hf_checkpoint_for_step` for
-  `pose-learning-900-lr5e5-to1500/full/step_XXXXXX.pt` and its matching
-  `.complete.json` marker. That existing validator preserves exact-marker,
-  SHA-256, full deserialization/schema, and embedded `global_step` validation.
-  No original `pose-learning-1500`, timed, nearest, latest, or other namespace
-  fallback is permitted.
-- Exact local checkpoint root:
-  `/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500`.
-- Exact isolated evaluation root:
-  `/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0-lr5e5`.
-  The evaluator refuses both the canonical RAW evaluation path and the original
-  Turbo path `/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0`.
+- Verified exact local source:
+  `/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt`.
+- Embedded state: `global_step=1500`, `epoch=2`, `batch_position=7502`,
+  `lr=5e-5`, scheduler `step_count=1500`, base LR `5e-5`, warmup `200`.
+- Completed Turbo evaluation support remains in
+  `scripts/turbo_lr5e5_benchmark.py`; it is read-only and uses unchanged
+  Turbo 8-step/CFG-0 sampling. Its reported step-1500 results are CLIP
+  `0.336843`, detection `0.923077`, joint coverage `0.927184`, PCK@0.05
+  `0.054612`, PCK@0.10 `0.180825`, PCK@0.20 `0.412621`.
 
-## Evaluation contract
+## Timestep continuation design
 
-- Entry point: `scripts/turbo_lr5e5_benchmark.py` with `preflight`,
-  `generate`, `score`, and `report` subcommands only. It does not construct an
-  optimizer or call backward/training APIs.
-- Turbo sampling is unchanged: Krea-2 Turbo, 8 steps, CFG 0.0, `mu=1.15`, no
-  resolution-dependent shift, exact existing official schedule, unchanged
-  sampler/control loading/VAE/decode.
-- It derives the diagnostic spec with the existing Turbo implementation and
-  verifies all 24 stems, cached input identities, and per-stem seeds against
-  the original Turbo `turbo_spec.json` before any output write.
-- PCK uses the unchanged `score_authoritative_pck` implementation; CLIP uses
-  the exact existing `scripts.turbo_benchmark._clip_score` function. This
-  retains 21 authoritative Human-Art/COCO samples, 3 unavailable Danbooru
-  exclusions, renderer-qualified COCO-17 PCK, confidence 0.5, deterministic
-  Hungarian association, reference bbox-diagonal normalization, and unmatched
-  reference-person failures.
-- `report` reads but does not recompute or overwrite original step-900
-  results/images. It compares original `900 @ 1e-4` with new `1000..1500 @
-  5e-5`, reports pooled/single/multi/COCO/Human-Art PCK at all three
-  thresholds plus coverage/person counts/CLIP, and emits compact and full
-  qualitative contact sheets.
+New isolated run: `pose-learning-1500-timestep-lowmid20-to1800`.
 
-## Files changed this session
+The executable original training sampler is per-example:
 
-- `pose_controlnet/turbo_evaluation.py`
-- `scripts/turbo_lr5e5_benchmark.py`
-- `tests/test_turbo_lr5e5_evaluation.py`
-- `docs/CODEX_HANDOFF.md`
-
-## Verified checks
-
-- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile pose_controlnet/turbo_evaluation.py scripts/turbo_lr5e5_benchmark.py tests/test_turbo_evaluation.py tests/test_turbo_lr5e5_evaluation.py`
-- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_turbo_evaluation tests.test_turbo_lr5e5_evaluation` — 19 tests.
-- PASS: `git diff --check`.
-- No live GH200 preflight/generation/scoring/report command was run.
-
-## Exact future GH200 commands
-
-Run sequentially from the GH200 host only after reviewing each prior output:
-
-```bash
-export UV_CACHE_DIR=/tmp/krea_uv_cache
-cd /home/ubuntu/Krea-2-Pose-ControlNet
-uv run python scripts/turbo_lr5e5_benchmark.py preflight
-uv run python scripts/turbo_lr5e5_benchmark.py generate
-uv run python scripts/turbo_lr5e5_benchmark.py score
-uv run python scripts/turbo_lr5e5_benchmark.py report
+```text
+z = torch.randn(batch_size, generator=dedicated CUDA flow generator)
+u = sigmoid(z)
+mu = ((1.15 - 0.5) / (6400 - 256)) * seq_len + (0.5 - slope * 256)
+t = exp(mu) * u / (exp(mu) * u + 1 - u)
 ```
 
-Expected branch-only outputs below
-`/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0-lr5e5`:
-`turbo_spec.json`, `checkpoint_preflight.json`, `generation_results.json`,
-`pck_clip_results.json`, `evaluation_summary.json`, per-stem `fixed_pose`
-controls/images/metadata, `turbo_lr5e5_checkpoint_selection_grid.png`, and
-`turbo_lr5e5_full_contact_sheet.png`.
+It is called by `train._flow_loss` before noise, with
+`seq_len=(latent_h/patch)*(latent_w/patch)` and `patch=2`. It uses one shared
+CUDA `torch.Generator` per process. Its state is saved as
+`flow_generator_state` and restored after CPU/Python/NumPy/CUDA RNG state;
+sampling is per example, not per batch. Actual train buckets have
+`seq_len=3952..4096`, hence `mu=0.891015625..0.90625`.
+
+The proposed sampler leaves the disabled path exactly unchanged. When enabled:
+
+```text
+normal = sigmoid(torch.randn(...))       # exact original pre-shift branch
+mask = torch.rand(...) < 0.20
+aux = Uniform(0.04359494981207863, 0.3773562340267345)
+u = where(mask, aux, normal)
+t = same existing shift_timestep(u, mu) # no post-shift clamp
+```
+
+The fixed auxiliary bounds are the inverse existing shift for final `t=0.1`
+at the lowest actual `mu`, and final `t=0.6` at the highest actual `mu`.
+Thus the auxiliary component maps to approximately final `t=0.1..0.6` for
+every actual bucket without changing shift math. New checkpoint config records
+`timestep_aux_prob/min/max`. The continuation config derives only from the
+exact local source and rejects every non-timestep config delta. It preserves
+LR, AdamW state, scheduler, warmup progress, progress counters, all RNG/data
+state, model/data/precision settings, and HF/W&B settings.
+
+## Read-only distribution audit
+
+`scripts/audit_timestep_exposure.py --samples-per-bucket 100000` sampled
+900,000 values (100,000 for each of the 9 actual buckets), weighted by all
+16,503 train samples, with seed `420300`:
+
+| sampler | mean | median | 0-.2 | .2-.4 | .4-.6 | .6-.8 | .8-1 | aux route |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| original | .678551 | .710412 | 1.0980% | 8.4629% | 21.5175% | 37.6456% | 31.2760% | 0.0000% |
+| 80/20 | .618331 | .640524 | 3.8254% | 14.0587% | 27.1357% | 30.0595% | 24.9208% | 20.0500% |
+
+## Files changed and tests
+
+- `pose_controlnet/config.py`
+- `pose_controlnet/diffusion.py`
+- `train.py`
+- `scripts/audit_timestep_exposure.py`
+- `tests/test_timestep_exposure.py`
+- `tests/test_train_mechanics.py`
+- `docs/CODEX_HANDOFF.md`
+
+PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile ...` for
+the changed Python files.
+
+PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest discover -s tests -p 'test_*.py'` — 144 tests.
+
+## Exact future GH200 launch and immediate verification
+
+Do not run this without explicit approval. The special selector accepts no
+mutable source/target arguments and reads only the exact source checkpoint:
+
+```bash
+cd /home/ubuntu/Krea-2-Pose-ControlNet
+tmux new-session -d -s pose-learning-1500-timestep-lowmid20-to1800 \
+  'cd /home/ubuntu/Krea-2-Pose-ControlNet && export UV_CACHE_DIR=/tmp/krea_uv_cache && exec uv run python train.py --timestep-lowmid-1500-to1800'
+```
+
+Target local root:
+`/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-timestep-lowmid20-to1800`.
+HF target: `adhit-420/Krea-2-PoseControl-LoRA-checkpoints`, namespace
+`pose-learning-1500-timestep-lowmid20-to1800/full/`. W&B run name is
+`pose-learning-1500-timestep-lowmid20-to1800` in project
+`Krea-2-PoseControl-Lora` / entity `adhit-projects`.
+
+The preserved `save_every=25` and `hf_mirror_every_steps=100` guarantee saved
+and step-mirrored checkpoints at 1600, 1700, and 1800. Immediately inspect:
+
+```bash
+tmux capture-pane -pt pose-learning-1500-timestep-lowmid20-to1800 -S -200 \
+  | rg '\[timestep-branch\]|effective_batch|runtime'
+```
+
+Expected log fields: exact source `step_001500.pt`, optimizer/global step
+`1500`, LR `5e-5`, scheduler step `1500`, warmup `200`, aux probability `.2`,
+pre-shift support `[0.04359494981207863, 0.3773562340267345)`, checkpoints
+`(1600, 1700, 1800)`, HF target namespace, and W&B run name.
 
 ## Next action
 
-Stop here. The bounded implementation task is complete. If live evaluation is
-authorized later, begin with the preflight command only; do not train or
-resume training.
+Stop. Await explicit authorization before executing the GH200 launch command.

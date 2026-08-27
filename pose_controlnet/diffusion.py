@@ -43,19 +43,48 @@ def shift_timestep(t: torch.Tensor, mu: float) -> torch.Tensor:
     return math.exp(mu) * t / (math.exp(mu) * t + 1.0 - t)
 
 
+def timestep_aux_settings(cfg) -> tuple[float, float, float]:
+    """Read and validate the optional pre-shift low/mid auxiliary sampler."""
+    probability = float(getattr(cfg, "timestep_aux_prob", 0.0))
+    lower = float(getattr(cfg, "timestep_aux_min", 0.0))
+    upper = float(getattr(cfg, "timestep_aux_max", 1.0))
+    if not 0.0 <= probability <= 1.0:
+        raise ValueError("timestep_aux_prob must be in [0, 1]")
+    if probability and not 0.0 < lower < upper < 1.0:
+        raise ValueError("enabled timestep auxiliary support must satisfy 0 < min < max < 1")
+    return probability, lower, upper
+
+
+def sample_pre_shift_flow_timestep(batch_size: int, cfg, device,
+                                   generator: torch.Generator | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return pre-shift logistic-normal values and the optional auxiliary mask.
+
+    With the feature disabled this executes the exact historical single
+    ``torch.randn`` followed by ``sigmoid`` path, including generator use.
+    """
+    if batch_size < 1:
+        raise ValueError("batch_size must be positive")
+    probability, lower, upper = timestep_aux_settings(cfg)
+    normal = torch.sigmoid(torch.randn(batch_size, device=device, dtype=torch.float32, generator=generator))
+    if probability == 0.0:
+        return normal, torch.zeros(batch_size, device=device, dtype=torch.bool)
+    auxiliary_mask = torch.rand(batch_size, device=device, dtype=torch.float32, generator=generator) < probability
+    auxiliary = torch.empty(batch_size, device=device, dtype=torch.float32).uniform_(lower, upper, generator=generator)
+    return torch.where(auxiliary_mask, auxiliary, normal), auxiliary_mask
+
+
 def sample_flow_timestep(batch_size: int, seq_len: int, cfg, device,
-                         generator: torch.Generator | None = None) -> torch.Tensor:
-    """Sample the intended logistic-normal timestep and apply resolution shift."""
+                         generator: torch.Generator | None = None, *,
+                         return_aux_mask: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+    """Sample pre-shift exposure, then apply the unchanged resolution shift."""
     if batch_size < 1 or seq_len < 1:
         raise ValueError("batch_size and seq_len must be positive")
     mu = resolution_shift_mu(seq_len, cfg.mu_x1, cfg.mu_y1, cfg.mu_x2, cfg.mu_y2)
-    logistic_normal = torch.sigmoid(
-        torch.randn(batch_size, device=device, dtype=torch.float32, generator=generator)
-    )
-    shifted = shift_timestep(logistic_normal, mu)
+    pre_shift, auxiliary_mask = sample_pre_shift_flow_timestep(batch_size, cfg, device, generator)
+    shifted = shift_timestep(pre_shift, mu)
     if not torch.isfinite(shifted).all().item() or not ((shifted > 0) & (shifted < 1)).all().item():
         raise FloatingPointError("Sampled invalid flow-matching timestep")
-    return shifted
+    return (shifted, auxiliary_mask) if return_aux_mask else shifted
 
 
 def make_flow_pair(clean_image: torch.Tensor, noise: torch.Tensor,

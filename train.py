@@ -43,10 +43,44 @@ LR_BRANCH_TARGET_STEP = 1500
 LR_BRANCH_LEARNING_RATE = 5e-5
 LR_BRANCH_CHECKPOINT_DIR = "/lambda/nfs/adhit/krea2-pose/checkpoints"
 
+# This continuation is intentionally isolated from the completed LR-only
+# branch.  Its only scientific difference is pre-shift timestep exposure.
+TIMESTEP_BRANCH_SOURCE_RUN = LR_BRANCH_RUN
+TIMESTEP_BRANCH_SOURCE_STEP = 1500
+TIMESTEP_BRANCH_RUN = "pose-learning-1500-timestep-lowmid20-to1800"
+TIMESTEP_BRANCH_TARGET_STEP = 1800
+TIMESTEP_BRANCH_REQUIRED_CHECKPOINT_STEPS = (1600, 1700, 1800)
+TIMESTEP_BRANCH_SOURCE_CHECKPOINT = (
+    Path(LR_BRANCH_CHECKPOINT_DIR) / TIMESTEP_BRANCH_SOURCE_RUN / "step_001500.pt"
+)
+# These are inverse-shift bounds for final t=[0.1, 0.6] over the actual
+# 3,952..4,096-token training buckets (mu=0.891015625..0.90625).
+TIMESTEP_BRANCH_AUX_PROB = 0.20
+TIMESTEP_BRANCH_AUX_MIN = 0.04359494981207863
+TIMESTEP_BRANCH_AUX_MAX = 0.3773562340267345
+TIMESTEP_CONFIG_FIELDS = frozenset({"timestep_aux_prob", "timestep_aux_min", "timestep_aux_max"})
+
 
 def lr_branch_checkpoint_dir() -> Path:
     """The branch's isolated local root; never the source-run directory."""
     return Path(LR_BRANCH_CHECKPOINT_DIR) / LR_BRANCH_RUN
+
+
+def timestep_branch_checkpoint_dir() -> Path:
+    return Path(LR_BRANCH_CHECKPOINT_DIR) / TIMESTEP_BRANCH_RUN
+
+
+def train_config_from_checkpoint_values(values: dict) -> TrainConfig:
+    """Load historical checkpoint config, allowing only added disabled sampler keys."""
+    expected = {field.name for field in fields(TrainConfig)}
+    missing, extra = expected - set(values), set(values) - expected
+    if extra or missing - TIMESTEP_CONFIG_FIELDS:
+        raise ValueError(f"Checkpoint config is incompatible; missing={sorted(missing)} extra={sorted(extra)}")
+    expanded = dict(values)
+    for field in fields(TrainConfig):
+        if field.name in missing:
+            expanded[field.name] = field.default
+    return TrainConfig(**expanded)
 
 
 def _assert_exact_learning_rate(optimizer: torch.optim.Optimizer, expected: float) -> None:
@@ -81,11 +115,7 @@ def lr_branch_config_from_source_state(source_state: dict) -> TrainConfig:
     if source_state["global_step"] != LR_BRANCH_SOURCE_STEP:
         raise ValueError(f"LR branch requires embedded global_step {LR_BRANCH_SOURCE_STEP}")
     source_values = source_state["config"]
-    expected_fields = {field.name for field in fields(TrainConfig)}
-    if set(source_values) != expected_fields:
-        missing, extra = expected_fields - set(source_values), set(source_values) - expected_fields
-        raise ValueError(f"Source checkpoint config cannot prove identical branch settings; missing={sorted(missing)} extra={sorted(extra)}")
-    source_cfg = TrainConfig(**source_values)
+    source_cfg = train_config_from_checkpoint_values(source_values)
     if source_cfg.run_name != LR_BRANCH_SOURCE_RUN:
         raise ValueError(f"LR branch source config must name {LR_BRANCH_SOURCE_RUN}")
     if source_cfg.lr != 1e-4:
@@ -122,6 +152,76 @@ def assert_lr_branch_output_namespace(cfg: TrainConfig) -> None:
         raise AssertionError("LR branch output namespace is not isolated")
     if LR_BRANCH_SOURCE_RUN in actual.parts or cfg.run_name == LR_BRANCH_SOURCE_RUN:
         raise AssertionError("LR branch must never write into pose-learning-1500")
+
+
+def assert_timestep_branch_output_namespace(cfg: TrainConfig) -> None:
+    expected = timestep_branch_checkpoint_dir()
+    actual = Path(cfg.ckpt_dir) / str(cfg.run_name)
+    protected = {LR_BRANCH_SOURCE_RUN, "pose-learning-1500", TIMESTEP_BRANCH_RUN}
+    if (cfg.run_name != TIMESTEP_BRANCH_RUN or actual != expected
+            or cfg.metrics_jsonl_path != str(expected / "metrics.jsonl")
+            or cfg.hf_repo_id != LR_BRANCH_SOURCE_HF_REPO):
+        raise AssertionError("Timestep branch output namespace is not isolated")
+    if actual == lr_branch_checkpoint_dir() or any(name in actual.parts for name in protected - {TIMESTEP_BRANCH_RUN}):
+        raise AssertionError("Timestep branch must never write into an existing branch namespace")
+
+
+def _assert_only_timestep_branch_config_changes(source: TrainConfig, branch: TrainConfig) -> None:
+    allowed = TIMESTEP_CONFIG_FIELDS | {"run_name", "max_steps", "metrics_jsonl_path"}
+    changed = {key for key, value in asdict(branch).items() if asdict(source)[key] != value}
+    if changed - allowed:
+        raise ValueError(f"Timestep continuation changed non-timestep settings: {sorted(changed - allowed)}")
+    if changed != allowed:
+        raise ValueError(f"Timestep continuation config delta is incomplete or unexpected: {sorted(changed)}")
+
+
+def timestep_branch_config_from_source_state(source_state: dict) -> TrainConfig:
+    """Derive the 1500→1800 ablation, proving all non-timestep settings match."""
+    if source_state["global_step"] != TIMESTEP_BRANCH_SOURCE_STEP:
+        raise ValueError(f"Timestep branch requires embedded global_step {TIMESTEP_BRANCH_SOURCE_STEP}")
+    source_cfg = train_config_from_checkpoint_values(source_state["config"])
+    if source_cfg.run_name != TIMESTEP_BRANCH_SOURCE_RUN:
+        raise ValueError(f"Timestep branch source config must name {TIMESTEP_BRANCH_SOURCE_RUN}")
+    if source_cfg.lr != LR_BRANCH_LEARNING_RATE or source_cfg.max_steps != TIMESTEP_BRANCH_SOURCE_STEP:
+        raise ValueError("Timestep branch source must be the completed LR=5e-5 step-1500 run")
+    if source_cfg.warmup_steps >= TIMESTEP_BRANCH_SOURCE_STEP or not source_cfg.allow_extended_training:
+        raise ValueError("Timestep branch source is incompatible with preserved completed warmup/authorization")
+    if source_cfg.hf_repo_id != LR_BRANCH_SOURCE_HF_REPO or source_cfg.save_every <= 0:
+        raise ValueError("Timestep branch source checkpoint mirror or save cadence is incompatible")
+    if any(step % source_cfg.save_every for step in TIMESTEP_BRANCH_REQUIRED_CHECKPOINT_STEPS):
+        raise ValueError("Preserved save cadence cannot create required timestep branch checkpoints")
+    if source_cfg.hf_mirror_every_steps and any(step % source_cfg.hf_mirror_every_steps for step in TIMESTEP_BRANCH_REQUIRED_CHECKPOINT_STEPS):
+        raise ValueError("Preserved HF mirror cadence cannot mirror required timestep branch checkpoints")
+    if any(getattr(source_cfg, key) != default for key, default in
+           (("timestep_aux_prob", 0.0), ("timestep_aux_min", 0.0), ("timestep_aux_max", 1.0))):
+        raise ValueError("Timestep branch source must have the original sampler disabled")
+    scheduler = source_state["scheduler"]
+    if scheduler["step_count"] != TIMESTEP_BRANCH_SOURCE_STEP or scheduler["warmup_steps"] != source_cfg.warmup_steps:
+        raise ValueError("Timestep branch source scheduler progress is incompatible")
+    if list(scheduler["base_lrs"]) != [LR_BRANCH_LEARNING_RATE]:
+        raise ValueError("Timestep branch source scheduler LR must be exactly 5e-5")
+    branch_cfg = replace(
+        source_cfg, ckpt_dir=LR_BRANCH_CHECKPOINT_DIR, run_name=TIMESTEP_BRANCH_RUN,
+        max_steps=TIMESTEP_BRANCH_TARGET_STEP,
+        metrics_jsonl_path=str(timestep_branch_checkpoint_dir() / "metrics.jsonl"),
+        timestep_aux_prob=TIMESTEP_BRANCH_AUX_PROB,
+        timestep_aux_min=TIMESTEP_BRANCH_AUX_MIN,
+        timestep_aux_max=TIMESTEP_BRANCH_AUX_MAX,
+    )
+    _assert_only_timestep_branch_config_changes(source_cfg, branch_cfg)
+    assert_timestep_branch_output_namespace(branch_cfg)
+    return branch_cfg
+
+
+def resolve_timestep_branch_source_checkpoint() -> Path:
+    """Use only the explicitly named completed local step-1500 checkpoint."""
+    source = TIMESTEP_BRANCH_SOURCE_CHECKPOINT
+    if source.name != "step_001500.pt" or not source.is_file():
+        raise FileNotFoundError(f"Required exact local source checkpoint is unavailable: {source}")
+    state = load_training_state(source)
+    if state["global_step"] != TIMESTEP_BRANCH_SOURCE_STEP:
+        raise ValueError("Exact timestep source checkpoint identity validation failed")
+    return source
 
 
 def resolve_lr_branch_source_checkpoint() -> Path:
@@ -370,14 +470,30 @@ def parse_args() -> argparse.Namespace:
                         help="wall-clock full-checkpoint mirror cadence (default: 3600)")
     parser.add_argument("--hf-mirror-every-steps", type=int, default=0,
                         help="mirror each exact saved checkpoint divisible by N; 0 disables (default: 0)")
+    parser.add_argument("--timestep-aux-prob", type=float, default=0.0,
+                        help="probability of the bounded auxiliary pre-shift timestep sampler")
+    parser.add_argument("--timestep-aux-min", type=float, default=0.0,
+                        help="inclusive lower bound of the auxiliary pre-shift timestep sampler")
+    parser.add_argument("--timestep-aux-max", type=float, default=1.0,
+                        help="exclusive upper bound of the auxiliary pre-shift timestep sampler")
     parser.add_argument("--wandb-mode", default="online")
     parser.add_argument("--no-wandb", action="store_true")
     parser.add_argument("--lr-branch-900-to-1500", action="store_true",
                         help="resume only exact HF pose-learning-1500 step 900 into an isolated 5e-5 LR branch")
+    parser.add_argument("--timestep-lowmid-1500-to1800", action="store_true",
+                        help="resume only exact local completed LR=5e-5 step 1500 into the isolated timestep-only branch")
     args = parser.parse_args()
+    if args.lr_branch_900_to_1500 and args.timestep_lowmid_1500_to1800:
+        parser.error("continuation branch selectors are mutually exclusive")
     if args.lr_branch_900_to_1500:
         if args.resume:
             parser.error("--lr-branch-900-to-1500 resolves its exact HF source itself; do not pass --resume")
+        return args
+    if args.timestep_lowmid_1500_to1800:
+        if args.resume:
+            parser.error("--timestep-lowmid-1500-to1800 resolves its exact local source itself; do not pass --resume")
+        if (args.timestep_aux_prob, args.timestep_aux_min, args.timestep_aux_max) != (0.0, 0.0, 1.0):
+            parser.error("--timestep-lowmid-1500-to1800 fixes its audited auxiliary sampler; do not pass timestep auxiliary flags")
         return args
     if args.max_steps is None or args.run_name is None:
         parser.error("--run-name and --max-steps are required unless --lr-branch-900-to-1500 is used")
@@ -398,6 +514,10 @@ def parse_args() -> argparse.Namespace:
             parser.error("--hf-mirror-every-steps requires --hf-repo-id")
         if args.hf_mirror_every_steps % args.save_every:
             parser.error("--hf-mirror-every-steps must be divisible by --save-every so exact local checkpoints exist")
+    if not 0.0 <= args.timestep_aux_prob <= 1.0:
+        parser.error("--timestep-aux-prob must be in [0, 1]")
+    if args.timestep_aux_prob and not 0.0 < args.timestep_aux_min < args.timestep_aux_max < 1.0:
+        parser.error("enabled timestep auxiliary support must satisfy 0 < --timestep-aux-min < --timestep-aux-max < 1")
     return args
 
 
@@ -416,17 +536,24 @@ def config_from_args(args: argparse.Namespace) -> TrainConfig:
                        wandb_enabled=not args.no_wandb, wandb_mode=args.wandb_mode,
                        metrics_jsonl_path=str(Path(args.checkpoint_dir) / args.run_name / "metrics.jsonl"),
                        hf_repo_id=args.hf_repo_id, hf_push_every_seconds=args.hf_mirror_every_seconds,
-                       hf_mirror_every_steps=args.hf_mirror_every_steps)
+                       hf_mirror_every_steps=args.hf_mirror_every_steps,
+                       timestep_aux_prob=args.timestep_aux_prob, timestep_aux_min=args.timestep_aux_min,
+                       timestep_aux_max=args.timestep_aux_max)
 
 
 def main() -> None:
     args = parse_args()
     if not torch.cuda.is_available(): raise RuntimeError("Run Gate-F smoke from the GH200 host shell with CUDA visible")
-    branch_source_path = resolve_lr_branch_source_checkpoint() if args.lr_branch_900_to_1500 else None
+    branch_source_path = (resolve_lr_branch_source_checkpoint() if args.lr_branch_900_to_1500 else
+                          resolve_timestep_branch_source_checkpoint() if args.timestep_lowmid_1500_to1800 else None)
     branch_source_state = load_training_state(branch_source_path) if branch_source_path is not None else None
-    cfg = lr_branch_config_from_source_state(branch_source_state) if branch_source_state is not None else config_from_args(args)
-    if branch_source_state is not None:
+    cfg = (lr_branch_config_from_source_state(branch_source_state) if args.lr_branch_900_to_1500 else
+           timestep_branch_config_from_source_state(branch_source_state) if args.timestep_lowmid_1500_to1800 else
+           config_from_args(args))
+    if args.lr_branch_900_to_1500:
         assert_lr_branch_output_namespace(cfg)
+    if args.timestep_lowmid_1500_to1800:
+        assert_timestep_branch_output_namespace(cfg)
     set_seed(cfg.seed); device = torch.device("cuda"); torch.cuda.reset_peak_memory_stats()
     print(f"effective_batch={effective_batch_size(cfg.microbatch_size, cfg.gradient_accumulation_steps)} (microbatch × accumulation × world_size=1)", flush=True)
     print(f"runtime: compile={cfg.compile} gradient_checkpointing_blocks={cfg.gradient_checkpointing_blocks} "
@@ -446,11 +573,21 @@ def main() -> None:
     if branch_source_state is not None:
         global_step, epoch, batch_position, resume_generator_state = restore_full_training_state(
             model, optimizer, scheduler, branch_source_state,
-            learning_rate_override=LR_BRANCH_LEARNING_RATE,
+            learning_rate_override=LR_BRANCH_LEARNING_RATE if args.lr_branch_900_to_1500 else None,
         )
         _assert_exact_learning_rate(optimizer, LR_BRANCH_LEARNING_RATE)
-        print(f"[lr-branch] restored exact validated source {branch_source_path} at optimizer step {global_step}; "
-              f"AdamW/scheduler/RNG/data state retained and effective LR fixed at {LR_BRANCH_LEARNING_RATE}", flush=True)
+        if args.lr_branch_900_to_1500:
+            print(f"[lr-branch] restored exact validated source {branch_source_path} at optimizer step {global_step}; "
+                  f"AdamW/scheduler/RNG/data state retained and effective LR fixed at {LR_BRANCH_LEARNING_RATE}", flush=True)
+        else:
+            if global_step != TIMESTEP_BRANCH_SOURCE_STEP or scheduler.step_count != global_step:
+                raise AssertionError("Timestep branch did not restore exact global/scheduler progress")
+            print(f"[timestep-branch] restored exact validated source {branch_source_path} at optimizer step {global_step}; "
+                  f"AdamW/scheduler/RNG/data state retained; LR={LR_BRANCH_LEARNING_RATE}; "
+                  f"aux_prob={cfg.timestep_aux_prob} aux_pre_shift=[{cfg.timestep_aux_min}, {cfg.timestep_aux_max})", flush=True)
+            print(f"[timestep-branch] verify scheduler_step={scheduler.step_count} warmup_steps={scheduler.warmup_steps} "
+                  f"save_every={cfg.save_every} required_checkpoints={TIMESTEP_BRANCH_REQUIRED_CHECKPOINT_STEPS} "
+                  f"hf={cfg.hf_repo_id}/{cfg.run_name}/full/ wandb_run={cfg.run_name}", flush=True)
     elif args.resume:
         resume_path = (resolve_auto_resume(checkpoint_dir=cfg.ckpt_dir, run_name=cfg.run_name,
                                            repo_id=cfg.hf_repo_id,

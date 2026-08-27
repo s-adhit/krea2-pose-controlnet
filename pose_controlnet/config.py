@@ -34,6 +34,12 @@ class TrainConfig:
     mu_y1: float = 0.5
     mu_x2: float = 6400.0
     mu_y2: float = 1.15
+    # Optional, deliberately narrow timestep-exposure ablation.  Disabled
+    # defaults retain the original sigmoid(N(0, 1)) sampler byte-for-byte in
+    # its random-draw path.
+    timestep_aux_prob: float = 0.0
+    timestep_aux_min: float = 0.0
+    timestep_aux_max: float = 1.0
 
     # cadence
     log_every: int = 10

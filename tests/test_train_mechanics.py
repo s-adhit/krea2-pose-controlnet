@@ -42,6 +42,25 @@ class TrainMechanicsTest(unittest.TestCase):
         state["config"] = asdict(cfg)
         state["scheduler"] = {"step_count": train.LR_BRANCH_SOURCE_STEP, "base_lrs": [1e-4], "warmup_steps": 200}
         return state
+
+    def timestep_branch_source_state(self) -> dict:
+        cfg = TrainConfig(
+            raw_ckpt="raw", shard_dir="shards", ckpt_dir="/lambda/nfs/adhit/krea2-pose/checkpoints",
+            run_name=train.TIMESTEP_BRANCH_SOURCE_RUN, lr=5e-5,
+            max_steps=train.TIMESTEP_BRANCH_SOURCE_STEP, allow_extended_training=True,
+            save_every=25, hf_repo_id=train.LR_BRANCH_SOURCE_HF_REPO,
+            hf_mirror_every_steps=100,
+            metrics_jsonl_path="/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/metrics.jsonl",
+        )
+        state = self.full_state(train.TIMESTEP_BRANCH_SOURCE_STEP)
+        state["config"] = asdict(cfg)
+        # The completed checkpoint predates the optional fields.  Its missing
+        # disabled defaults are the only accepted historical schema difference.
+        for key in train.TIMESTEP_CONFIG_FIELDS:
+            state["config"].pop(key)
+        state["scheduler"] = {"step_count": train.TIMESTEP_BRANCH_SOURCE_STEP,
+                              "base_lrs": [5e-5], "warmup_steps": 200}
+        return state
     def test_effective_batch_formula(self):
         self.assertEqual(train.effective_batch_size(1, 32, 1), 32)
         self.assertEqual(train.effective_batch_size(2, 16, 1), 32)
@@ -155,6 +174,54 @@ class TrainMechanicsTest(unittest.TestCase):
         with patch.object(sys, "argv", ["train.py", "--lr-branch-900-to-1500"]):
             self.assertTrue(train.parse_args().lr_branch_900_to_1500)
         with patch.object(sys, "argv", ["train.py", "--lr-branch-900-to-1500", "--resume", "other.pt"]):
+            with self.assertRaises(SystemExit):
+                train.parse_args()
+
+    def test_timestep_branch_isolated_and_changes_only_exposure_config(self):
+        state = self.timestep_branch_source_state()
+        source = train.train_config_from_checkpoint_values(state["config"])
+        branch = train.timestep_branch_config_from_source_state(state)
+        self.assertEqual(branch.run_name, train.TIMESTEP_BRANCH_RUN)
+        self.assertEqual(branch.max_steps, 1800)
+        self.assertEqual(branch.lr, 5e-5)
+        self.assertEqual(branch.timestep_aux_prob, .20)
+        self.assertEqual((branch.timestep_aux_min, branch.timestep_aux_max),
+                         (train.TIMESTEP_BRANCH_AUX_MIN, train.TIMESTEP_BRANCH_AUX_MAX))
+        self.assertEqual(Path(branch.ckpt_dir) / branch.run_name, train.timestep_branch_checkpoint_dir())
+        self.assertNotEqual(Path(branch.ckpt_dir) / branch.run_name, train.lr_branch_checkpoint_dir())
+        allowed = train.TIMESTEP_CONFIG_FIELDS | {"run_name", "max_steps", "metrics_jsonl_path"}
+        self.assertEqual({key for key in asdict(branch) if asdict(branch)[key] != asdict(source)[key]}, allowed)
+
+    def test_timestep_branch_resume_preserves_lr_scheduler_optimizer_and_rng(self):
+        source_parameter = torch.nn.Parameter(torch.tensor([1.0]))
+        source_optimizer = torch.optim.AdamW([source_parameter], lr=5e-5, betas=(.9, .99), weight_decay=0.0)
+        source_parameter.grad = torch.tensor([.25]); source_optimizer.step()
+        state = self.timestep_branch_source_state(); state["optimizer"] = source_optimizer.state_dict()
+        flow_generator = torch.Generator().manual_seed(777); state["flow_generator_state"] = flow_generator.get_state()
+        random.seed(123); np.random.seed(123); torch.manual_seed(123); state["rng"] = train._capture_rng()
+        expected_rng_next = (random.random(), float(np.random.random()), torch.rand(1))
+        random.seed(999); np.random.seed(999); torch.manual_seed(999)
+        model = torch.nn.Module(); model.register_parameter("weight", torch.nn.Parameter(torch.zeros(1)))
+        optimizer = torch.optim.AdamW([model.weight], lr=5e-5, betas=(.9, .99), weight_decay=0.0)
+        scheduler = train.OptimizerStepWarmup(optimizer, 200)
+        with patch("train.load_trainable_state_dict"):
+            resumed = train.restore_full_training_state(model, optimizer, scheduler, state)
+        self.assertEqual(resumed[:3], (1500, 2, 3))
+        self.assertTrue(torch.equal(resumed[3], state["flow_generator_state"]))
+        self.assertEqual(scheduler.step_count, 1500)
+        self.assertEqual(scheduler.base_lrs, [5e-5]); self.assertEqual(optimizer.param_groups[0]["lr"], 5e-5)
+        observed_rng_next = (random.random(), float(np.random.random()), torch.rand(1))
+        self.assertEqual(observed_rng_next[:2], expected_rng_next[:2]); self.assertTrue(torch.equal(observed_rng_next[2], expected_rng_next[2]))
+        self.assertTrue(torch.equal(optimizer.state[model.weight]["exp_avg"], source_optimizer.state[source_parameter]["exp_avg"]))
+        self.assertTrue(torch.equal(optimizer.state[model.weight]["exp_avg_sq"], source_optimizer.state[source_parameter]["exp_avg_sq"]))
+
+    def test_timestep_branch_cli_needs_no_mutable_run_arguments_and_rejects_resume(self):
+        with patch.object(sys, "argv", ["train.py", "--timestep-lowmid-1500-to1800"]):
+            self.assertTrue(train.parse_args().timestep_lowmid_1500_to1800)
+        with patch.object(sys, "argv", ["train.py", "--timestep-lowmid-1500-to1800", "--resume", "other.pt"]):
+            with self.assertRaises(SystemExit):
+                train.parse_args()
+        with patch.object(sys, "argv", ["train.py", "--timestep-lowmid-1500-to1800", "--timestep-aux-prob", ".5"]):
             with self.assertRaises(SystemExit):
                 train.parse_args()
 
