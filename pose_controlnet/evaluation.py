@@ -26,6 +26,12 @@ DEFAULT_FIXED_POSE_SEED = 420_200
 CHECKPOINT_STEPS = (0, 20, 40, 60, 80, 100, 200, 225, 350, 475, 500,
                     600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500)
 POST_500_CHECKPOINT_STEPS = CHECKPOINT_STEPS[11:]
+MID_ARCHIVE_STEPS = frozenset((200, 225, 350, 475, 500))
+FINAL_ARCHIVE_STEPS = frozenset(range(600, 1501, 100))
+HF_ARCHIVE_RUNS = {
+    **{step: "pose-learning-500" for step in MID_ARCHIVE_STEPS},
+    **{step: "pose-learning-1500" for step in FINAL_ARCHIVE_STEPS},
+}
 COMPARISON_GRID_COLUMNS = ("Control", "Step 0", "Step 20", "Step 40", "Step 60", "Step 80", "Step 100", "Step 200", "Step 225", "Step 350", "Step 475", "Step 500", "Step 600", "Step 700", "Step 800", "Step 900", "Step 1000", "Step 1100", "Step 1200", "Step 1300", "Step 1400", "Step 1500")
 DEFAULT_COMPARISON_GRID_THUMBNAIL_WIDTH = 320
 DEFAULT_COMPARISON_GRID_THUMBNAIL_HEIGHT = 320
@@ -33,15 +39,16 @@ DEFAULT_COMPARISON_GRID_THUMBNAIL_HEIGHT = 320
 
 def ordered_checkpoints(checkpoint_dir: str | Path, steps: Iterable[int] = CHECKPOINT_STEPS,
                         later_checkpoint_dir: str | Path | None = None, *, hf_repo_id: str = "",
-                        hf_run_name: str = "pose-learning-1500",
                         hf_recovery_dir: str | Path | None = None,
                         archive_checkpoint_dir: str | Path | None = None) -> list[tuple[int, Path | None]]:
     """Resolve only the canonical archive identities, validating every state.
 
     The three local roots deliberately mirror the training archives: <=100,
-    200..500, and 600..1500.  Only the final archive may recover a missing
-    local file from HF, and recovery is exact-step/marker/checksum/schema
-    validated by ``validated_hf_checkpoint_for_step``.
+    200..500, and 600..1500.  Missing later-archive files recover only from
+    their matching HF run namespace, into namespace-specific directories.
+    Recovery is exact-step/marker/checksum/schema validated by
+    ``validated_hf_checkpoint_for_step``; it never selects a timed, nearest,
+    latest, or other-namespace checkpoint.
     """
     root = Path(checkpoint_dir)
     later_root = Path(later_checkpoint_dir) if later_checkpoint_dir is not None else root
@@ -52,9 +59,11 @@ def ordered_checkpoints(checkpoint_dir: str | Path, steps: Iterable[int] = CHECK
             result.append((0, None)); continue
         local_root = root if step <= 100 else (later_root if step <= 500 else archive_root)
         path = local_root / f"step_{step:06d}.pt"
-        if not path.is_file() and step >= 600 and hf_repo_id:
-            recovery_dir = Path(hf_recovery_dir) if hf_recovery_dir is not None else archive_root / "hf-recovery"
-            recovered = validated_hf_checkpoint_for_step(repo_id=hf_repo_id, run_name=hf_run_name, step=step,
+        run_name = HF_ARCHIVE_RUNS.get(step)
+        if not path.is_file() and run_name is not None and hf_repo_id:
+            recovery_root = Path(hf_recovery_dir) if hf_recovery_dir is not None else archive_root / "hf-recovery"
+            recovery_dir = recovery_root / run_name
+            recovered = validated_hf_checkpoint_for_step(repo_id=hf_repo_id, run_name=run_name, step=step,
                                                          download_dir=recovery_dir)
             if recovered is None:
                 raise FileNotFoundError(f"Required checkpoint step {step} is unavailable locally and has no validated completion-marked HF copy")

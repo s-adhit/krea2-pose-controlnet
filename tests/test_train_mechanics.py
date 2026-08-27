@@ -274,12 +274,31 @@ class TrainMechanicsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary); checkpoint = save_training_state(root / "step_000225.pt", self.full_state(225))
             from pose_controlnet.checkpointing import _sha256, validated_hf_checkpoint_for_step
-            remote = "run/full/step_000225.pt"; files = {remote: checkpoint.read_bytes(), remote + ".complete.json": json.dumps({"format": 1, "checkpoint": remote, "sha256": _sha256(checkpoint), "global_step": 225}).encode()}
+            remote = "pose-learning-500/full/step_000225.pt"
+            marker = {"format": 1, "checkpoint": remote, "sha256": _sha256(checkpoint), "global_step": 225}
+            files = {remote: checkpoint.read_bytes(), remote + ".complete.json": json.dumps(marker).encode()}
             def download(**kwargs):
                 destination = Path(kwargs["local_dir"]) / kwargs["filename"]; destination.parent.mkdir(parents=True, exist_ok=True); destination.write_bytes(files[kwargs["filename"]]); return str(destination)
-            recovered = validated_hf_checkpoint_for_step(repo_id="user/private", run_name="run", step=225, download_dir=root / "dl", api=Api(files), download_fn=download)
+            recovered = validated_hf_checkpoint_for_step(repo_id="user/private", run_name="pose-learning-500", step=225, download_dir=root / "dl", api=Api(files), download_fn=download)
             self.assertEqual(load_training_state(recovered)["global_step"], 225)
-            self.assertIsNone(validated_hf_checkpoint_for_step(repo_id="user/private", run_name="run", step=350, download_dir=root / "dl", api=Api(files), download_fn=download))
+            # A different namespace, a missing marker, and a nearby valid step
+            # must never stand in for the requested archive identity.
+            self.assertIsNone(validated_hf_checkpoint_for_step(repo_id="user/private", run_name="pose-learning-1500", step=225, download_dir=root / "dl", api=Api(files), download_fn=download))
+            self.assertIsNone(validated_hf_checkpoint_for_step(repo_id="user/private", run_name="pose-learning-500", step=350, download_dir=root / "dl", api=Api(files), download_fn=download))
+            without_marker = {remote: checkpoint.read_bytes()}
+            self.assertIsNone(validated_hf_checkpoint_for_step(repo_id="user/private", run_name="pose-learning-500", step=225, download_dir=root / "missing-marker", api=Api(without_marker), download_fn=lambda **kwargs: str(root / "unreachable")))
+            corrupt_marker = dict(marker, sha256="0" * 64)
+            corrupt_files = {remote: checkpoint.read_bytes(), remote + ".complete.json": json.dumps(corrupt_marker).encode()}
+            def corrupt_download(**kwargs):
+                destination = Path(kwargs["local_dir"]) / kwargs["filename"]; destination.parent.mkdir(parents=True, exist_ok=True); destination.write_bytes(corrupt_files[kwargs["filename"]]); return str(destination)
+            self.assertIsNone(validated_hf_checkpoint_for_step(repo_id="user/private", run_name="pose-learning-500", step=225, download_dir=root / "bad-checksum", api=Api(corrupt_files), download_fn=corrupt_download))
+            wrong_embedded = save_training_state(root / "step_000225_wrong.pt", self.full_state(350))
+            wrong_files = {remote: wrong_embedded.read_bytes(), remote + ".complete.json": json.dumps(marker).encode()}
+            def wrong_download(**kwargs):
+                destination = Path(kwargs["local_dir"]) / kwargs["filename"]; destination.parent.mkdir(parents=True, exist_ok=True); destination.write_bytes(wrong_files[kwargs["filename"]]); return str(destination)
+            wrong_marker = dict(marker, sha256=_sha256(wrong_embedded))
+            wrong_files[remote + ".complete.json"] = json.dumps(wrong_marker).encode()
+            self.assertIsNone(validated_hf_checkpoint_for_step(repo_id="user/private", run_name="pose-learning-500", step=225, download_dir=root / "wrong-step", api=Api(wrong_files), download_fn=wrong_download))
 
     def test_telemetry_failures_are_nonfatal(self):
         with tempfile.TemporaryDirectory() as temporary:

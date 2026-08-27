@@ -3,9 +3,10 @@
 ## Current bounded objective and status
 
 Post-1500 evaluation/audit tooling is implemented and unit-tested. This session
-did **not** train, construct an optimizer, start optimizer steps, alter
-model/LR/LoRA/checkpoint/data/sampler state, regenerate any images, or
-commit/push. The expensive GH200 evaluation has deliberately not been run.
+fixed its exact checkpoint preflight recovery routing. It did **not** train,
+construct an optimizer, start optimizer steps, alter model/LR/LoRA/checkpoint/
+data/sampler state, regenerate any images, or commit/push. The expensive GH200
+evaluation has deliberately not been run.
 
 ## Training/archive facts in force
 
@@ -15,11 +16,17 @@ commit/push. The expensive GH200 evaluation has deliberately not been run.
   Never add 300 or 400.
 - Roots: `pose-learning-100` for <=100, `pose-learning-500` for 200..500,
   `pose-learning-1500` for 600..1500.
-- A missing 600..1500 local state can recover only the same-numbered
-  `pose-learning-1500/full/step_XXXXXX.pt` from
-  `adhit-420/Krea-2-PoseControl-LoRA-checkpoints`. Resolution checks the
-  marker, SHA-256, full checkpoint schema, and embedded `global_step`; it
-  never substitutes a timed mirror.
+- Root cause of the host preflight failure: shared evaluation resolution only
+  attempted HF recovery for steps >=600, so a legitimately pruned local
+  `pose-learning-500/step_000200.pt` failed before it could recover.
+- Exact recovery routing from `adhit-420/Krea-2-PoseControl-LoRA-checkpoints`:
+  `200,225,350,475,500 -> pose-learning-500/full/step_XXXXXX.pt`; and
+  `600,700,800,900,1000,1100,1200,1300,1400,1500 ->
+  pose-learning-1500/full/step_XXXXXX.pt`. Recovery copies are segregated by
+  run namespace. Local valid checkpoints remain preferred (including step
+  500). Resolution requires the matching completion marker, SHA-256, full
+  checkpoint deserialization/schema, and embedded `global_step`; it never
+  substitutes timed, nearest, latest, or other-namespace checkpoints.
 - PCK references: 24 diagnostic records, 21 authoritative Human-Art/COCO,
   3 Danbooru unavailable/excluded. Eligibility remains
   `source_visible AND rendered_in_control`; detector is torchvision Keypoint
@@ -28,7 +35,8 @@ commit/push. The expensive GH200 evaluation has deliberately not been run.
 
 ## What this session changed
 
-Three-archive canonical resolution, incremental/repeated fixed-flow,
+Three-archive canonical resolution with exact per-run HF recovery,
+incremental/repeated fixed-flow,
 full-diagnostic and smoke specs, and fixed-pose reuse are in `evaluate.py` /
 `pose_controlnet.evaluation`. `post1500_evaluation` and `post1500_audit.py`
 provide read-only merging, timestep/data/telemetry audits, pooled authoritative
@@ -38,9 +46,13 @@ reference people now remain in the PCK denominator.
 ## Verified gates/tests
 
 - PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile evaluate.py pose_controlnet/evaluation.py pose_controlnet/post500_evaluation.py pose_controlnet/post1500_evaluation.py scripts/post1500_audit.py tests/test_evaluation.py tests/test_post500_evaluation.py tests/test_post1500_evaluation.py`
-- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache MPLCONFIGDIR=/tmp/krea_mpl uv run python -m unittest tests.test_evaluation tests.test_post500_evaluation tests.test_post1500_evaluation tests.test_reference_pose` (36 tests).
+- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_evaluation tests.test_post1500_evaluation tests.test_train_mechanics` (48 tests).
+- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile pose_controlnet/evaluation.py pose_controlnet/checkpointing.py scripts/post1500_audit.py tests/test_evaluation.py tests/test_post1500_evaluation.py`.
 
-Coverage: exact 0..1500/HF recovery, fixed-pose reuse, deterministic
+Coverage: canonical 0..1500 order; local early and valid-local mid resolution;
+exact mid/final HF namespaces with separate recovery copies; completion-marker,
+checksum, schema/deserialization, and embedded-step validation; rejection of
+wrong namespace and nearest-step replacement; fixed-pose reuse; deterministic
 fixed-flow/timestep/control calculations, pooled PCK with single/multi and
 Danbooru exclusion, telemetry parsing, and no optimizer/backward in audit.
 

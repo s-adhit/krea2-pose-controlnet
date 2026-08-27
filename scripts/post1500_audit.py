@@ -45,7 +45,7 @@ def _requested_steps(raw: list[int] | None) -> tuple[int, ...]:
 def _checkpoints(args, steps: tuple[int, ...]):
     return ordered_checkpoints(args.early_checkpoint_dir, steps=steps, later_checkpoint_dir=args.mid_checkpoint_dir,
                                archive_checkpoint_dir=args.final_checkpoint_dir, hf_repo_id=args.hf_repo_id,
-                               hf_run_name="pose-learning-1500", hf_recovery_dir=args.hf_recovery_dir)
+                               hf_recovery_dir=args.hf_recovery_dir)
 
 
 def _iter_shard_records(root: Path, split: str):

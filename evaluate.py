@@ -29,8 +29,7 @@ def main():
     parser.add_argument("--archive-checkpoint-dir", default="/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500",
                         help="checkpoint root used for canonical steps 600..1500")
     parser.add_argument("--hf-repo-id", default="adhit-420/Krea-2-PoseControl-LoRA-checkpoints",
-                        help="private recovery repo used only for missing required post-100 checkpoints")
-    parser.add_argument("--hf-run-name", default="pose-learning-1500")
+                        help="private recovery repo used only for missing required archive checkpoints")
     parser.add_argument("--hf-recovery-dir", help="validated exact-step HF download cache (default: <later-checkpoint-dir>/hf-recovery)")
     parser.add_argument("--output-dir", default="/lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-500")
     parser.add_argument("--split", default=None); parser.add_argument("--samples", type=int, default=None)
@@ -68,7 +67,7 @@ def main():
     if (len(requested_steps) != len(set(requested_steps)) or any(step not in CHECKPOINT_STEPS for step in requested_steps)
             or requested_steps != tuple(step for step in CHECKPOINT_STEPS if step in requested_steps)):
         parser.error("--steps must be an ordered subsequence of the canonical 0..1500 series")
-    cfg, device = _cfg(args), torch.device("cuda"); model = build_pose_model(args.raw_ckpt, 64, 64, "cuda").eval(); checkpoints = ordered_checkpoints(args.checkpoint_dir, steps=requested_steps, later_checkpoint_dir=args.later_checkpoint_dir, archive_checkpoint_dir=args.archive_checkpoint_dir, hf_repo_id=args.hf_repo_id, hf_run_name=args.hf_run_name, hf_recovery_dir=args.hf_recovery_dir)
+    cfg, device = _cfg(args), torch.device("cuda"); model = build_pose_model(args.raw_ckpt, 64, 64, "cuda").eval(); checkpoints = ordered_checkpoints(args.checkpoint_dir, steps=requested_steps, later_checkpoint_dir=args.later_checkpoint_dir, archive_checkpoint_dir=args.archive_checkpoint_dir, hf_repo_id=args.hf_repo_id, hf_recovery_dir=args.hf_recovery_dir)
     if args.mode == "fixed-flow":
         result = evaluate_fixed_flow(model, dataset, spec, cfg, device, checkpoints)
         if args.verify_repeat:

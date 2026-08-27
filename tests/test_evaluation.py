@@ -69,19 +69,34 @@ class EvaluationTest(unittest.TestCase):
                 resolved = ordered_checkpoints(early, later_checkpoint_dir=late)
         self.assertEqual(resolved[6][1], late / "step_000200.pt")
 
-    def test_missing_archived_checkpoint_uses_only_exact_validated_hf_step(self):
+    def test_missing_later_archives_recover_from_their_exact_hf_namespaces(self):
         with tempfile.TemporaryDirectory() as temp:
             early, late, archive, recovery = Path(temp) / "early", Path(temp) / "late", Path(temp) / "archive", Path(temp) / "recovery"
             def state(path):
                 return {"global_step": int(path.stem.split("_")[1])}
             with patch("pose_controlnet.evaluation.load_training_state", side_effect=state), patch(
                 "pose_controlnet.evaluation.validated_hf_checkpoint_for_step",
-                side_effect=lambda **kwargs: recovery / f"step_{kwargs['step']:06d}.pt",
+                side_effect=lambda **kwargs: Path(kwargs["download_dir"]) / f"step_{kwargs['step']:06d}.pt",
             ) as fetch:
-                resolved = ordered_checkpoints(early, steps=(600, 700), later_checkpoint_dir=late, archive_checkpoint_dir=archive,
+                resolved = ordered_checkpoints(early, steps=(225, 600), later_checkpoint_dir=late, archive_checkpoint_dir=archive,
                                                hf_repo_id="user/private", hf_recovery_dir=recovery)
-        self.assertEqual([path for _, path in resolved], [recovery / "step_000600.pt", recovery / "step_000700.pt"])
-        self.assertEqual([call.kwargs["step"] for call in fetch.call_args_list], [600, 700])
+        self.assertEqual([path for _, path in resolved], [recovery / "pose-learning-500" / "step_000225.pt",
+                                                           recovery / "pose-learning-1500" / "step_000600.pt"])
+        self.assertEqual([(call.kwargs["step"], call.kwargs["run_name"], Path(call.kwargs["download_dir"]).name)
+                          for call in fetch.call_args_list],
+                         [(225, "pose-learning-500", "pose-learning-500"),
+                          (600, "pose-learning-1500", "pose-learning-1500")])
+
+    def test_valid_local_mid_checkpoint_is_preferred_over_hf_recovery(self):
+        with tempfile.TemporaryDirectory() as temp:
+            early, mid, archive = Path(temp) / "early", Path(temp) / "mid", Path(temp) / "archive"
+            local = mid / "step_000500.pt"; local.parent.mkdir(); local.touch()
+            with patch("pose_controlnet.evaluation.load_training_state", return_value={"global_step": 500}), patch(
+                "pose_controlnet.evaluation.validated_hf_checkpoint_for_step") as fetch:
+                resolved = ordered_checkpoints(early, steps=(500,), later_checkpoint_dir=mid,
+                                               archive_checkpoint_dir=archive, hf_repo_id="user/private")
+        self.assertEqual(resolved, [(500, local)])
+        fetch.assert_not_called()
 
     def test_baseline_and_checkpoint_loading_use_trainable_state_interface(self):
         with patch("pose_controlnet.evaluation.load_training_state", return_value={"global_step": 20, "model": {"x": torch.tensor(1)}}), patch("pose_controlnet.evaluation.load_trainable_state_dict") as load:
