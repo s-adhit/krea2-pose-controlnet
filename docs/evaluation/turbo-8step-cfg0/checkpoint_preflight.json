@@ -1,12 +1,12 @@
 {
   "checkpoints": [
     {
-      "checkpoint_step": 800,
-      "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500/hf-recovery-turbo/pose-learning-1500/pose-learning-1500/full/step_000800.pt"
+      "checkpoint_step": 900,
+      "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500/hf-recovery-turbo/pose-learning-1500/pose-learning-1500/full/step_000900.pt"
     },
     {
-      "checkpoint_step": 1500,
-      "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500/step_001500.pt"
+      "checkpoint_step": 1200,
+      "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500/hf-recovery-turbo/pose-learning-1500/pose-learning-1500/full/step_001200.pt"
     }
   ],
   "diagnostic_sample_count": 24,

@@ -1,103 +1,153 @@
 {
   "checkpoints": [
     800,
+    900,
+    1200,
     1500
   ],
   "generated_steps": {
     "coco_156320_crowd": [
       800,
+      900,
+      1200,
       1500
     ],
     "coco_299468_426600": [
       800,
+      900,
+      1200,
       1500
     ],
     "coco_379542_449327": [
       800,
+      900,
+      1200,
       1500
     ],
     "coco_64240_crowd": [
       800,
+      900,
+      1200,
       1500
     ],
     "danbooru_anime_11903560": [
       800,
+      900,
+      1200,
       1500
     ],
     "danbooru_anime_11910154": [
       800,
+      900,
+      1200,
       1500
     ],
     "danbooru_anime_11917323": [
       800,
+      900,
+      1200,
       1500
     ],
     "painting_humanart_10000000000555": [
       800,
+      900,
+      1200,
       1500
     ],
     "painting_humanart_10000000000838": [
       800,
+      900,
+      1200,
       1500
     ],
     "painting_humanart_1000000000218": [
       800,
+      900,
+      1200,
       1500
     ],
     "painting_humanart_1000000001225": [
       800,
+      900,
+      1200,
       1500
     ],
     "painting_humanart_1000000002653": [
       800,
+      900,
+      1200,
       1500
     ],
     "painting_humanart_6000000000319": [
       800,
+      900,
+      1200,
       1500
     ],
     "painting_humanart_6000000002434": [
       800,
+      900,
+      1200,
       1500
     ],
     "painting_humanart_9000000000608": [
       800,
+      900,
+      1200,
       1500
     ],
     "painting_humanart_9000000002722": [
       800,
+      900,
+      1200,
       1500
     ],
     "real_human_humanart_15000000000201": [
       800,
+      900,
+      1200,
       1500
     ],
     "real_human_humanart_15000000002196": [
       800,
+      900,
+      1200,
       1500
     ],
     "real_human_humanart_17000000000288": [
       800,
+      900,
+      1200,
       1500
     ],
     "real_human_humanart_17000000001552": [
       800,
+      900,
+      1200,
       1500
     ],
     "real_human_humanart_17000000001695": [
       800,
+      900,
+      1200,
       1500
     ],
     "sculpture_humanart_14000000000243": [
       800,
+      900,
+      1200,
       1500
     ],
     "sculpture_humanart_14000000001143": [
       800,
+      900,
+      1200,
       1500
     ],
     "sculpture_humanart_14000000004479": [
       800,
+      900,
+      1200,
       1500
     ]
   },
@@ -110,13 +160,13 @@
     "steps": 8
   },
   "raw_to_turbo_control_compatibility": {
-    "1500": {
+    "1200": {
       "control_lora_key_count": 450,
       "raw_training_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors",
       "shape_mismatches": 0,
       "shared_official_mmdit_config": true
     },
-    "800": {
+    "900": {
       "control_lora_key_count": 450,
       "raw_training_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors",
       "shape_mismatches": 0,
