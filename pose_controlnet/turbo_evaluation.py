@@ -46,6 +46,8 @@ TIMESTEP_CHECKPOINT_ROOT = Path("/lambda/nfs/adhit/krea2-pose/checkpoints/pose-l
 TIMESTEP_HF_RUN_NAME = "pose-learning-1500-timestep-lowmid20-to1800"
 TIMESTEP_HF_REPO_ID = "adhit-420/Krea-2-PoseControl-LoRA-checkpoints"
 TIMESTEP_TURBO_CHECKPOINT_STEPS = (1600, 1700, 1800)
+CONTROL_SCALE_TURBO_EVALUATION_ROOT = Path("/lambda/nfs/adhit/krea2-pose/evaluation/turbo-control-scale-step1500")
+CONTROL_SCALE_VALUES = (0.75, 1.0, 1.25, 1.5, 2.0)
 
 
 def turbo_schedule(*, image_sequence_length: int, steps: int = TURBO_STEPS,
@@ -156,6 +158,31 @@ def assert_timestep_turbo_output_isolated(output_dir: str | Path) -> Path:
     return output
 
 
+def assert_control_scale_turbo_output_isolated(output_dir: str | Path) -> Path:
+    """Keep the inference-only control-scale sweep outside every prior tree."""
+    output = assert_timestep_turbo_output_isolated(output_dir)
+    timestep = TIMESTEP_TURBO_EVALUATION_ROOT.resolve()
+    if output == timestep or timestep in output.parents:
+        raise ValueError(f"Control-scale Turbo output must not collide with timestep Turbo results: {timestep}")
+    return output
+
+
+def scale_turbo_control_latent(control_latent: torch.Tensor, control_scale: float = 1.0) -> torch.Tensor:
+    """Apply the inference-only control scale without touching other inputs.
+
+    The identity case deliberately returns the exact existing tensor, preserving
+    the established scale-1.0 sampling path byte-for-byte through patchification.
+    """
+    if not isinstance(control_scale, (float, int)) or isinstance(control_scale, bool):
+        raise TypeError("control_scale must be a finite numeric value")
+    control_scale = float(control_scale)
+    if not math.isfinite(control_scale) or control_scale <= 0.0:
+        raise ValueError("control_scale must be finite and positive")
+    if control_scale == 1.0:
+        return control_latent
+    return control_latent * control_scale
+
+
 def exact_lr5e5_turbo_checkpoints(*, checkpoint_dir: str | Path, hf_repo_id: str,
                                    hf_recovery_dir: str | Path | None = None,
                                    steps: Iterable[int] = LR5E5_TURBO_CHECKPOINT_STEPS) -> list[tuple[int, Path]]:
@@ -189,6 +216,34 @@ def exact_lr5e5_turbo_checkpoints(*, checkpoint_dir: str | Path, hf_repo_id: str
             raise ValueError(f"LR=5e-5 checkpoint filename/embedded step mismatch: {checkpoint} has {state['global_step']}")
         resolved.append((step, checkpoint))
     return resolved
+
+
+def exact_lr5e5_step1500_local_checkpoint(*, checkpoint_dir: str | Path, hf_repo_id: str,
+                                            marker_download_dir: str | Path) -> Path:
+    """Return only the completed local LR-only step-1500 source checkpoint.
+
+    The local state remains the sole checkpoint payload.  Its matching HF
+    completion marker is consulted only to verify the requested branch/step
+    identity and checksum; there is deliberately no remote checkpoint fallback.
+    """
+    if Path(checkpoint_dir).resolve() != LR5E5_CHECKPOINT_ROOT.resolve():
+        raise ValueError(f"LR-only step-1500 diagnostics require checkpoint root {LR5E5_CHECKPOINT_ROOT}")
+    if hf_repo_id != LR5E5_HF_REPO_ID:
+        raise ValueError(f"LR-only step-1500 diagnostics require HF repo {LR5E5_HF_REPO_ID}")
+    checkpoint = validated_local_checkpoint_for_hf_step(
+        checkpoint=LR5E5_CHECKPOINT_ROOT / "step_001500.pt",
+        repo_id=LR5E5_HF_REPO_ID,
+        run_name=LR5E5_HF_RUN_NAME,
+        step=1500,
+        marker_download_dir=Path(marker_download_dir),
+    )
+    if checkpoint is None:
+        remote = f"{LR5E5_HF_RUN_NAME}/full/step_001500.pt"
+        raise FileNotFoundError(f"Required local LR-only step-1500 checkpoint failed exact HF marker validation: {remote}")
+    state = load_training_state(checkpoint)
+    if state["global_step"] != 1500:
+        raise ValueError(f"LR-only source checkpoint filename/embedded step mismatch: {checkpoint} has {state['global_step']}")
+    return checkpoint
 
 
 def exact_timestep_turbo_checkpoints(*, checkpoint_dir: str | Path, hf_repo_id: str,
@@ -256,7 +311,8 @@ def assert_lr5e5_diagnostic_contract(spec: Mapping[str, Any], original_spec: Map
 @torch.inference_mode()
 def sample_turbo_pose_image(model: Any, vae_decode_fn, sample: dict[str, Any], device: torch.device,
                             seed: int, *, steps: int = TURBO_STEPS,
-                            guidance: float = TURBO_CFG, mu: float = TURBO_MU):
+                            guidance: float = TURBO_CFG, mu: float = TURBO_MU,
+                            control_scale: float = 1.0):
     """Sample a control-conditioned Turbo image with genuine CFG disablement.
 
     The implementation follows the official Euler loop and CFG branch.  With
@@ -277,7 +333,9 @@ def sample_turbo_pose_image(model: Any, vae_decode_fn, sample: dict[str, Any], d
     text_mask = sample["mask"][None].to(device=device, dtype=torch.bool)
     patch = model.config.patch
     image, pos, mask = patchify_and_position(noise, text.shape[1], patch, text_mask)
-    control, _, _ = patchify_and_position(control_latent, text.shape[1], patch, text_mask)
+    control, _, _ = patchify_and_position(
+        scale_turbo_control_latent(control_latent, control_scale), text.shape[1], patch, text_mask
+    )
     schedule = turbo_schedule(image_sequence_length=image.shape[1], steps=steps, mu=mu)
     for current, previous in zip(schedule[:-1], schedule[1:]):
         timestep = torch.full((1,), current, dtype=image.dtype, device=device)
