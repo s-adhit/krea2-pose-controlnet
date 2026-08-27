@@ -1,0 +1,60 @@
+{
+  "checkpoints": [
+    {
+      "checkpoint_step": 1600,
+      "remote_checkpoint": "pose-learning-1500-timestep-lowmid20-to1800/full/step_001600.pt",
+      "remote_completion_marker": "pose-learning-1500-timestep-lowmid20-to1800/full/step_001600.pt.complete.json",
+      "validated_path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-timestep-lowmid20-to1800/hf-recovery-turbo/pose-learning-1500-timestep-lowmid20-to1800/pose-learning-1500-timestep-lowmid20-to1800/full/step_001600.pt"
+    },
+    {
+      "checkpoint_step": 1700,
+      "remote_checkpoint": "pose-learning-1500-timestep-lowmid20-to1800/full/step_001700.pt",
+      "remote_completion_marker": "pose-learning-1500-timestep-lowmid20-to1800/full/step_001700.pt.complete.json",
+      "validated_path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-timestep-lowmid20-to1800/hf-recovery-turbo/pose-learning-1500-timestep-lowmid20-to1800/pose-learning-1500-timestep-lowmid20-to1800/full/step_001700.pt"
+    },
+    {
+      "checkpoint_step": 1800,
+      "remote_checkpoint": "pose-learning-1500-timestep-lowmid20-to1800/full/step_001800.pt",
+      "remote_completion_marker": "pose-learning-1500-timestep-lowmid20-to1800/full/step_001800.pt.complete.json",
+      "validated_path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-timestep-lowmid20-to1800/step_001800.pt"
+    }
+  ],
+  "diagnostic_sample_count": 24,
+  "hf_namespace": "pose-learning-1500-timestep-lowmid20-to1800/full/",
+  "hf_repo_id": "adhit-420/Krea-2-PoseControl-LoRA-checkpoints",
+  "local_checkpoint_root": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-timestep-lowmid20-to1800",
+  "metadata": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "stems": [
+    "coco_156320_crowd",
+    "coco_299468_426600",
+    "coco_379542_449327",
+    "coco_64240_crowd",
+    "danbooru_anime_11903560",
+    "danbooru_anime_11910154",
+    "danbooru_anime_11917323",
+    "painting_humanart_10000000000555",
+    "painting_humanart_10000000000838",
+    "painting_humanart_1000000000218",
+    "painting_humanart_1000000001225",
+    "painting_humanart_1000000002653",
+    "painting_humanart_6000000000319",
+    "painting_humanart_6000000002434",
+    "painting_humanart_9000000000608",
+    "painting_humanart_9000000002722",
+    "real_human_humanart_15000000000201",
+    "real_human_humanart_15000000002196",
+    "real_human_humanart_17000000000288",
+    "real_human_humanart_17000000001552",
+    "real_human_humanart_17000000001695",
+    "sculpture_humanart_14000000000243",
+    "sculpture_humanart_14000000001143",
+    "sculpture_humanart_14000000004479"
+  ]
+}

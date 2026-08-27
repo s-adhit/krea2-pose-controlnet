@@ -1,0 +1,308 @@
+{
+  "format_version": 1,
+  "kind": "turbo_fixed_pose",
+  "per_stem_seeds": {
+    "coco_156320_crowd": {
+      "noise": 8665436860356381343,
+      "sampling": 4911567592567212507,
+      "timestep": 8648298132847383793
+    },
+    "coco_299468_426600": {
+      "noise": 7698135063851727532,
+      "sampling": 3180270558575964818,
+      "timestep": 665727362127406624
+    },
+    "coco_379542_449327": {
+      "noise": 4031262677017421156,
+      "sampling": 6097319796720670444,
+      "timestep": 4612421686541552276
+    },
+    "coco_64240_crowd": {
+      "noise": 1807007160652469904,
+      "sampling": 594100244186452314,
+      "timestep": 8070829125627756484
+    },
+    "danbooru_anime_11903560": {
+      "noise": 507844947981457035,
+      "sampling": 3404738794602796961,
+      "timestep": 591511162055866875
+    },
+    "danbooru_anime_11910154": {
+      "noise": 3876283709425512337,
+      "sampling": 8076876324841898675,
+      "timestep": 3895017761380569823
+    },
+    "danbooru_anime_11917323": {
+      "noise": 2369348847713422892,
+      "sampling": 5817123931316804844,
+      "timestep": 5544023258219330130
+    },
+    "painting_humanart_10000000000555": {
+      "noise": 8024967536303908394,
+      "sampling": 6753491079149504082,
+      "timestep": 3505863075494668625
+    },
+    "painting_humanart_10000000000838": {
+      "noise": 8377759567303263848,
+      "sampling": 3217584380567046935,
+      "timestep": 1387057312707619579
+    },
+    "painting_humanart_1000000000218": {
+      "noise": 2914534884989778446,
+      "sampling": 9022673857389605354,
+      "timestep": 8369331581327896559
+    },
+    "painting_humanart_1000000001225": {
+      "noise": 1155427122437270819,
+      "sampling": 8854799449003965586,
+      "timestep": 8120486319807302009
+    },
+    "painting_humanart_1000000002653": {
+      "noise": 6224655339869759820,
+      "sampling": 6414660882780986812,
+      "timestep": 8302391977789070792
+    },
+    "painting_humanart_6000000000319": {
+      "noise": 3959380247065158847,
+      "sampling": 4411050109036320215,
+      "timestep": 4665361927296008585
+    },
+    "painting_humanart_6000000002434": {
+      "noise": 9197887055508523869,
+      "sampling": 1479288552532725441,
+      "timestep": 7111965322785939344
+    },
+    "painting_humanart_9000000000608": {
+      "noise": 3824301955165372713,
+      "sampling": 7385518152048172045,
+      "timestep": 3723567488360688566
+    },
+    "painting_humanart_9000000002722": {
+      "noise": 2551975987621754684,
+      "sampling": 573803802872078447,
+      "timestep": 4684265194341564970
+    },
+    "real_human_humanart_15000000000201": {
+      "noise": 6221447762953006633,
+      "sampling": 3623769590212024097,
+      "timestep": 1724506755650228982
+    },
+    "real_human_humanart_15000000002196": {
+      "noise": 8180019445229478060,
+      "sampling": 8695516506862748354,
+      "timestep": 717824990042195317
+    },
+    "real_human_humanart_17000000000288": {
+      "noise": 625752451347580673,
+      "sampling": 6163039533559699249,
+      "timestep": 3256559466726671426
+    },
+    "real_human_humanart_17000000001552": {
+      "noise": 5144250314580101085,
+      "sampling": 6468416484222469845,
+      "timestep": 6000084357937986088
+    },
+    "real_human_humanart_17000000001695": {
+      "noise": 8857182522737761641,
+      "sampling": 5408401923978832484,
+      "timestep": 6074176205243852131
+    },
+    "sculpture_humanart_14000000000243": {
+      "noise": 7895683264360377364,
+      "sampling": 7268152311884585886,
+      "timestep": 7293354284748472381
+    },
+    "sculpture_humanart_14000000001143": {
+      "noise": 834718017745657325,
+      "sampling": 8824614010092378975,
+      "timestep": 8142714840334251045
+    },
+    "sculpture_humanart_14000000004479": {
+      "noise": 4877683694639281695,
+      "sampling": 1678322687182916545,
+      "timestep": 7214306113170800217
+    }
+  },
+  "sample_identities": {
+    "coco_156320_crowd": {
+      "context_sha256": "a845206be9f86cde8e5c5a78d03e1c81ac9f7835e7df203c1ae4f84507e1bab3",
+      "control_latent_sha256": "fdb9896702a5aaed65b9b0c7338856f6dbeac0dd1f51d356b7bbfb81dd350908",
+      "image_latent_sha256": "4347235819195ef68931aa05093891dbd6f6dfe7640fd168f9eccd3cf684e266",
+      "mask_sha256": "60c285d83690be0345cc75ae7c286b6ed670deb3b87b965f09cae717837b84d3"
+    },
+    "coco_299468_426600": {
+      "context_sha256": "afae3b043cf5d79d528ebf83b63434c8b8feef78b4dc81ab1d24655999ae0fba",
+      "control_latent_sha256": "b4038fa02f195b979b67fc57b11bdfa5e16aeb4a0db3109b3d1c3d1003325d57",
+      "image_latent_sha256": "8475081c31dfe2305fea285024a9a031508362f8810062b3b5fe63e14ef0264f",
+      "mask_sha256": "862ab177ce950621517f02390d726827bc8b2ed09e653e7a73e24efe69b6bc5b"
+    },
+    "coco_379542_449327": {
+      "context_sha256": "5ef0c60a5b0faca5c6f29fa2bf55aad4bc4fcfddc06963f4e6d1f83710e2db41",
+      "control_latent_sha256": "6ad2452c6b3a000828a8e0ae614ea5c4c22bc2223ebff73736c5b9aa18d94150",
+      "image_latent_sha256": "33a2d2234117edba4ead415a416c9381078c2a23e808fe12a9605755d64d751b",
+      "mask_sha256": "7b88f73d78854730c49ec021b24e240118d050696d032e75d9e6283bc252106c"
+    },
+    "coco_64240_crowd": {
+      "context_sha256": "6062837b2412adf9360ec6bcffabfc649e39191187fae05c61872a3441e87daa",
+      "control_latent_sha256": "87ab1d469b12fbebad62c646fe22d92dd31d57e9796addac766a052e3613fdfb",
+      "image_latent_sha256": "ce7bcc073911336b996b9535b88cb6f3fcef83d65f179964aff0c552630fb32a",
+      "mask_sha256": "754b58164ca4660ee2d2ad3b87d97a9f086b1f6dca6621808cdcc8db87741de0"
+    },
+    "danbooru_anime_11903560": {
+      "context_sha256": "31ddd12555adc054e3caa8ca44fee5bf5a6f27ab3792faa9e28b60f5a677ec79",
+      "control_latent_sha256": "1c846b813d39abbf8a820122341bff57b5d084c1f27c55f826dcd8400f5f4bf0",
+      "image_latent_sha256": "c406269abab077411b363287084fc0169ebc0d265c23a8b84f663aaf4fdf4030",
+      "mask_sha256": "0b95e43a4e96d320c6e9686ff6ad3c1a0255c17f7883332a0a9ce7f914d62cc7"
+    },
+    "danbooru_anime_11910154": {
+      "context_sha256": "1ff50f7f0ce341e5bd37361225792441834b376d4c7daa0d4db7f6831f33a3fa",
+      "control_latent_sha256": "7b5c45b9fa64f34cba4470dfe51b6ac4abe3cca9118c210315864e52c2aa8714",
+      "image_latent_sha256": "5edf79f0ed7e648b6718b46a7f13e9eb4f2b82df385e932d808faae88815176d",
+      "mask_sha256": "92ed78c705017b645f06277f8d19bc2fd7e15e48c05f7470ffc57587a78c214f"
+    },
+    "danbooru_anime_11917323": {
+      "context_sha256": "4e2932c300e26a37b792f6432299b3c2cf2daab2aa0e3795361b5e92b393aec8",
+      "control_latent_sha256": "150fb4fd55fe703f3b2646cf2b4ff1af86b47d69390c440029fba95b6f936832",
+      "image_latent_sha256": "ed56c813daffced73d372e385b0b94759c927c76e1d95b75276ed5299ae97d2f",
+      "mask_sha256": "bb204e6d8aa7b46276d619cd6dcb7e1f0bacbaaa4f453d006950cb560f38b245"
+    },
+    "painting_humanart_10000000000555": {
+      "context_sha256": "7a659b16d40f9de3eaebdb0f72e226ad79100bed87b7e3735971d702f9dcf412",
+      "control_latent_sha256": "da70658f27256aa4d94f167f81179d8eacf6ecf792459e462ce4c20992d1606f",
+      "image_latent_sha256": "8b1b3ee1ab01e74e56c071f3aaabadb402008f73318128f5f903b36b00ce6460",
+      "mask_sha256": "cb67a7cb10b590b777d49e2166081adf2b6cd17130330459e25674a7b31c8a57"
+    },
+    "painting_humanart_10000000000838": {
+      "context_sha256": "b5fa6f8ec8d536f30d6ac8038ae2bd13bbddea4a3b88815e90258a678138c133",
+      "control_latent_sha256": "099ace7442d0b231f4d59edc6fbcc103cdd710a08335071e1b3b04f442f28085",
+      "image_latent_sha256": "29881130d25c12f36e0b7cb84d4d9e1b896354058e0c01cda97317503eec6ecf",
+      "mask_sha256": "7b88f73d78854730c49ec021b24e240118d050696d032e75d9e6283bc252106c"
+    },
+    "painting_humanart_1000000000218": {
+      "context_sha256": "d0f6661fad906e8b6665f49ea3cd3871959e74e278e97ffd263a03e3a77edaf0",
+      "control_latent_sha256": "e8a4226d6cc97faa8aa79a2f90dc2f0e3d376c2ebc2bd9878630126be29ffc9d",
+      "image_latent_sha256": "55174228d41ba0ac4c8ff11e4ee8ae7a5126bf62dcd3f8a8de04dafeaa4c3cf1",
+      "mask_sha256": "9aaa1e8265eb471776dcb8442f453711d4f4e69c3c62c6c8d2a043c726b47e4f"
+    },
+    "painting_humanart_1000000001225": {
+      "context_sha256": "495aa3832e230ce620938afd3974535c67a2c3e7c78512c0b5260c3d9fdace01",
+      "control_latent_sha256": "a80deaa3dfff2dcf3205624320ce27c0d6d923a29087c5f77a0942fba68d6fbc",
+      "image_latent_sha256": "c197952dec6a3076266897716f58996f5d4da1262ee0f92cf76ade7fd10d949e",
+      "mask_sha256": "670787be7891bd03b300ab086b5ffef16dfd7cab77157e1dd040c6d7bef42e71"
+    },
+    "painting_humanart_1000000002653": {
+      "context_sha256": "caefb1d64f0ff0c85acbf9a1c81fc47db6cd3054e3ee42c85ed3bdd1f4725b49",
+      "control_latent_sha256": "48a14022f16816698db616758e47d31f5f1808ef46b3b01f57228217f6a977b0",
+      "image_latent_sha256": "427ecb3ef4bf0918537d31a354cdf0632ff56580d46dbef84abd678f1b184251",
+      "mask_sha256": "d04df6fe98a21ae966bd98adb7269da8739578f14060d9ad166485bd5995b944"
+    },
+    "painting_humanart_6000000000319": {
+      "context_sha256": "24bfea0e5e5f1a92c59e30b3c13a34f341352628eba0b4074320e7f7c9aeb909",
+      "control_latent_sha256": "fc0159e2f7fb5f4bf468267cea0dd12c7487bd1ab0aa1a3cf3e58ec0ade7b271",
+      "image_latent_sha256": "f10772c4310afa9a2002bb6d71a2916abe071881238f743d8ebf7a92bb38c156",
+      "mask_sha256": "f295de94fbb60df3e196481a7a4a3f969386a5ab437835f8411bc53028c1ae88"
+    },
+    "painting_humanart_6000000002434": {
+      "context_sha256": "c47242ecd47819ed44b18b3b48ec96b532e307e7abb52f9d308a63b1cf2444e0",
+      "control_latent_sha256": "48895799bd586bd8b7c135afd38b38674df72f0ee3305c0e598f268a51927be5",
+      "image_latent_sha256": "578a1b17b3efa278609d38d4f4fd69506123bf232eee22bafa9508afd5e5df1c",
+      "mask_sha256": "60c285d83690be0345cc75ae7c286b6ed670deb3b87b965f09cae717837b84d3"
+    },
+    "painting_humanart_9000000000608": {
+      "context_sha256": "63401f411ea21468d38638cd5f9f8d92e307f7ef78f9bb60c46f85d1b596e088",
+      "control_latent_sha256": "ad2d0f6399409ce00db515ea40fc0e1d6787ae8617fc3eee431f2554413d37f0",
+      "image_latent_sha256": "b0969b9421d82fe2b6937a8b893caf796badace65570c6fdf63043018c8e80d7",
+      "mask_sha256": "8e1bc4b6253c93705e7935f7116fba1bda3383997ca588db079d1eab68bd7c0b"
+    },
+    "painting_humanart_9000000002722": {
+      "context_sha256": "8dbcc0228e61692143ee55669f7a9c9c10ef24a29e70e8bc3cee2a4a19ac9bc3",
+      "control_latent_sha256": "a68ebd9b66ec4506754a7de0c0e0573f341b5642b0251fd6af48c60fdbd1affe",
+      "image_latent_sha256": "218ec4c0805c6631e7e6c10223f858de7f812786c39ea7a31aa4c6c28b71b9d8",
+      "mask_sha256": "8f1277c1cedd5d59903aac66a49dccc2a06be1deb4cda483d60226d2de87b880"
+    },
+    "real_human_humanart_15000000000201": {
+      "context_sha256": "a5069d9c57bd528194b29e5f85772fd8490c5fec285589cccf10d725752addc8",
+      "control_latent_sha256": "b2b6312a15d539f03eacd05864ea5fcfbadd245c319d4e22f01008f796366adf",
+      "image_latent_sha256": "d74caf93a6227cbdb237c95497aec340d0de94e4a5fd3d997827a6f121aa285a",
+      "mask_sha256": "c79273f69a28d75a55fba699bd024ea1065a4ec98c4f7cf6d194805a8f4e9bee"
+    },
+    "real_human_humanart_15000000002196": {
+      "context_sha256": "1482f516f66c45082c28523e480c9ab33723ede6a9ed124d25696b1f27ab35fe",
+      "control_latent_sha256": "336528756ff5c9d04a3237ffb631faf773a1753e87ff7d542f894c67bcb4d947",
+      "image_latent_sha256": "54bce72e2d6128aa70ae61fcebdd40b004d073cf765f13344acc139df22f8ded",
+      "mask_sha256": "2be1e207cb3c363ebec163e3de22b4b60a5357f10f7e3afc1e10a7e47c4dc03a"
+    },
+    "real_human_humanart_17000000000288": {
+      "context_sha256": "42fdc53f0ca7a2f851fed8a2e6022f2777ab9c69a7a408493bbf08883de743d2",
+      "control_latent_sha256": "1bf5e5f19b1b1137223b968b19caf0fe746bda7417c6858f115507bc0ccb992e",
+      "image_latent_sha256": "e9dc58c0ad218ef4895f271f2d59dafcd9bdeed3d1bb2d1140b3e6c6ad8a0e16",
+      "mask_sha256": "f31331bec89dd9543f6df7fd77acc946d07522e8981632c8c76ed13948cdcf9e"
+    },
+    "real_human_humanart_17000000001552": {
+      "context_sha256": "e3f3890278d8c160c0e5c7b22671f588402a14f6946d20785348f5db69f84c48",
+      "control_latent_sha256": "dfc0272ca2b1e74cf38308e5552091f365cfa2363ce55832c253f94add08f7cb",
+      "image_latent_sha256": "0ce273233aa936240c04d209ca35310fee65e6030f33a95613e07a8aa6572548",
+      "mask_sha256": "74872aef3643fea1dc8b4bdf00e10a45a15ad73d518e1911e26fa606c1a77227"
+    },
+    "real_human_humanart_17000000001695": {
+      "context_sha256": "f2009851735fc8448ce3f0cca8e53e6966577a40f2bb40d928e39bcb7db0a475",
+      "control_latent_sha256": "3f79c81b57962b27ed05398827f95a4e2714e4e7391bd84f82a212c2077134b2",
+      "image_latent_sha256": "e19959069ac78babfa9f11b0fc54cc04c081bfe0661a3222ddd0b37c8ec3fad6",
+      "mask_sha256": "c7f421a7fc4a9e9ddc116db97637d3044e5cf98a65f325db832d5e10de4dae6d"
+    },
+    "sculpture_humanart_14000000000243": {
+      "context_sha256": "03ca24a34cde6462f843f55248512d2b7bddd6561ed5ab236d5c91886506b55c",
+      "control_latent_sha256": "2dbaf217aa63b3349259eead14c2542e2bc957a6a22ca83253eaef3da997c92e",
+      "image_latent_sha256": "46552d0c5d1c9ec162f3db94d71559d3affd963ccdd0209398fcd4f7c6232e74",
+      "mask_sha256": "3cd15194ad28eab01fec46faee93c2fcf20e386a5811927a4a2c3671543195a6"
+    },
+    "sculpture_humanart_14000000001143": {
+      "context_sha256": "35b306ced17de9ab71d5eb04251222aea690524bed62aca73892f48dce925d93",
+      "control_latent_sha256": "7451e5041edbabad6e36481ae2cd70c55654f2539f294995e06d6707f7127336",
+      "image_latent_sha256": "ab9f14792117563fbfdfe30d16fe5034eec8cb03a6bab09b0445192f31ec52fe",
+      "mask_sha256": "b57444d0764cef85bc7ddc6e606adb6b64d5b9df9f5debc008f39ddc1760ff4b"
+    },
+    "sculpture_humanart_14000000004479": {
+      "context_sha256": "395230d938ea663dde32cac52339989e2aa1f404277e0eedfccb07bfab0eaa0d",
+      "control_latent_sha256": "3b91d2cdc34c3eeacd8396ab7f854ad183a06048b26e27483a4d30a78784d074",
+      "image_latent_sha256": "4ebddc4f8bd42172407ef69b41c3edc986bec74982caed5e30bc03dd67b9f0bb",
+      "mask_sha256": "aa1b62dc83e16753a0042f4052dced19667646a71187064a3d961ea46e0e7a0b"
+    }
+  },
+  "seed": 420200,
+  "split": "diagnostic_val",
+  "stems": [
+    "coco_156320_crowd",
+    "coco_299468_426600",
+    "coco_379542_449327",
+    "coco_64240_crowd",
+    "danbooru_anime_11903560",
+    "danbooru_anime_11910154",
+    "danbooru_anime_11917323",
+    "painting_humanart_10000000000555",
+    "painting_humanart_10000000000838",
+    "painting_humanart_1000000000218",
+    "painting_humanart_1000000001225",
+    "painting_humanart_1000000002653",
+    "painting_humanart_6000000000319",
+    "painting_humanart_6000000002434",
+    "painting_humanart_9000000000608",
+    "painting_humanart_9000000002722",
+    "real_human_humanart_15000000000201",
+    "real_human_humanart_15000000002196",
+    "real_human_humanart_17000000000288",
+    "real_human_humanart_17000000001552",
+    "real_human_humanart_17000000001695",
+    "sculpture_humanart_14000000000243",
+    "sculpture_humanart_14000000001143",
+    "sculpture_humanart_14000000004479"
+  ],
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  }
+}
