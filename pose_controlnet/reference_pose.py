@@ -23,9 +23,148 @@ COCO_17 = (
 )
 _COCO_STEM = re.compile(r"^coco_(?P<image_id>\d+)_(?P<annotation_id>\d+|crowd)$")
 
+# This is the exact OpenPose-style unified skeleton used by the source control
+# renderer.  Index 1 is the synthesized neck, so it intentionally has no COCO
+# identity and is never a PCK joint.
+COCO_TO_UNIFIED = (0, 15, 14, 17, 16, 5, 2, 6, 3, 7, 4, 11, 8, 12, 9, 13, 10)
+UNIFIED_LIMBS = (
+    (1, 2), (1, 5),
+    (2, 3), (3, 4),
+    (5, 6), (6, 7),
+    (1, 8), (8, 9), (9, 10),
+    (1, 11), (11, 12), (12, 13),
+    (0, 1),
+    (0, 14), (0, 15),
+    (14, 16), (15, 17),
+)
+MIN_LIMBS = 5
+# The renderer's inclusion test is evaluated after neck synthesis.  These are
+# the torso/head anchors from its unified-18 representation.
+CORE_UNIFIED_JOINTS = (0, 1, 2, 5, 8, 11)
+
 
 class ReferencePoseError(ValueError):
     """Raised when source provenance cannot be proved exactly."""
+
+
+def renderer_joint_states(keypoints: Iterable[Iterable[float]]) -> tuple[list[dict[str, Any]], list[list[float]], int]:
+    """Return analytic source/render/PCK state for each authoritative COCO joint.
+
+    Rendering is determined only from the original renderer topology: a unified
+    endpoint is represented iff it belongs to a limb whose two endpoints have
+    visibility greater than zero.  This must not be inferred from raster pixels.
+    """
+    coco = [list(map(float, point)) for point in keypoints]
+    if len(coco) != 17 or any(len(point) != 3 for point in coco):
+        raise ReferencePoseError("Expected 17 COCO [x, y, visibility] joints")
+    unified = [[0.0, 0.0, 0.0] for _ in range(18)]
+    for coco_index, unified_index in enumerate(COCO_TO_UNIFIED):
+        unified[unified_index] = coco[coco_index].copy()
+    # The original renderer synthesizes a neck only when both shoulders exist.
+    left_shoulder, right_shoulder = coco[5], coco[6]
+    if left_shoulder[2] > 0 and right_shoulder[2] > 0:
+        unified[1] = [
+            (left_shoulder[0] + right_shoulder[0]) / 2,
+            (left_shoulder[1] + right_shoulder[1]) / 2,
+            min(left_shoulder[2], right_shoulder[2]),
+        ]
+    rendered = set()
+    visible_limb_count = 0
+    for first, second in UNIFIED_LIMBS:
+        if unified[first][2] > 0 and unified[second][2] > 0:
+            visible_limb_count += 1
+            rendered.update((first, second))
+    states = []
+    for coco_index, unified_index in enumerate(COCO_TO_UNIFIED):
+        source_visible = coco[coco_index][2] > 0
+        rendered_in_control = unified_index in rendered
+        states.append({
+            "coco_index": coco_index,
+            "coco_joint": COCO_17[coco_index],
+            "unified_index": unified_index,
+            "source_visible": source_visible,
+            "rendered_in_control": rendered_in_control,
+            "pck_eligible": source_visible and rendered_in_control,
+        })
+    return states, unified, visible_limb_count
+
+
+def has_core_visibility(unified_keypoints: Iterable[Iterable[float]]) -> bool:
+    """Match the renderer's post-neck-synthesis core-visibility predicate."""
+    points = list(unified_keypoints)
+    return any(float(points[index][2]) > 0 for index in CORE_UNIFIED_JOINTS)
+
+
+def renderer_includes_person(keypoints: Iterable[Iterable[float]]) -> tuple[bool, dict[str, Any]]:
+    """Recompute the Human-Art/crowd renderer qualification from source joints."""
+    states, unified, visible_limb_count = renderer_joint_states(keypoints)
+    core_visible = has_core_visibility(unified)
+    return core_visible and visible_limb_count >= MIN_LIMBS, {
+        "has_core_visibility": core_visible,
+        "visible_limb_count": visible_limb_count,
+        "minimum_limb_count": MIN_LIMBS,
+        "joint_states": states,
+    }
+
+
+def pck_person_from_source(keypoints: Iterable[Iterable[float]]) -> dict[str, Any]:
+    """Convert authoritative COCO joints to a PCK person without dropping provenance."""
+    points = [list(map(float, point)) for point in keypoints]
+    states, _, _ = renderer_joint_states(points)
+    # Visibility is the PCK eligibility mask.  Coordinates remain authoritative
+    # source/bucket coordinates even when a joint is not eligible.
+    pck_points = [point[:2] + [1.0 if state["pck_eligible"] else 0.0]
+                  for point, state in zip(points, states)]
+    return {"keypoints": pck_points, "joint_states": states, "keypoints_authoritative": points}
+
+
+def reference_person_from_sidecar(
+    person: Mapping[str, Any], *, source_size: tuple[int, int],
+    resized_size: tuple[int, int], crop_box: tuple[int, int, int, int],
+    requires_renderer_qualification: bool,
+) -> dict[str, Any]:
+    """Construct a transformed PCK reference while retaining raw COCO provenance."""
+    source_keypoints = person.get("keypoints")
+    if not isinstance(source_keypoints, list):
+        raise ReferencePoseError("Sidecar person lacks authoritative keypoints")
+    flattened = [value for joint in source_keypoints for value in joint]
+    bucket_keypoints = transform_keypoints(
+        flattened, source_size=source_size, resized_size=resized_size, crop_box=crop_box,
+    )
+    included, details = renderer_includes_person(source_keypoints)
+    if not requires_renderer_qualification:
+        included = True
+    pck = pck_person_from_source(bucket_keypoints)
+    return {
+        "person_id": person.get("annotation_id"),
+        "annotation_id": person.get("annotation_id"),
+        "reference_rendered": included,
+        "renderer_qualification_recomputed": requires_renderer_qualification,
+        "renderer": details,
+        "keypoints_source": [list(map(float, joint)) for joint in source_keypoints],
+        "keypoints_bucket": bucket_keypoints,
+        **pck,
+    }
+
+
+def reference_people_from_sidecar(
+    record: Mapping[str, Any], *, source_size: tuple[int, int],
+    resized_size: tuple[int, int], crop_box: tuple[int, int, int, int],
+) -> list[dict[str, Any]]:
+    """Reproduce the renderer's available person-inclusion behavior.
+
+    Human-Art sidecar construction already guaranteed removal of `iscrowd == 1`
+    and `num_keypoints == 0`; those unavailable source fields are not invented.
+    Human-Art and COCO crowd then recompute the renderer's core/limb filter.
+    A COCO single stem is the explicitly requested annotation only.
+    """
+    source = record.get("source")
+    mode = record.get("mode")
+    requires_qualification = source == "humanart" or (source == "coco" and mode == "crowd")
+    return [reference_person_from_sidecar(
+        person, source_size=source_size, resized_size=resized_size, crop_box=crop_box,
+        requires_renderer_qualification=requires_qualification,
+    ) for person in record.get("people", [])]
 
 
 def parse_coco_stem(stem: str) -> tuple[int, int | None]:

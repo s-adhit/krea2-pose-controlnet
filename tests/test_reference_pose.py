@@ -1,12 +1,70 @@
 import json
+import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
 
-from pose_controlnet.reference_pose import ReferencePoseError, build_coco_reference_records, parse_coco_stem, transform_keypoints, write_reference_jsonl
+from pose_controlnet.reference_pose import (
+    ReferencePoseError, build_coco_reference_records, parse_coco_stem,
+    pck_person_from_source, renderer_joint_states, renderer_includes_person,
+    transform_keypoints, write_reference_jsonl,
+)
 
 
 class ReferencePoseTest(unittest.TestCase):
+    @staticmethod
+    def joints(visible=()):
+        return [[float(index), float(index), 2.0 if index in visible else 0.0] for index in range(17)]
+
+    def test_visible_joint_with_only_invisible_neighbor_is_not_rendered(self):
+        states, _, _ = renderer_joint_states(self.joints((15,)))
+        self.assertTrue(states[15]["source_visible"])
+        self.assertFalse(states[15]["rendered_in_control"])
+        self.assertFalse(states[15]["pck_eligible"])
+
+    def test_exact_left_ankle_case_is_not_pck_eligible(self):
+        joints = self.joints((15,)); joints[15] = [224.7366, 217.9995, 2.0]
+        states, unified, _ = renderer_joint_states(joints)
+        self.assertEqual(states[15]["unified_index"], 13)
+        self.assertEqual(unified[12][2], 0.0)
+        self.assertFalse(states[15]["rendered_in_control"])
+        self.assertFalse(states[15]["pck_eligible"])
+
+    def test_visible_joint_in_rendered_limb_is_pck_eligible(self):
+        states, _, _ = renderer_joint_states(self.joints((13, 15)))
+        self.assertTrue(states[13]["pck_eligible"])
+        self.assertTrue(states[15]["pck_eligible"])
+
+    def test_synthesized_neck_changes_topology_but_is_not_pck_joint(self):
+        states, unified, limbs = renderer_joint_states(self.joints((5, 6, 7)))
+        self.assertGreater(unified[1][2], 0.0)
+        self.assertGreater(limbs, 0)
+        self.assertEqual(len(states), 17)
+        self.assertNotIn(1, [state["unified_index"] for state in states])
+
+    def test_renderer_qualification_uses_core_and_minimum_visible_limbs(self):
+        included, details = renderer_includes_person(self.joints((5, 6, 7, 9, 11, 13)))
+        self.assertTrue(included)
+        self.assertGreaterEqual(details["visible_limb_count"], 5)
+
+    def test_geometry_validation_checks_only_renderer_represented_joints(self):
+        states, _, _ = renderer_joint_states(self.joints((15,)))
+        self.assertFalse(any(state["rendered_in_control"] for state in states))
+        # This is the eligibility predicate the raster gate applies; the visible
+        # ankle has no rendered limb and must not reach a pixel-distance check.
+        self.assertEqual([state for state in states if state["rendered_in_control"]], [])
+
+    @unittest.skipUnless(Path("/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_07/painting_humanart_10000000000838.png").is_file(), "GH200 diagnostic raster unavailable")
+    def test_painting_humanart_corrected_geometry_validation_passes(self):
+        spec = importlib.util.spec_from_file_location("reference_pose_gate", Path(__file__).resolve().parents[1] / "scripts" / "reference_pose_gate.py")
+        module = importlib.util.module_from_spec(spec); assert spec.loader is not None; spec.loader.exec_module(module)
+        sidecar = json.loads(Path("data/manifests/diagnostic_reference_pose.json").read_text())
+        record = next(row for row in sidecar["records"] if row["stem"] == "painting_humanart_10000000000838")
+        import torch
+        shard = torch.load("/lambda/nfs/adhit/krea2-pose/posebridge_latents/diagnostic_val/diagnostic_val-00000.pt", map_location="cpu", weights_only=False)
+        geometry = next(row for row in shard["samples"] if row["stem"] == record["stem"])
+        result = module.validate_record(record, Path("/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_07/painting_humanart_10000000000838.png"), geometry)
+        self.assertEqual(result["status"], "PASS")
     def annotation_file(self, root: Path) -> Path:
         path = root / "person_keypoints_val2017.json"
         path.write_text(json.dumps({"images": [{"id": 12, "width": 100, "height": 50}], "annotations": [

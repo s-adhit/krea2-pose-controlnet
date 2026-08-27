@@ -58,20 +58,42 @@ def associate_people(reference: list[dict], predicted: list[dict], confidence_th
 
 
 def pck_for_people(reference: list[dict], predicted: list[dict], confidence_threshold: float) -> dict[str, Any]:
-    pairs = associate_people(reference, predicted, confidence_threshold); total = matches = 0
+    """Score only renderer-encoded reference joints.
+
+    Reference callers mark PCK eligibility in the confidence slot.  A missing
+    detector joint is consequently a failed eligible joint, rather than being
+    silently removed from the PCK denominator.
+    """
+    pairs = associate_people(reference, predicted, confidence_threshold); total = covered = 0
     thresholds = {f"pck_{int(t * 100):03d}": 0 for t in PCK_THRESHOLDS}; excluded = []
     for ri, pi in pairs:
         ref, pred = reference[ri], predicted[pi]; scale = _scale(ref, confidence_threshold)
         if scale is None:
             excluded.append({"reference_person": ri, "reason": "insufficient_reference_joints"}); continue
         r, p = np.asarray(ref["keypoints"], float), np.asarray(pred["keypoints"], float)
-        shared = _valid_joints(ref, confidence_threshold) & _valid_joints(pred, confidence_threshold)
-        distances = np.linalg.norm(r[shared, :2] - p[shared, :2], axis=1); total += int(shared.sum())
-        for threshold in PCK_THRESHOLDS: thresholds[f"pck_{int(threshold * 100):03d}"] += int((distances <= threshold * scale).sum())
+        eligible = _valid_joints(ref, confidence_threshold)
+        predicted_valid = _valid_joints(pred, confidence_threshold)
+        shared = eligible & predicted_valid
+        total += int(eligible.sum()); covered += int(shared.sum())
+        distances = np.linalg.norm(r[shared, :2] - p[shared, :2], axis=1)
+        for threshold in PCK_THRESHOLDS:
+            thresholds[f"pck_{int(threshold * 100):03d}"] += int((distances <= threshold * scale).sum())
     for index in range(len(reference)):
         if index not in {i for i, _ in pairs}: excluded.append({"reference_person": index, "reason": "no_matched_prediction"})
-    return {key: (value / total if total else None) for key, value in thresholds.items()} | {"evaluated_joint_count": total, "matched_people": len(pairs), "excluded": excluded,
-        "detection_coverage": (len(pairs) / len(reference) if reference else 0.0)}
+    detection_coverage = len(pairs) / len(reference) if reference else 0.0
+    return {key: (value / total if total else None) for key, value in thresholds.items()} | {
+        "reference_people": len(reference),
+        "predicted_people": len(predicted),
+        "matched_people": len(pairs),
+        "unmatched_reference_people": len(reference) - len({i for i, _ in pairs}),
+        "unmatched_predicted_people": len(predicted) - len({j for _, j in pairs}),
+        "pck_eligible_joint_count": total,
+        "evaluated_joint_count": total,
+        "joint_evaluation_coverage": (covered / total if total else None),
+        "excluded": excluded,
+        "generated_person_detection_coverage": detection_coverage,
+        "detection_coverage": detection_coverage,
+    }
 
 
 def unavailable_pose_result(reason: str = POSE_METRIC_UNAVAILABLE_REASON) -> dict[str, Any]:

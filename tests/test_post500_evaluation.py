@@ -7,6 +7,7 @@ import torch
 from PIL import Image
 from transformers.modeling_outputs import BaseModelOutputWithPooling
 from pose_controlnet.post500_evaluation import (CHECKPOINT_STEPS, POSE_METRIC_UNAVAILABLE_REASON, associate_people, choose_best, clip_feature_tensor, cosine_from_embeddings, export_allowlisted, pck_for_people, plot_summary, prepare_clip_scoring_inputs, unavailable_pose_result)
+from pose_controlnet.reference_pose import pck_person_from_source
 
 def person(points): return {"keypoints": points}
 def joints(x=0, confidence=1): return [[x + i, 0, confidence] for i in range(17)]
@@ -21,6 +22,19 @@ class Post500EvaluationTest(unittest.TestCase):
   refs=[person(joints(0)),person(joints(100))]; preds=[person(joints(101)),person(joints(1))]
   self.assertEqual(associate_people(refs,preds,.5),[(0,1),(1,0)])
   self.assertTrue(np.allclose(cosine_from_embeddings(np.array([[1,0]]),np.array([[2,0]])),[1]))
+ def test_perfect_eligible_joint_prediction_is_one(self):
+  source=[[float(i),0.0,2.0 if i in (5,6,7,9,11,13,15) else 0.0] for i in range(17)]
+  reference=pck_person_from_source(source); metric=pck_for_people([reference],[person(reference["keypoints"])],.5)
+  self.assertEqual(metric["pck_005"],1.0); self.assertEqual(metric["pck_010"],1.0); self.assertEqual(metric["pck_020"],1.0)
+ def test_missing_nonrendered_joint_does_not_penalize_pck(self):
+  source=[[float(i),0.0,2.0 if i in (5,6,7,9,11,13,15) else 0.0] for i in range(17)]
+  reference=pck_person_from_source(source); predicted=[point.copy() for point in reference["keypoints"]]; predicted[1]=[0.0,0.0,0.0]
+  self.assertEqual(pck_for_people([reference],[person(predicted)],.5)["pck_020"],1.0)
+ def test_missing_rendered_joint_penalizes_coverage_and_pck(self):
+  source=[[float(i),0.0,2.0 if i in (5,6,7,9,11,13,15) else 0.0] for i in range(17)]
+  reference=pck_person_from_source(source); predicted=[point.copy() for point in reference["keypoints"]]; predicted[15]=[0.0,0.0,0.0]
+  metric=pck_for_people([reference],[person(predicted)],.5)
+  self.assertLess(metric["joint_evaluation_coverage"],1.0); self.assertLess(metric["pck_020"],1.0)
  def test_clip_tensor_and_structured_feature_returns_are_compatible(self):
   image=torch.tensor([[3.0,4.0]]); text=torch.tensor([[6.0,8.0]])
   structured=BaseModelOutputWithPooling(last_hidden_state=torch.zeros(1,1,2),pooler_output=text)
@@ -58,4 +72,7 @@ class Post500EvaluationTest(unittest.TestCase):
  def test_scorer_does_not_invoke_pose_detector_or_training(self):
   scorer=(Path(__file__).resolve().parents[1]/"scripts"/"score_post500.py").read_text()
   self.assertNotIn("KeypointRCNNEstimator",scorer); self.assertNotIn("optimizer",scorer.lower())
+ def test_reference_gate_does_not_run_training_or_optimizer(self):
+  gate=(Path(__file__).resolve().parents[1]/"scripts"/"reference_pose_gate.py").read_text()
+  self.assertNotIn("torch.optim",gate); self.assertNotIn("TrainConfig",gate); self.assertNotIn("train.py",gate)
 if __name__=="__main__": unittest.main()
