@@ -32,11 +32,16 @@ LORA_TARGETS = ("attn.wq", "attn.wk", "attn.wv", "attn.wo", "attn.gate",
                 "mlp.gate", "mlp.up", "mlp.down")
 
 
-def inspect_raw_checkpoint(ckpt_path: str) -> dict:
-    """Verify the real raw checkpoint key/shape contract without loading 26 GB."""
+def inspect_krea_checkpoint(ckpt_path: str, *, checkpoint_name: str) -> dict:
+    """Verify one official Krea base checkpoint against the shared MMDiT contract.
+
+    RAW and Turbo use the same public ``SingleMMDiTConfig``.  Keeping this
+    structural check before model surgery prevents a trainable Pose-Control
+    state from being applied to a guessed or incompatible base checkpoint.
+    """
     path = Path(ckpt_path)
     if not path.is_file():
-        raise FileNotFoundError(f"Krea-2 Raw checkpoint not found: {path}")
+        raise FileNotFoundError(f"Krea-2 {checkpoint_name} checkpoint not found: {path}")
 
     with torch.device("meta"):
         expected_model = SingleStreamDiT(K2_RAW_CONFIG)
@@ -61,7 +66,7 @@ def inspect_raw_checkpoint(ckpt_path: str) -> dict:
             f"missing={len(missing)}, unexpected={len(unexpected)}, "
             f"shape_mismatches={len(mismatched)}"
         )
-        raise RuntimeError(f"Krea-2 Raw checkpoint architecture mismatch: {summary}")
+        raise RuntimeError(f"Krea-2 {checkpoint_name} checkpoint architecture mismatch: {summary}")
 
     return {
         "path": str(path.resolve()),
@@ -70,8 +75,14 @@ def inspect_raw_checkpoint(ckpt_path: str) -> dict:
         "missing_keys": 0,
         "unexpected_keys": 0,
         "shape_mismatches": 0,
+        "checkpoint_name": checkpoint_name,
         "config": asdict(K2_RAW_CONFIG),
     }
+
+
+def inspect_raw_checkpoint(ckpt_path: str) -> dict:
+    """Backward-compatible RAW-specific entry point used by training."""
+    return inspect_krea_checkpoint(ckpt_path, checkpoint_name="Raw")
 
 
 class LoRALinear(nn.Module):
@@ -130,19 +141,20 @@ def build_control_model(
     device: str = "cuda",
     dtype: torch.dtype = torch.bfloat16,
     targets: tuple[str, ...] = LORA_TARGETS,
+    checkpoint_name: str = "Raw",
 ) -> SingleStreamDiT:
     alpha = alpha if alpha is not None else rank
     if rank != 64:
         raise ValueError(f"Pose Control-LoRA rank must be exactly 64, got {rank}")
     if tuple(targets) != LORA_TARGETS:
         raise ValueError("Pose Control-LoRA targets must exactly match LORA_TARGETS")
-    checkpoint_report = inspect_raw_checkpoint(ckpt_path)
+    checkpoint_report = inspect_krea_checkpoint(ckpt_path, checkpoint_name=checkpoint_name)
     with torch.device("meta"):
         model = SingleStreamDiT(K2_RAW_CONFIG)
     incompatible = model.load_state_dict(load_file(ckpt_path), strict=True, assign=True)
     if incompatible.missing_keys or incompatible.unexpected_keys:
         raise RuntimeError(
-            "Strict Krea-2 Raw load unexpectedly returned incompatible keys: "
+            f"Strict Krea-2 {checkpoint_name} load unexpectedly returned incompatible keys: "
             f"missing={incompatible.missing_keys}, unexpected={incompatible.unexpected_keys}"
         )
     model = model.to(device=device, dtype=dtype)

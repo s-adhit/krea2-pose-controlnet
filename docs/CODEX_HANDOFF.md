@@ -2,141 +2,79 @@
 
 ## Current bounded objective and status
 
-Post-1500 evaluation/audit tooling is implemented and unit-tested. This session
-fixed its exact checkpoint preflight recovery routing. It did **not** train,
-construct an optimizer, start optimizer steps, alter model/LR/LoRA/checkpoint/
-data/sampler state, regenerate any images, or commit/push. The expensive GH200
-evaluation has deliberately not been run.
+An evaluation-only Krea-2 Turbo benchmark is implemented but deliberately has
+not run the expensive GH200 generation, PCK detector, or CLIP work. It does not
+train, construct an optimizer, call backward, change LoRA/training state,
+mutate inputs/checkpoints, commit, or push.
 
-## Training/archive facts in force
+## Turbo contract and upstream evidence
 
-- Training is complete through step 1500.
-- Canonical trajectory is exactly:
-  `0,20,40,60,80,100,200,225,350,475,500,600,700,800,900,1000,1100,1200,1300,1400,1500`.
-  Never add 300 or 400.
-- Roots: `pose-learning-100` for <=100, `pose-learning-500` for 200..500,
-  `pose-learning-1500` for 600..1500.
-- Root cause of the host preflight failure: shared evaluation resolution only
-  attempted HF recovery for steps >=600, so a legitimately pruned local
-  `pose-learning-500/step_000200.pt` failed before it could recover.
-- Exact recovery routing from `adhit-420/Krea-2-PoseControl-LoRA-checkpoints`:
-  `200,225,350,475,500 -> pose-learning-500/full/step_XXXXXX.pt`; and
-  `600,700,800,900,1000,1100,1200,1300,1400,1500 ->
-  pose-learning-1500/full/step_XXXXXX.pt`. Recovery copies are segregated by
-  run namespace. Local valid checkpoints remain preferred (including step
-  500). Resolution requires the matching completion marker, SHA-256, full
-  checkpoint deserialization/schema, and embedded `global_step`; it never
-  substitutes timed, nearest, latest, or other-namespace checkpoints.
-- PCK references: 24 diagnostic records, 21 authoritative Human-Art/COCO,
-  3 Danbooru unavailable/excluded. Eligibility remains
-  `source_visible AND rendered_in_control`; detector is torchvision Keypoint
-  R-CNN COCO_V1 at confidence >=0.5 with deterministic Hungarian matching,
-  reference bbox-diagonal normalization, and <= thresholds.
+- Official source: `https://github.com/krea-ai/krea-2`.
+- Official `inference.py` constructs both RAW and Turbo with the identical
+  `SingleMMDiTConfig` (6144 features, 28 layers, patch 2, 16 channels) and
+  loads Turbo from `OSS_TURBO` with strict state-dict loading.
+- Official `sampling.py:timesteps` is reproduced exactly: `torch.linspace(1,
+  0, steps + 1)`, then `exp(mu)/(exp(mu) + (1/t - 1)**1.0)`. Turbo is pinned to
+  `steps=8`, `cfg=0.0`, `mu=1.15`; Turbo mu is explicitly **not resolution
+  dependent**. CFG zero prepares only conditional text and executes one model
+  forward per denoise step.
+- The new builder strictly validates all Turbo base state-dict keys/shapes
+  against the shared official config before control surgery. Each full training
+  checkpoint must record nonempty `config.raw_ckpt`, and its trainable
+  control/LoRA key set and every tensor shape must exactly match the expanded
+  Turbo model before loading. This is the Raw-trained-control -> Turbo loading
+  procedure; it fails rather than guessing.
 
-## What this session changed
+## Evaluation rules in force
 
-Three-archive canonical resolution with exact per-run HF recovery,
-incremental/repeated fixed-flow,
-full-diagnostic and smoke specs, and fixed-pose reuse are in `evaluate.py` /
-`pose_controlnet.evaluation`. `post1500_evaluation` and `post1500_audit.py`
-provide read-only merging, timestep/data/telemetry audits, pooled authoritative
-PCK, CLIP, control sensitivity, plots, grids, and terminal summary. Unmatched
-reference people now remain in the PCK denominator.
+- Exact checkpoints only: 800 and 1500. Local valid copies are preferred;
+  recovery is only `pose-learning-1500/full/step_000800.pt` and
+  `pose-learning-1500/full/step_001500.pt` from
+  `adhit-420/Krea-2-PoseControl-LoRA-checkpoints`. Existing completion marker,
+  SHA-256, full-deserialization/schema, and embedded-step checks are reused.
+- The immutable 24-record `data/manifests/diagnostic_val.jsonl` order and all
+  cached latent/text identities, per-stem seeds, paired geometry, controls,
+  decode behavior, and buckets are shared by both checkpoints.
+- Output is isolated at `/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0`;
+  the canonical `evaluation/pose-learning-500` tree (and descendants) is
+  rejected.
+- Authoritative PCK and CLIP helpers are reused unchanged. The 21 available
+  Human-Art/COCO samples retain source-visible-and-rendered eligibility,
+  COCO-17 Keypoint R-CNN / Hungarian / bbox-diagonal / `<=` threshold
+  semantics. Three Danbooru records remain unavailable and excluded from PCK
+  denominators (with null PCK and the required reason).
 
-## Verified gates/tests
+## Files changed this session
 
-- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile evaluate.py pose_controlnet/evaluation.py pose_controlnet/post500_evaluation.py pose_controlnet/post1500_evaluation.py scripts/post1500_audit.py tests/test_evaluation.py tests/test_post500_evaluation.py tests/test_post1500_evaluation.py`
-- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_evaluation tests.test_post1500_evaluation tests.test_train_mechanics` (48 tests).
-- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile pose_controlnet/evaluation.py pose_controlnet/checkpointing.py scripts/post1500_audit.py tests/test_evaluation.py tests/test_post1500_evaluation.py`.
+- `base_model/k2_lora.py`, `pose_controlnet/model.py`: generic strict official
+  base-checkpoint validation plus Turbo Pose-Control model builder.
+- `pose_controlnet/turbo_evaluation.py`: exact Turbo schedule, CFG-disabled
+  controlled sampler, isolation, exact checkpoint, diagnostic, and Raw->Turbo
+  compatibility guards.
+- `scripts/turbo_benchmark.py`: separate preflight/generate/score/report flow.
+- `tests/test_turbo_evaluation.py`: focused schedule/CFG/control/checkpoint/
+  isolation/compatibility/evaluation-only tests.
 
-Coverage: canonical 0..1500 order; local early and valid-local mid resolution;
-exact mid/final HF namespaces with separate recovery copies; completion-marker,
-checksum, schema/deserialization, and embedded-step validation; rejection of
-wrong namespace and nearest-step replacement; fixed-pose reuse; deterministic
-fixed-flow/timestep/control calculations, pooled PCK with single/multi and
-Danbooru exclusion, telemetry parsing, and no optimizer/backward in audit.
+## Verified tests
 
-## Important audit finding before host execution
+- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile base_model/k2_lora.py pose_controlnet/model.py pose_controlnet/turbo_evaluation.py scripts/turbo_benchmark.py tests/test_turbo_evaluation.py`
+- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_turbo_evaluation tests.test_evaluation tests.test_post1500_evaluation tests.test_train_mechanics` (54 tests).
+- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python scripts/turbo_benchmark.py --help`.
 
-`sample_flow_timestep` currently samples `sigmoid(N(0,1))`, then applies the
-resolution shift; it is not a uniform-u sampler. The audit reports this actual
-implementation without changing it. Any mismatch with prior verbal
-descriptions is a decision gate, not a reason to alter training here.
-
-## Exact GH200 execution plan (do not train)
-
-Set once:
+## Exact GH200 execution (do not train)
 
 ```bash
 export UV_CACHE_DIR=/tmp/krea_uv_cache
-export MPLCONFIGDIR=/tmp/krea_mpl
+export OSS_TURBO=/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors
 cd /home/ubuntu/Krea-2-Pose-ControlNet
+test -f "$OSS_TURBO"
+uv run python scripts/turbo_benchmark.py preflight --turbo-ckpt "$OSS_TURBO"
+uv run python scripts/turbo_benchmark.py generate --turbo-ckpt "$OSS_TURBO"
+uv run python scripts/turbo_benchmark.py score --turbo-ckpt "$OSS_TURBO"
+uv run python scripts/turbo_benchmark.py report --turbo-ckpt "$OSS_TURBO"
 ```
 
-### A. Checkpoint recovery/status preflight
-
-```bash
-uv run python scripts/post1500_audit.py preflight
-```
-
-### B. Cheap timestep, telemetry, and source/data-balance audits
-
-```bash
-uv run python scripts/post1500_audit.py cheap
-```
-
-### C. Deterministic fixed-flow extension and exact merge
-
-```bash
-uv run python evaluate.py fixed-flow --steps 600 700 800 900 1000 1100 1200 1300 1400 1500 --verify-repeat
-uv run python scripts/post1500_audit.py merge-flow
-```
-
-### D. One-sample new fixed-pose smoke at step 1500
-
-```bash
-uv run python evaluate.py fixed-pose --steps 1500 --stems real_human_humanart_17000000000288 --spec-name fixed_pose_step1500_smoke_spec.json
-```
-
-### E. Authoritative PCK smoke at step 1500
-
-```bash
-uv run python scripts/reference_pose_gate.py smoke --step 1500 --device cuda
-```
-
-### F. Full fixed-pose generation, new checkpoints only
-
-```bash
-uv run python evaluate.py fixed-pose --full-diagnostic --steps 600 700 800 900 1000 1100 1200 1300 1400 1500
-```
-
-### G. Full authoritative PCK + unchanged CLIP scoring
-
-```bash
-uv run python scripts/post1500_audit.py pck-clip --allow-missing-images
-```
-
-`--allow-missing-images` permits the historical compact 0..500 image set; it
-reports each checkpoint's actual reference/evaluable sample count rather than
-treating absent historical full-set images or unavailable Danbooru as zero.
-Remove it only after every canonical step has all 24 images.
-
-### H. Fixed-timestep loss/control audit, grids, plots, report, and export
-
-```bash
-uv run python scripts/post1500_audit.py loss-control
-uv run python scripts/post1500_audit.py report
-```
-
-Products: `evaluation_summary.json`, fixed-flow/CLIP/PCK/coverage/timestep/
-control/telemetry plots, `500_vs_800_vs_1100_vs_1500.png`, and terminal table.
-
-## Decision gates after H
-
-Do not resume training automatically. Review independent winners (fixed-flow,
-CLIP, pooled PCK .05/.10/.20, single, multi), per-source coverage, loss and
-control sensitivity by timestep, actual timestep mass, gradient/throughput/
-memory telemetry, and compact versus full-set sample counts. Only then choose
-whether to stop, continue to 2000, alter LR/timestep/control exposure, or
-optimize runtime; all such changes are outside this milestone and require
-explicit authorization.
+Expected output files: `turbo_spec.json`, `checkpoint_preflight.json`,
+`fixed_pose/<stem>/{control.png,metadata.json,step_000800.png,step_001500.png}`,
+`generation_results.json`, `pck_clip_results.json`, `turbo_comparison_grid.png`,
+and `evaluation_summary.json` with the requested machine-readable table.

@@ -30,6 +30,22 @@ def build_pose_model(raw_ckpt: str, rank: int, alpha: float | None, device: str)
     return model
 
 
+def build_turbo_pose_model(turbo_ckpt: str, rank: int, alpha: float | None, device: str):
+    """Build the exact same control surgery over Krea-2 Turbo's base weights.
+
+    Official Krea inference defines Turbo with the same public MMDiT config as
+    RAW.  ``build_control_model`` validates every base tensor key and shape
+    before control expansion, then checkpoint loading validates every trained
+    control/LoRA tensor key and shape.
+    """
+    print(f"[model] building Turbo pose-controlnet: rank={rank} alpha={alpha or rank}")
+    model = build_control_model(turbo_ckpt, rank=rank, alpha=alpha, device=device,
+                                checkpoint_name="Turbo")
+    n_train = sum(p.numel() for p in _trainable_params(model))
+    print(f"[model] trainable params: {n_train / 1e6:.1f}M")
+    return model
+
+
 def trainable_params(model):
     return _trainable_params(model)
 
