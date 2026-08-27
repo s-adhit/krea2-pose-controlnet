@@ -61,6 +61,22 @@ class TrainMechanicsTest(unittest.TestCase):
         state["scheduler"] = {"step_count": train.TIMESTEP_BRANCH_SOURCE_STEP,
                               "base_lrs": [5e-5], "warmup_steps": 200}
         return state
+
+    def timestep_branch_recovery_state(self, step: int) -> tuple[dict, dict]:
+        source = self.timestep_branch_source_state()
+        cfg = train.timestep_branch_config_from_source_state(source)
+        parameter = torch.nn.Parameter(torch.ones(1))
+        optimizer = torch.optim.AdamW([parameter], lr=5e-5, betas=(.9, .99), weight_decay=0.0)
+        parameter.grad = torch.ones_like(parameter); optimizer.step()
+        state = self.full_state(step)
+        state.update({
+            "model": dict(source["model"]), "optimizer": optimizer.state_dict(),
+            "scheduler": {"step_count": step, "base_lrs": [5e-5], "warmup_steps": 200},
+            "epoch": source["epoch"], "batch_position": source["batch_position"] + 16,
+            "rng": {**train._capture_rng(), "cuda": [torch.Generator().get_state()]},
+            "flow_generator_state": torch.Generator().get_state(), "config": asdict(cfg),
+        })
+        return source, state
     def test_effective_batch_formula(self):
         self.assertEqual(train.effective_batch_size(1, 32, 1), 32)
         self.assertEqual(train.effective_batch_size(2, 16, 1), 32)
@@ -222,6 +238,43 @@ class TrainMechanicsTest(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 train.parse_args()
         with patch.object(sys, "argv", ["train.py", "--timestep-lowmid-1500-to1800", "--timestep-aux-prob", ".5"]):
+            with self.assertRaises(SystemExit):
+                train.parse_args()
+
+    def test_timestep_recovery_accepts_only_complete_same_experiment_state(self):
+        source, state = self.timestep_branch_recovery_state(1526)
+        cfg = train.validate_timestep_branch_recovery_state(Path("step_001526.pt"), state, source)
+        self.assertEqual(cfg.run_name, train.TIMESTEP_BRANCH_RUN)
+        self.assertEqual(cfg.max_steps, 1800)
+        self.assertEqual(cfg.lr, 5e-5)
+        self.assertEqual(cfg.timestep_aux_prob, .20)
+        malformed = dict(state); malformed["scheduler"] = dict(state["scheduler"], step_count=1525)
+        with self.assertRaisesRegex(ValueError, "scheduler progress"):
+            train.validate_timestep_branch_recovery_state(Path("step_001526.pt"), malformed, source)
+
+    def test_timestep_recovery_selects_newest_semantically_valid_local_checkpoint(self):
+        source, valid = self.timestep_branch_recovery_state(1526)
+        _, stale = self.timestep_branch_recovery_state(1525)
+        stale["scheduler"] = dict(stale["scheduler"], step_count=1524)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            save_training_state(root / "step_001525.pt", stale)
+            expected = save_training_state(root / "step_001526.pt", valid)
+            original_glob = Path.glob
+            def recovery_glob(path, pattern):
+                if path == train.timestep_branch_checkpoint_dir() and pattern == "step_*.pt":
+                    return original_glob(root, pattern)
+                return original_glob(path, pattern)
+            with patch.object(Path, "glob", recovery_glob):
+                path, restored, cfg = train.resolve_timestep_branch_recovery_checkpoint(source)
+        self.assertEqual(path, expected)
+        self.assertEqual(restored["global_step"], 1526)
+        self.assertEqual(cfg.run_name, train.TIMESTEP_BRANCH_RUN)
+
+    def test_timestep_recovery_cli_selects_its_own_checkpoint(self):
+        with patch.object(sys, "argv", ["train.py", "--recover-timestep-lowmid-1500-to1800"]):
+            self.assertTrue(train.parse_args().recover_timestep_lowmid_1500_to1800)
+        with patch.object(sys, "argv", ["train.py", "--recover-timestep-lowmid-1500-to1800", "--resume", "other.pt"]):
             with self.assertRaises(SystemExit):
                 train.parse_args()
 

@@ -224,6 +224,101 @@ def resolve_timestep_branch_source_checkpoint() -> Path:
     return source
 
 
+def _assert_byte_rng_state(value: object, label: str, *, allow_list: bool = False) -> None:
+    values = value if allow_list else [value]
+    if not isinstance(values, (list, tuple)) or not values:
+        raise ValueError(f"Timestep recovery checkpoint {label} is missing")
+    if any(not isinstance(item, torch.Tensor) or item.dtype != torch.uint8 or item.numel() == 0
+           for item in values):
+        raise ValueError(f"Timestep recovery checkpoint {label} is malformed")
+
+
+def _assert_finite_adamw_state(optimizer_state: dict, expected_lr: float) -> None:
+    """Check the serialized AdamW state before this narrow recovery accepts it."""
+    groups, moments = optimizer_state.get("param_groups"), optimizer_state.get("state")
+    if not isinstance(groups, list) or len(groups) != 1 or not isinstance(moments, dict) or not moments:
+        raise ValueError("Timestep recovery checkpoint has no complete AdamW state")
+    group = groups[0]
+    if (group.get("lr") != expected_lr or tuple(group.get("betas", ())) != (0.9, 0.99)
+            or group.get("weight_decay") != 0.0):
+        raise ValueError("Timestep recovery checkpoint AdamW hyperparameters differ from the experiment")
+    parameter_ids = group.get("params")
+    if not isinstance(parameter_ids, list) or not parameter_ids or set(parameter_ids) != set(moments):
+        raise ValueError("Timestep recovery checkpoint AdamW parameter/moment identities are incomplete")
+    for parameter_id, moment in moments.items():
+        if not isinstance(moment, dict) or not {"step", "exp_avg", "exp_avg_sq"}.issubset(moment):
+            raise ValueError(f"Timestep recovery checkpoint AdamW moments are incomplete for parameter {parameter_id}")
+        step = moment["step"]
+        if isinstance(step, torch.Tensor):
+            if step.numel() != 1 or not torch.isfinite(step).all() or step.item() < 1:
+                raise ValueError(f"Timestep recovery checkpoint AdamW step is malformed for parameter {parameter_id}")
+        elif not isinstance(step, (int, float)) or not math.isfinite(step) or step < 1:
+            raise ValueError(f"Timestep recovery checkpoint AdamW step is malformed for parameter {parameter_id}")
+        for name in ("exp_avg", "exp_avg_sq"):
+            tensor = moment[name]
+            if (not isinstance(tensor, torch.Tensor) or tensor.numel() == 0
+                    or not torch.isfinite(tensor).all()):
+                raise ValueError(f"Timestep recovery checkpoint AdamW {name} is malformed for parameter {parameter_id}")
+
+
+def validate_timestep_branch_recovery_state(path: Path, state: dict, source_state: dict) -> TrainConfig:
+    """Accept only a complete continuation checkpoint from this exact experiment.
+
+    This deliberately is not a general arbitrary-checkpoint resume mechanism:
+    it proves the recovered state has the fixed 1500→1800 configuration and
+    progression before any training-side write can occur.
+    """
+    expected_cfg = timestep_branch_config_from_source_state(source_state)
+    expected_name = f"step_{state['global_step']:06d}.pt"
+    if path.name != expected_name:
+        raise ValueError(f"Timestep recovery checkpoint filename must be {expected_name}, got {path.name}")
+    if not TIMESTEP_BRANCH_SOURCE_STEP < state["global_step"] < TIMESTEP_BRANCH_TARGET_STEP:
+        raise ValueError("Timestep recovery checkpoint step is outside the unfinished 1500→1800 interval")
+    recovered_cfg = train_config_from_checkpoint_values(state["config"])
+    if asdict(recovered_cfg) != asdict(expected_cfg):
+        raise ValueError("Timestep recovery checkpoint config is not identical to the fixed continuation experiment")
+    assert_timestep_branch_output_namespace(recovered_cfg)
+    scheduler = state["scheduler"]
+    if (scheduler.get("step_count") != state["global_step"]
+            or scheduler.get("warmup_steps") != expected_cfg.warmup_steps
+            or list(scheduler.get("base_lrs", [])) != [expected_cfg.lr]):
+        raise ValueError("Timestep recovery checkpoint scheduler progress or LR is incompatible")
+    _assert_finite_adamw_state(state["optimizer"], expected_cfg.lr)
+    rng = state["rng"]
+    if not isinstance(rng.get("python"), tuple) or not isinstance(rng.get("numpy"), tuple):
+        raise ValueError("Timestep recovery checkpoint CPU RNG state is malformed")
+    _assert_byte_rng_state(rng.get("torch"), "torch RNG state")
+    _assert_byte_rng_state(rng.get("cuda"), "CUDA RNG state", allow_list=True)
+    _assert_byte_rng_state(state["flow_generator_state"], "flow_generator_state")
+    source_model, recovered_model = source_state["model"], state["model"]
+    if source_model.keys() != recovered_model.keys() or any(
+            not isinstance(source_model[key], torch.Tensor)
+            or not isinstance(recovered_model[key], torch.Tensor)
+            or recovered_model[key].shape != source_model[key].shape
+            or recovered_model[key].numel() == 0
+            or not torch.isfinite(recovered_model[key]).all()
+            for key in source_model):
+        raise ValueError("Timestep recovery checkpoint trainable-model state differs from its immutable source")
+    if state["epoch"] < source_state["epoch"] or state["batch_position"] < 0:
+        raise ValueError("Timestep recovery checkpoint data-progress state is malformed")
+    return recovered_cfg
+
+
+def resolve_timestep_branch_recovery_checkpoint(source_state: dict) -> tuple[Path, dict, TrainConfig]:
+    """Choose the newest semantically valid local checkpoint in this run only."""
+    directory = timestep_branch_checkpoint_dir()
+    failures: list[str] = []
+    for path in sorted(directory.glob("step_*.pt"), reverse=True):
+        try:
+            state = load_training_state(path)
+            cfg = validate_timestep_branch_recovery_state(path, state, source_state)
+            return path, state, cfg
+        except ValueError as error:
+            failures.append(f"{path.name}: {error}")
+    detail = "; ".join(failures) if failures else "no step_*.pt files"
+    raise FileNotFoundError(f"No valid local timestep-continuation recovery checkpoint found in {directory}: {detail}")
+
+
 def resolve_lr_branch_source_checkpoint() -> Path:
     """Download only the completion-marked, checksum-validated archive step 900."""
     source = validated_hf_checkpoint_for_step(
@@ -482,8 +577,11 @@ def parse_args() -> argparse.Namespace:
                         help="resume only exact HF pose-learning-1500 step 900 into an isolated 5e-5 LR branch")
     parser.add_argument("--timestep-lowmid-1500-to1800", action="store_true",
                         help="resume only exact local completed LR=5e-5 step 1500 into the isolated timestep-only branch")
+    parser.add_argument("--recover-timestep-lowmid-1500-to1800", action="store_true",
+                        help="resume only the newest fully validated local checkpoint from the fixed timestep-only branch")
     args = parser.parse_args()
-    if args.lr_branch_900_to_1500 and args.timestep_lowmid_1500_to1800:
+    if sum((args.lr_branch_900_to_1500, args.timestep_lowmid_1500_to1800,
+            args.recover_timestep_lowmid_1500_to1800)) > 1:
         parser.error("continuation branch selectors are mutually exclusive")
     if args.lr_branch_900_to_1500:
         if args.resume:
@@ -494,6 +592,12 @@ def parse_args() -> argparse.Namespace:
             parser.error("--timestep-lowmid-1500-to1800 resolves its exact local source itself; do not pass --resume")
         if (args.timestep_aux_prob, args.timestep_aux_min, args.timestep_aux_max) != (0.0, 0.0, 1.0):
             parser.error("--timestep-lowmid-1500-to1800 fixes its audited auxiliary sampler; do not pass timestep auxiliary flags")
+        return args
+    if args.recover_timestep_lowmid_1500_to1800:
+        if args.resume:
+            parser.error("--recover-timestep-lowmid-1500-to1800 selects its validated local checkpoint itself; do not pass --resume")
+        if (args.timestep_aux_prob, args.timestep_aux_min, args.timestep_aux_max) != (0.0, 0.0, 1.0):
+            parser.error("--recover-timestep-lowmid-1500-to1800 fixes its audited auxiliary sampler; do not pass timestep auxiliary flags")
         return args
     if args.max_steps is None or args.run_name is None:
         parser.error("--run-name and --max-steps are required unless --lr-branch-900-to-1500 is used")
@@ -545,14 +649,21 @@ def main() -> None:
     args = parse_args()
     if not torch.cuda.is_available(): raise RuntimeError("Run Gate-F smoke from the GH200 host shell with CUDA visible")
     branch_source_path = (resolve_lr_branch_source_checkpoint() if args.lr_branch_900_to_1500 else
-                          resolve_timestep_branch_source_checkpoint() if args.timestep_lowmid_1500_to1800 else None)
-    branch_source_state = load_training_state(branch_source_path) if branch_source_path is not None else None
-    cfg = (lr_branch_config_from_source_state(branch_source_state) if args.lr_branch_900_to_1500 else
-           timestep_branch_config_from_source_state(branch_source_state) if args.timestep_lowmid_1500_to1800 else
-           config_from_args(args))
+                          resolve_timestep_branch_source_checkpoint() if args.timestep_lowmid_1500_to1800 or args.recover_timestep_lowmid_1500_to1800 else None)
+    immutable_timestep_source_state = (load_training_state(branch_source_path)
+                                       if args.recover_timestep_lowmid_1500_to1800 else None)
+    branch_source_state = (immutable_timestep_source_state if immutable_timestep_source_state is not None else
+                           load_training_state(branch_source_path) if branch_source_path is not None else None)
+    recovery_path = recovery_state = None
+    if args.recover_timestep_lowmid_1500_to1800:
+        recovery_path, recovery_state, cfg = resolve_timestep_branch_recovery_checkpoint(immutable_timestep_source_state)
+    else:
+        cfg = (lr_branch_config_from_source_state(branch_source_state) if args.lr_branch_900_to_1500 else
+               timestep_branch_config_from_source_state(branch_source_state) if args.timestep_lowmid_1500_to1800 else
+               config_from_args(args))
     if args.lr_branch_900_to_1500:
         assert_lr_branch_output_namespace(cfg)
-    if args.timestep_lowmid_1500_to1800:
+    if args.timestep_lowmid_1500_to1800 or args.recover_timestep_lowmid_1500_to1800:
         assert_timestep_branch_output_namespace(cfg)
     set_seed(cfg.seed); device = torch.device("cuda"); torch.cuda.reset_peak_memory_stats()
     print(f"effective_batch={effective_batch_size(cfg.microbatch_size, cfg.gradient_accumulation_steps)} (microbatch × accumulation × world_size=1)", flush=True)
@@ -570,7 +681,18 @@ def main() -> None:
     scheduler = OptimizerStepWarmup(optimizer, cfg.warmup_steps)
     global_step = epoch = batch_position = 0
     resume_generator_state = None
-    if branch_source_state is not None:
+    if recovery_state is not None:
+        global_step, epoch, batch_position, resume_generator_state = restore_full_training_state(
+            model, optimizer, scheduler, recovery_state,
+        )
+        _assert_exact_learning_rate(optimizer, LR_BRANCH_LEARNING_RATE)
+        print(f"[timestep-recovery] restored newest validated local checkpoint {recovery_path} at optimizer step {global_step}; "
+              f"AdamW/scheduler/RNG/data state retained; LR={LR_BRANCH_LEARNING_RATE}; "
+              f"aux_prob={cfg.timestep_aux_prob} aux_pre_shift=[{cfg.timestep_aux_min}, {cfg.timestep_aux_max})", flush=True)
+        print(f"[timestep-recovery] verify scheduler_step={scheduler.step_count} warmup_steps={scheduler.warmup_steps} "
+              f"save_every={cfg.save_every} required_checkpoints={TIMESTEP_BRANCH_REQUIRED_CHECKPOINT_STEPS} "
+              f"hf={cfg.hf_repo_id}/{cfg.run_name}/full/ wandb_run={cfg.run_name}", flush=True)
+    elif branch_source_state is not None:
         global_step, epoch, batch_position, resume_generator_state = restore_full_training_state(
             model, optimizer, scheduler, branch_source_state,
             learning_rate_override=LR_BRANCH_LEARNING_RATE if args.lr_branch_900_to_1500 else None,
