@@ -1,13 +1,16 @@
 import json
+import random
 import shutil
 import tempfile
 import threading
 import unittest
 import sys
+from dataclasses import asdict
 from pathlib import Path
 from unittest.mock import patch
 
 import torch
+import numpy as np
 
 import train
 from pose_controlnet.checkpointing import (
@@ -26,6 +29,19 @@ class TrainMechanicsTest(unittest.TestCase):
                 "global_step": step, "epoch": 2, "batch_position": 3,
                 "rng": train._capture_rng(), "flow_generator_state": torch.Generator().get_state(),
                 "config": {"seed": 42}}
+
+    def lr_branch_source_state(self) -> dict:
+        cfg = TrainConfig(
+            raw_ckpt="raw", shard_dir="shards", ckpt_dir="/lambda/nfs/adhit/krea2-pose/checkpoints",
+            run_name=train.LR_BRANCH_SOURCE_RUN, max_steps=train.LR_BRANCH_TARGET_STEP,
+            allow_extended_training=True, save_every=100,
+            hf_repo_id=train.LR_BRANCH_SOURCE_HF_REPO, hf_mirror_every_steps=100,
+            metrics_jsonl_path="/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500/metrics.jsonl",
+        )
+        state = self.full_state(train.LR_BRANCH_SOURCE_STEP)
+        state["config"] = asdict(cfg)
+        state["scheduler"] = {"step_count": train.LR_BRANCH_SOURCE_STEP, "base_lrs": [1e-4], "warmup_steps": 200}
+        return state
     def test_effective_batch_formula(self):
         self.assertEqual(train.effective_batch_size(1, 32, 1), 32)
         self.assertEqual(train.effective_batch_size(2, 16, 1), 32)
@@ -64,6 +80,83 @@ class TrainMechanicsTest(unittest.TestCase):
         scheduler = train.OptimizerStepWarmup(optimizer, 200)
         scheduler.load_state_dict({"step_count": 10, "base_lrs": [1e-4], "warmup_steps": 200})
         self.assertAlmostEqual(optimizer.param_groups[0]["lr"], 5.5e-6)
+
+    def test_lr_branch_restores_full_state_and_keeps_lr_after_scheduler_steps(self):
+        source_parameter = torch.nn.Parameter(torch.tensor([1.0]))
+        source_optimizer = torch.optim.AdamW([source_parameter], lr=1e-4, betas=(0.9, 0.99), weight_decay=0.0)
+        source_parameter.grad = torch.tensor([0.25]); source_optimizer.step()
+        state = self.lr_branch_source_state()
+        state["optimizer"] = source_optimizer.state_dict()
+        flow_generator = torch.Generator().manual_seed(9876)
+        state["flow_generator_state"] = flow_generator.get_state()
+        random.seed(123); np.random.seed(123); torch.manual_seed(123)
+        state["rng"] = train._capture_rng()
+        expected_rng_next = (random.random(), float(np.random.random()), torch.rand(1))
+        random.seed(999); np.random.seed(999); torch.manual_seed(999)
+
+        model = torch.nn.Module()
+        model.register_parameter("weight", torch.nn.Parameter(torch.zeros(1)))
+        parameter = model.weight
+        optimizer = torch.optim.AdamW([parameter], lr=1e-4, betas=(0.9, 0.99), weight_decay=0.0)
+        scheduler = train.OptimizerStepWarmup(optimizer, 200)
+        with patch("train.load_trainable_state_dict") as load_model:
+            resumed = train.restore_full_training_state(
+                model, optimizer, scheduler, state, learning_rate_override=train.LR_BRANCH_LEARNING_RATE,
+            )
+        load_model.assert_called_once_with(model, state["model"])
+        self.assertEqual(resumed[:3], (900, 2, 3))
+        self.assertTrue(torch.equal(resumed[3], state["flow_generator_state"]))
+        self.assertEqual(scheduler.step_count, 900)
+        self.assertEqual(scheduler.base_lrs, [5e-5])
+        self.assertEqual(optimizer.param_groups[0]["lr"], 5e-5)
+        observed_rng_next = (random.random(), float(np.random.random()), torch.rand(1))
+        self.assertEqual(observed_rng_next[:2], expected_rng_next[:2])
+        self.assertTrue(torch.equal(observed_rng_next[2], expected_rng_next[2]))
+        self.assertTrue(torch.equal(optimizer.state[parameter]["exp_avg"], source_optimizer.state[source_parameter]["exp_avg"]))
+        self.assertTrue(torch.equal(optimizer.state[parameter]["exp_avg_sq"], source_optimizer.state[source_parameter]["exp_avg_sq"]))
+
+        parameter.grad = torch.ones_like(parameter)
+        train.optimizer_update(optimizer, scheduler, [parameter], 1.0)
+        self.assertEqual(scheduler.step_count, 901)
+        self.assertEqual(optimizer.param_groups[0]["lr"], 5e-5)
+        for _ in range(199):
+            scheduler.step()
+        self.assertEqual(scheduler.step_count, 1100)
+        self.assertEqual(optimizer.param_groups[0]["lr"], 5e-5)
+
+    def test_lr_branch_config_isolated_and_preserves_non_lr_hyperparameters(self):
+        state = self.lr_branch_source_state()
+        source = dict(state["config"])
+        branch = train.lr_branch_config_from_source_state(state)
+        self.assertEqual(branch.run_name, train.LR_BRANCH_RUN)
+        self.assertEqual(branch.max_steps, 1500)
+        self.assertEqual(branch.lr, 5e-5)
+        self.assertEqual(branch.metrics_jsonl_path, "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/metrics.jsonl")
+        self.assertEqual(Path(branch.ckpt_dir) / branch.run_name, train.lr_branch_checkpoint_dir())
+        self.assertNotIn(train.LR_BRANCH_SOURCE_RUN, (Path(branch.ckpt_dir) / branch.run_name).parts)
+        self.assertEqual(branch.hf_repo_id, train.LR_BRANCH_SOURCE_HF_REPO)
+        allowed = {"ckpt_dir", "run_name", "lr", "metrics_jsonl_path"}
+        branch_values = asdict(branch)
+        self.assertEqual({key: branch_values[key] for key in source if key not in allowed},
+                         {key: source[key] for key in source if key not in allowed})
+
+    def test_lr_branch_requires_exact_step_900_hf_recovery(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = save_training_state(Path(temporary) / "step_000900.pt", self.lr_branch_source_state())
+            with patch("train.validated_hf_checkpoint_for_step", return_value=source) as recover:
+                self.assertEqual(train.resolve_lr_branch_source_checkpoint(), source)
+            recover.assert_called_once_with(
+                repo_id="adhit-420/Krea-2-PoseControl-LoRA-checkpoints",
+                run_name="pose-learning-1500", step=900,
+                download_dir=train.lr_branch_checkpoint_dir() / "source-step-900-recovery",
+            )
+
+    def test_lr_branch_cli_needs_no_mutable_run_arguments_and_rejects_resume(self):
+        with patch.object(sys, "argv", ["train.py", "--lr-branch-900-to-1500"]):
+            self.assertTrue(train.parse_args().lr_branch_900_to_1500)
+        with patch.object(sys, "argv", ["train.py", "--lr-branch-900-to-1500", "--resume", "other.pt"]):
+            with self.assertRaises(SystemExit):
+                train.parse_args()
 
     def test_telemetry_lr_matches_lr_used_by_optimizer_update(self):
         parameter = torch.nn.Parameter(torch.tensor([1.0])); optimizer = torch.optim.AdamW([parameter], lr=1e-4)

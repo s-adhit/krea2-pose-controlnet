@@ -2,68 +2,90 @@
 
 ## Current bounded objective and status
 
-Turbo benchmark support is extended for incremental evaluation of exact
-checkpoints 900 and 1200. No training, optimizer/backward work, model/sampler
-change, checkpoint mutation, or image generation was performed in this session.
+The repository is prepared for one LR-only continuation ablation. No training,
+checkpoint download, checkpoint write, W&B run, HF upload, commit, or push was
+started in this session.
 
-## Turbo contract and exact checkpoint routing
+## Exact 900 -> 1500 LR branch
 
-- Turbo remains Krea-2 Turbo, 8 steps, CFG 0.0, mu 1.15, with
-  `mu_resolution_dependent=false`; schedule source remains
-  `https://github.com/krea-ai/krea-2/blob/main/sampling.py`.
-- Output root remains
-  `/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0`.
-- `--steps` accepts an explicit unique subset of `800 900 1200 1500`; the
-  no-argument default remains the legacy `(800, 1500)` pair.
-- Exact 900/1200 recovery uses HF repo
-  `adhit-420/Krea-2-PoseControl-LoRA-checkpoints`, run namespace
-  `pose-learning-1500`, and therefore only
-  `pose-learning-1500/full/step_000900.pt` and
-  `pose-learning-1500/full/step_001200.pt` (plus matching completion markers).
-  Existing shared recovery performs exact filename, marker, SHA-256, full
-  deserialization/schema, and embedded `global_step` validation; no latest,
-  nearest, or timed substitution is permitted.
+- Source is strictly the completion-marked, SHA-256-validated and full-state
+  deserialized HF archive
+  `adhit-420/Krea-2-PoseControl-LoRA-checkpoints`, namespace
+  `pose-learning-1500/full/step_000900.pt`. Its embedded `global_step` must be
+  exactly `900`; no local/latest/nearest/timed replacement is accepted.
+- Launch mode is `--lr-branch-900-to-1500`. It derives the complete
+  `TrainConfig` from the source checkpoint and rejects missing/extra config
+  fields, wrong run, wrong base LR, wrong target, pre-warmup state, insufficient
+  checkpoint cadence, or a different HF repository. Consequently all model,
+  data, precision, batch, sampling, dropout, optimizer, diagnostics, validation,
+  checkpoint, and mirror settings remain source-identical.
+- It restores trainable model state, AdamW state including first/second moments,
+  warmup scheduler state/progress, `global_step`, epoch, batch position, Python/
+  NumPy/torch/CUDA RNG, and flow generator state before the branch override.
+- The scheduler is warmup-only. At restored step 900 its counter stays 900;
+  warmup is never restarted. The branch sets both optimizer group LR and the
+  scheduler's restored `base_lrs` to exactly `5e-5`, preventing the next
+  `scheduler.step()` from restoring `1e-4`. An assertion runs after every branch
+  optimizer/scheduler update.
+- Target is global step `1500` (exactly optimizer steps 901 through 1500).
+  Source checkpoint cadence must preserve steps 1000, 1100, 1200, 1300, 1400,
+  and 1500.
 
-## Incremental evaluation behavior
+## Isolated branch namespace
 
-- Generation skips existing per-stem step images, so existing 800/1500 images
-  remain untouched and `--steps 900 1200` generates only missing 900/1200
-  images.
-- Generation metadata merges prior generated-step records with new work.
-- Scoring merges requested rows with existing score rows in canonical numeric
-  order. Report requires and emits `800, 900, 1200, 1500`, including the
-  five-column control/grid order and `evaluation_summary.json`
-  `machine_readable_table` order.
-- Diagnostic stems, prompts, controls, seeds, buckets, paired geometry, VAE,
-  sampler, PCK, and CLIP semantics are unchanged.
-
-## Files changed this session
-
-- `pose_controlnet/turbo_evaluation.py`
-- `scripts/turbo_benchmark.py`
-- `tests/test_turbo_evaluation.py`
-- `docs/CODEX_HANDOFF.md`
+- W&B run name: `pose-learning-900-lr5e5-to1500` in the source-configured
+  project/entity (expected `adhit-projects/Krea-2-PoseControl-Lora`).
+- Local run/checkpoint root:
+  `/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500`
+- Local metrics:
+  `/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/metrics.jsonl`
+- HF branch namespace:
+  `adhit-420/Krea-2-PoseControl-LoRA-checkpoints/pose-learning-900-lr5e5-to1500/full/step_00xxxx.pt`
+- Source recovery download, if needed, is isolated below
+  `.../pose-learning-900-lr5e5-to1500/source-step-900-recovery`; all new
+  checkpoints and metrics are guarded from writing to `pose-learning-1500`.
 
 ## Verified tests
 
-- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_turbo_evaluation tests.test_evaluation tests.test_post1500_evaluation` (30 tests).
-- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile scripts/turbo_benchmark.py pose_controlnet/turbo_evaluation.py tests/test_turbo_evaluation.py`.
-- Regression coverage verifies CLI 900/1200 selection, exact HF namespace/path,
-  legacy image reuse/only-missing generation, incremental result merging/canonical order, Turbo
-  schedule pinning, and absence of optimizer/backward paths.
-- PASS: `git diff --check`.
+- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest tests.test_train_mechanics tests.test_evaluation tests.test_turbo_evaluation` (59 tests).
+- PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile train.py pose_controlnet/checkpointing.py tests/test_train_mechanics.py tests/test_evaluation.py tests/test_turbo_evaluation.py`.
+- New focused coverage proves exact HF step-900 routing, full resume data/RNG/
+  flow-generator restoration, AdamW moment preservation, scheduler restoration,
+  LR `5e-5` immediately after resume, after the first update/scheduler step
+  (step 901), and at later scheduler progress (step 1100), no warmup restart,
+  target 1500, source-derived non-LR hyperparameters, and isolated local/HF/
+  metrics namespaces.
 
-## Exact GH200 commands (do not train)
+## Exact future GH200 launch and monitoring commands
+
+Do not run without explicit authorization to start this branch.
 
 ```bash
 export UV_CACHE_DIR=/tmp/krea_uv_cache
 cd /home/ubuntu/Krea-2-Pose-ControlNet
-
-uv run python scripts/turbo_benchmark.py preflight --steps 900 1200
-uv run python scripts/turbo_benchmark.py generate --steps 900 1200
-uv run python scripts/turbo_benchmark.py score --steps 800 900 1200 1500
-uv run python scripts/turbo_benchmark.py report --steps 800 900 1200 1500
+uv run python train.py --lr-branch-900-to-1500
 ```
 
-Stop before expensive generation unless explicitly directed to run it. Before
-ending an implementation session, run `git diff --check` and `git status --short`.
+```bash
+tail -f /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/metrics.jsonl
+watch -n 10 nvidia-smi
+uv run python scripts/mirror_checkpoint.py status \
+  --repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints \
+  --run-name pose-learning-900-lr5e5-to1500 \
+  --checkpoint /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001000.pt
+```
+
+The original 1500-run telemetry median was 28.929 seconds/optimizer step
+(1.106 samples/sec). For 600 more steps, the training-only estimate is about
+4 hours 49 minutes; allow roughly 5 hours including validation, checkpoints,
+and HF mirroring.
+
+## Files changed this session
+
+- `train.py`
+- `tests/test_train_mechanics.py`
+- `docs/CODEX_HANDOFF.md`
+
+## Next action
+
+Wait for explicit authorization before executing the GH200 launch command.

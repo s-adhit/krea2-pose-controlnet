@@ -11,7 +11,7 @@ import math
 import random
 import signal
 import time
-from dataclasses import asdict
+from dataclasses import asdict, fields, replace
 from pathlib import Path
 from typing import Callable, Iterable
 
@@ -21,7 +21,7 @@ import torch.nn.functional as F
 
 from pose_controlnet.checkpointing import (
     HFTrainingCheckpointMirror, load_training_state, resolve_auto_resume,
-    save_training_state,
+    save_training_state, validated_hf_checkpoint_for_step,
 )
 from pose_controlnet.config import TrainConfig
 from pose_controlnet.data import PreparedLatentShardDataset, collate
@@ -30,6 +30,117 @@ from pose_controlnet.model import audit_control_model, build_pose_model, load_tr
 from pose_controlnet.seed import set_seed
 from pose_controlnet.text_encoder import PoseTextConditioner
 from pose_controlnet.wandb_logging import TrainingTelemetry
+
+
+# This is deliberately a one-purpose branch, rather than a permissive
+# "resume from arbitrary archive step" interface.  It prevents an accidental
+# latest/nearby checkpoint substitution or writing into the source run.
+LR_BRANCH_SOURCE_HF_REPO = "adhit-420/Krea-2-PoseControl-LoRA-checkpoints"
+LR_BRANCH_SOURCE_RUN = "pose-learning-1500"
+LR_BRANCH_SOURCE_STEP = 900
+LR_BRANCH_RUN = "pose-learning-900-lr5e5-to1500"
+LR_BRANCH_TARGET_STEP = 1500
+LR_BRANCH_LEARNING_RATE = 5e-5
+LR_BRANCH_CHECKPOINT_DIR = "/lambda/nfs/adhit/krea2-pose/checkpoints"
+
+
+def lr_branch_checkpoint_dir() -> Path:
+    """The branch's isolated local root; never the source-run directory."""
+    return Path(LR_BRANCH_CHECKPOINT_DIR) / LR_BRANCH_RUN
+
+
+def _assert_exact_learning_rate(optimizer: torch.optim.Optimizer, expected: float) -> None:
+    observed = [group["lr"] for group in optimizer.param_groups]
+    if not observed or any(rate != expected for rate in observed):
+        raise AssertionError(f"Resumed optimizer LR must be exactly {expected}, got {observed}")
+
+
+def apply_resumed_learning_rate_override(optimizer: torch.optim.Optimizer,
+                                         scheduler: "OptimizerStepWarmup", learning_rate: float,
+                                         *, resumed_global_step: int) -> None:
+    """Keep a restored warmup scheduler at its restored progress but at a new LR.
+
+    ``OptimizerStepWarmup`` reapplies ``base_lrs`` after every optimizer update.
+    Updating optimizer groups alone would therefore silently restore 1e-4 on
+    the first scheduler step.  Changing both base rates and installed rates
+    preserves AdamW state and the scheduler's post-warmup position.
+    """
+    if learning_rate <= 0:
+        raise ValueError("Resumed learning-rate override must be positive")
+    if resumed_global_step < scheduler.warmup_steps:
+        raise ValueError("LR branch cannot restart or alter an in-progress warmup")
+    if scheduler.step_count != resumed_global_step:
+        raise ValueError("Checkpoint scheduler progress must equal global_step for a resumed LR branch")
+    scheduler.base_lrs = [learning_rate for _ in optimizer.param_groups]
+    scheduler._apply_for_update(scheduler.step_count + 1)
+    _assert_exact_learning_rate(optimizer, learning_rate)
+
+
+def lr_branch_config_from_source_state(source_state: dict) -> TrainConfig:
+    """Derive the branch configuration from the archived run, changing only run plumbing and LR."""
+    if source_state["global_step"] != LR_BRANCH_SOURCE_STEP:
+        raise ValueError(f"LR branch requires embedded global_step {LR_BRANCH_SOURCE_STEP}")
+    source_values = source_state["config"]
+    expected_fields = {field.name for field in fields(TrainConfig)}
+    if set(source_values) != expected_fields:
+        missing, extra = expected_fields - set(source_values), set(source_values) - expected_fields
+        raise ValueError(f"Source checkpoint config cannot prove identical branch settings; missing={sorted(missing)} extra={sorted(extra)}")
+    source_cfg = TrainConfig(**source_values)
+    if source_cfg.run_name != LR_BRANCH_SOURCE_RUN:
+        raise ValueError(f"LR branch source config must name {LR_BRANCH_SOURCE_RUN}")
+    if source_cfg.lr != 1e-4:
+        raise ValueError(f"LR branch source config must have LR 1e-4, got {source_cfg.lr}")
+    if source_cfg.max_steps != LR_BRANCH_TARGET_STEP:
+        raise ValueError(f"LR branch source config must target step {LR_BRANCH_TARGET_STEP}")
+    if not source_cfg.allow_extended_training:
+        raise ValueError("LR branch source config must retain its explicit extended-training authorization")
+    if source_cfg.warmup_steps >= LR_BRANCH_SOURCE_STEP:
+        raise ValueError("LR branch source is not past warmup")
+    if 100 % source_cfg.save_every:
+        raise ValueError("Source checkpoint cadence cannot preserve required branch checkpoints at 1000..1500")
+    if source_cfg.hf_repo_id != LR_BRANCH_SOURCE_HF_REPO:
+        raise ValueError("LR branch source config must use the required checkpoint mirror repository")
+    branch_cfg = replace(
+        source_cfg,
+        ckpt_dir=LR_BRANCH_CHECKPOINT_DIR,
+        run_name=LR_BRANCH_RUN,
+        lr=LR_BRANCH_LEARNING_RATE,
+        max_steps=LR_BRANCH_TARGET_STEP,
+        metrics_jsonl_path=str(lr_branch_checkpoint_dir() / "metrics.jsonl"),
+        hf_repo_id=LR_BRANCH_SOURCE_HF_REPO,
+    )
+    assert_lr_branch_output_namespace(branch_cfg)
+    return branch_cfg
+
+
+def assert_lr_branch_output_namespace(cfg: TrainConfig) -> None:
+    """Fail before any training-side write if this branch could touch the source run."""
+    expected = lr_branch_checkpoint_dir()
+    actual = Path(cfg.ckpt_dir) / str(cfg.run_name)
+    if (cfg.run_name != LR_BRANCH_RUN or actual != expected or cfg.metrics_jsonl_path != str(expected / "metrics.jsonl")
+            or cfg.hf_repo_id != LR_BRANCH_SOURCE_HF_REPO):
+        raise AssertionError("LR branch output namespace is not isolated")
+    if LR_BRANCH_SOURCE_RUN in actual.parts or cfg.run_name == LR_BRANCH_SOURCE_RUN:
+        raise AssertionError("LR branch must never write into pose-learning-1500")
+
+
+def resolve_lr_branch_source_checkpoint() -> Path:
+    """Download only the completion-marked, checksum-validated archive step 900."""
+    source = validated_hf_checkpoint_for_step(
+        repo_id=LR_BRANCH_SOURCE_HF_REPO,
+        run_name=LR_BRANCH_SOURCE_RUN,
+        step=LR_BRANCH_SOURCE_STEP,
+        download_dir=lr_branch_checkpoint_dir() / "source-step-900-recovery",
+    )
+    if source is None:
+        raise FileNotFoundError(
+            "Required exact source checkpoint is unavailable: "
+            f"{LR_BRANCH_SOURCE_HF_REPO}/{LR_BRANCH_SOURCE_RUN}/full/step_000900.pt"
+        )
+    state = load_training_state(source)
+    if source.name != "step_000900.pt" or state["global_step"] != LR_BRANCH_SOURCE_STEP:
+        raise ValueError("Exact source checkpoint identity validation failed")
+    return source
 
 
 def effective_batch_size(microbatch_size: int, gradient_accumulation_steps: int, world_size: int = 1) -> int:
@@ -212,6 +323,22 @@ def step_mirror_requested(global_step: int, every_steps: int) -> bool:
     return every_steps > 0 and global_step > 0 and global_step % every_steps == 0
 
 
+def restore_full_training_state(model: torch.nn.Module, optimizer: torch.optim.Optimizer,
+                                scheduler: OptimizerStepWarmup, state: dict, *,
+                                learning_rate_override: float | None = None) -> tuple[int, int, int, object | None]:
+    """Restore every resumable component before optionally changing the effective LR."""
+    load_trainable_state_dict(model, state["model"])
+    optimizer.load_state_dict(state["optimizer"])
+    scheduler.load_state_dict(state["scheduler"])
+    global_step, epoch, batch_position = state["global_step"], state["epoch"], state["batch_position"]
+    _restore_rng(state["rng"])
+    if learning_rate_override is not None:
+        apply_resumed_learning_rate_override(
+            optimizer, scheduler, learning_rate_override, resumed_global_step=global_step,
+        )
+    return global_step, epoch, batch_position, state.get("flow_generator_state")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--raw-ckpt", default="/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors")
@@ -220,12 +347,12 @@ def parse_args() -> argparse.Namespace:
                         help="Complete persistent Qwen conditioning root; pass --online-text-conditioning only for diagnostics")
     parser.add_argument("--online-text-conditioning", action="store_true", help="Diagnostic fallback that loads Qwen; never production mode")
     parser.add_argument("--checkpoint-dir", default="/lambda/nfs/adhit/krea2-pose/checkpoints")
-    parser.add_argument("--run-name", required=True)
-    parser.add_argument("--max-steps", required=True, type=int)
+    parser.add_argument("--run-name")
+    parser.add_argument("--max-steps", type=int)
     parser.add_argument("--allow-extended-training", action="store_true",
                         help="explicitly authorize a bounded run beyond the 100-step Gate-F entry limit")
-    parser.add_argument("--microbatch-size", type=int, required=True)
-    parser.add_argument("--gradient-accumulation-steps", type=int, required=True)
+    parser.add_argument("--microbatch-size", type=int)
+    parser.add_argument("--gradient-accumulation-steps", type=int)
     parser.add_argument("--max-grad-norm", type=float, default=1.0)
     parser.add_argument("--validation-batches", type=int, default=1)
     parser.add_argument("--val-every", type=int, default=10)
@@ -245,12 +372,22 @@ def parse_args() -> argparse.Namespace:
                         help="mirror each exact saved checkpoint divisible by N; 0 disables (default: 0)")
     parser.add_argument("--wandb-mode", default="online")
     parser.add_argument("--no-wandb", action="store_true")
+    parser.add_argument("--lr-branch-900-to-1500", action="store_true",
+                        help="resume only exact HF pose-learning-1500 step 900 into an isolated 5e-5 LR branch")
     args = parser.parse_args()
+    if args.lr_branch_900_to_1500:
+        if args.resume:
+            parser.error("--lr-branch-900-to-1500 resolves its exact HF source itself; do not pass --resume")
+        return args
+    if args.max_steps is None or args.run_name is None:
+        parser.error("--run-name and --max-steps are required unless --lr-branch-900-to-1500 is used")
     if args.max_steps < 1:
         parser.error("--max-steps must be positive")
     if args.max_steps > 100 and not args.allow_extended_training:
         parser.error("Gate-F entry point permits only explicit bounded 1..100-step runs; pass --allow-extended-training to exceed 100")
-    if args.microbatch_size < 1 or args.gradient_accumulation_steps < 1: parser.error("batch settings must be positive")
+    if (args.microbatch_size is None or args.gradient_accumulation_steps is None
+            or args.microbatch_size < 1 or args.gradient_accumulation_steps < 1):
+        parser.error("batch settings must be positive")
     if args.gradient_checkpointing_blocks is not None and not 0 <= args.gradient_checkpointing_blocks <= 28:
         parser.error("--gradient-checkpointing-blocks must be in [0, 28]")
     if args.hf_mirror_every_seconds < 0: parser.error("--hf-mirror-every-seconds must be non-negative")
@@ -285,7 +422,11 @@ def config_from_args(args: argparse.Namespace) -> TrainConfig:
 def main() -> None:
     args = parse_args()
     if not torch.cuda.is_available(): raise RuntimeError("Run Gate-F smoke from the GH200 host shell with CUDA visible")
-    cfg = config_from_args(args)
+    branch_source_path = resolve_lr_branch_source_checkpoint() if args.lr_branch_900_to_1500 else None
+    branch_source_state = load_training_state(branch_source_path) if branch_source_path is not None else None
+    cfg = lr_branch_config_from_source_state(branch_source_state) if branch_source_state is not None else config_from_args(args)
+    if branch_source_state is not None:
+        assert_lr_branch_output_namespace(cfg)
     set_seed(cfg.seed); device = torch.device("cuda"); torch.cuda.reset_peak_memory_stats()
     print(f"effective_batch={effective_batch_size(cfg.microbatch_size, cfg.gradient_accumulation_steps)} (microbatch × accumulation × world_size=1)", flush=True)
     print(f"runtime: compile={cfg.compile} gradient_checkpointing_blocks={cfg.gradient_checkpointing_blocks} "
@@ -302,16 +443,24 @@ def main() -> None:
     scheduler = OptimizerStepWarmup(optimizer, cfg.warmup_steps)
     global_step = epoch = batch_position = 0
     resume_generator_state = None
-    if args.resume:
+    if branch_source_state is not None:
+        global_step, epoch, batch_position, resume_generator_state = restore_full_training_state(
+            model, optimizer, scheduler, branch_source_state,
+            learning_rate_override=LR_BRANCH_LEARNING_RATE,
+        )
+        _assert_exact_learning_rate(optimizer, LR_BRANCH_LEARNING_RATE)
+        print(f"[lr-branch] restored exact validated source {branch_source_path} at optimizer step {global_step}; "
+              f"AdamW/scheduler/RNG/data state retained and effective LR fixed at {LR_BRANCH_LEARNING_RATE}", flush=True)
+    elif args.resume:
         resume_path = (resolve_auto_resume(checkpoint_dir=cfg.ckpt_dir, run_name=cfg.run_name,
                                            repo_id=cfg.hf_repo_id,
                                            remote_download_dir=Path(cfg.ckpt_dir) / cfg.run_name / "hf_recovery")
                        if args.resume == "auto" else Path(args.resume))
         if resume_path is None: raise FileNotFoundError("--resume auto found no valid local or HF full checkpoint")
-        state = load_training_state(resume_path); load_trainable_state_dict(model, state["model"]); optimizer.load_state_dict(state["optimizer"]); scheduler.load_state_dict(state["scheduler"]); global_step, epoch, batch_position = state["global_step"], state["epoch"], state["batch_position"]; _restore_rng(state["rng"])
+        state = load_training_state(resume_path)
+        global_step, epoch, batch_position, resume_generator_state = restore_full_training_state(model, optimizer, scheduler, state)
         print(f"[resume] loaded validated full checkpoint {resume_path} at optimizer step {global_step} "
               f"(epoch={epoch}, batch_position={batch_position})", flush=True)
-        resume_generator_state = state.get("flow_generator_state")
     telemetry = TrainingTelemetry(cfg, cfg.run_name)
     mirror = HFTrainingCheckpointMirror(repo_id=cfg.hf_repo_id, run_name=cfg.run_name,
                                         interval_seconds=cfg.hf_push_every_seconds, telemetry=telemetry)
@@ -355,6 +504,8 @@ def main() -> None:
                 before_step=capture_diagnostics if diagnostics_due else None,
             )
             global_step += 1
+            if branch_source_state is not None:
+                _assert_exact_learning_rate(optimizer, LR_BRANCH_LEARNING_RATE)
             elapsed = time.monotonic() - start; samples = effective_batch_size(cfg.microbatch_size, cfg.gradient_accumulation_steps)
             telemetry.log_train(loss=float(loss.item()), learning_rate=learning_rate_used, global_grad_norm=grad_norm, sec_per_step=elapsed, samples_per_second=samples / elapsed, step=global_step)
             telemetry.log_cuda_memory(allocated_bytes=torch.cuda.memory_allocated(), reserved_bytes=torch.cuda.memory_reserved(), peak_allocated_bytes=torch.cuda.max_memory_allocated(), step=global_step)
