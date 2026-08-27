@@ -124,12 +124,16 @@ class HFTrainingCheckpointMirror:
     def __init__(self, *, repo_id: str, run_name: str, interval_seconds: float = 3600,
                  max_attempts: int = 3, retry_base_seconds: float = 5.0,
                  telemetry: object | None = None, api: object | None = None,
-                 sleep: Callable[[float], None] = time.sleep) -> None:
+                 sleep: Callable[[float], None] = time.sleep,
+                 protected_milestone_steps: tuple[int, ...] = ()) -> None:
         if interval_seconds < 0 or max_attempts < 1 or retry_base_seconds < 0:
             raise ValueError("Invalid HF mirror cadence or retry configuration")
         self.repo_id, self.run_name = repo_id, run_name
         self.interval_seconds, self.max_attempts = interval_seconds, max_attempts
         self.retry_base_seconds, self.telemetry, self._api, self._sleep = retry_base_seconds, telemetry, api, sleep
+        if any(not isinstance(step, int) or step <= 0 for step in protected_milestone_steps):
+            raise ValueError("Protected checkpoint milestones must be positive integer steps")
+        self.protected_milestone_steps = frozenset(protected_milestone_steps)
         self._pending: queue.Queue[tuple[Path, str] | None] = queue.Queue()
         self._queued: set[Path] = set(); self._completed: set[Path] = set(); self._reasons: dict[Path, str] = {}
         self._lock = threading.Lock()
@@ -186,9 +190,15 @@ class HFTrainingCheckpointMirror:
         self._pending.put((path, "timed")); return True
 
     def prune_local(self, run_dir: str | Path) -> None:
-        """Apply normal retention while preserving queued/in-flight upload sources."""
+        """Apply retention without deleting queued or required milestone sources."""
         with self._lock:
             protected = set(self._queued)
+        for candidate in Path(run_dir).glob("step_*.pt"):
+            try:
+                if load_training_state(candidate)["global_step"] in self.protected_milestone_steps:
+                    protected.add(candidate.resolve())
+            except ValueError:
+                continue
         prune_local_full_checkpoints(run_dir, protected_paths=protected)
 
     def _remote_paths(self, checkpoint: Path) -> tuple[str, str]:

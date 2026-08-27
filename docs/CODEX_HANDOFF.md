@@ -117,3 +117,80 @@ tests.test_control_diagnostics` — 29 tests.
 
 Before handing off, run `git diff --check` and `git status --short`. Do not
 run either GH200 diagnostic or production training without explicit approval.
+
+## Prepared ControlInputLayer-LR continuation (not launched)
+
+The completed control-scale sweep kept inference scale `1.0` as the best
+balanced result; stronger inference scaling did not improve the main pose
+metrics. The completed projection audit found control input RMS about `0.764`,
+image input RMS about `0.656`, control-only projection RMS about `0.147`,
+image-only RMS about `0.419`, and aggregate projected control/image RMS about
+`0.35`. This supports exactly one new training variable: a modestly higher LR
+for the learned ControlInputLayer. No inference scaling, timestep, dropout,
+data, loss, model, or other optimizer setting changed.
+
+Exact source (no fallback):
+
+```text
+/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt
+adhit-420/Krea-2-PoseControl-LoRA-checkpoints
+pose-learning-900-lr5e5-to1500/full/
+```
+
+New run/HF namespace:
+
+```text
+pose-learning-1500-controlinput-lr2x-to2800
+/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-controlinput-lr2x-to2800
+pose-learning-1500-controlinput-lr2x-to2800/full/
+```
+
+The new selector uses two explicit AdamW groups: all 448 LoRA tensors at
+`5e-5`; only `first.weight`/`first.bias` at `1e-4` (exact `2.0x`). Betas
+`(0.9, 0.99)`, eps `1e-8`, weight decay `0`, scheduler/warmup progress,
+RNG/data/flow-generator state, and original timestep sampler remain unchanged.
+Lowmid20 is rejected. Legacy one-group AdamW state is mapped by verified stable
+trainable name/order: every exp_avg, exp_avg_sq, and step counter transfers to
+the matching new-group parameter and is checked. Recovery accepts only this
+run/configuration and source contract.
+
+Checkpoints are saved/mirrored every 100 steps and the following local files
+are protected from pruning: `1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300,
+2400, 2500, 2600, 2700, 2800`. A fresh launch refuses to overwrite destination
+`step_*.pt` files.
+
+GH200 commands (run preflight successfully before the launch):
+
+```bash
+cd /home/ubuntu/Krea-2-Pose-ControlNet
+export UV_CACHE_DIR=/tmp/krea_uv_cache
+uv run python scripts/preflight_controlinput_lr2x.py preflight
+tmux new-session -d -s pose-controlinput-lr2x 'cd /home/ubuntu/Krea-2-Pose-ControlNet && export UV_CACHE_DIR=/tmp/krea_uv_cache && uv run python train.py --controlinput-lr2x-1500-to2800'
+uv run python train.py --recover-controlinput-lr2x-1500-to2800
+tmux capture-pane -pt pose-controlinput-lr2x -S -200
+tail -f /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-controlinput-lr2x-to2800/metrics.jsonl
+```
+
+Stop a user-run job for NaN/Inf, checkpoint validation/state-mapping failure,
+scheduler restart, wrong sampler/LR groups/namespaces, repeated loss explosion,
+CUDA/OOM loop, corrupt HF marker, missing milestone, or milestone pruning
+before validated HF mirroring. Do not add a loss-only automatic early stop.
+
+PASS locally: source SHA-256
+`6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0`;
+full schema deserialized with global_step `1500`, 450 optimizer states
+(448 LoRA + 2 ControlInput), scheduler `1500`, original sampler, control
+dropout `0.0`, caption dropout `0.1`.
+
+FAIL CLOSED only at live HF validation in the Codex sandbox: Hub DNS returned
+`ConnectError: [Errno -3] Temporary failure in name resolution`, so the exact
+completion-marker/SHA check could not finish. No fallback, write, training,
+resume, evaluation, HF upload, commit, or push occurred. Rerun preflight from
+the GH200 host.
+
+PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile train.py
+pose_controlnet/config.py pose_controlnet/checkpointing.py
+scripts/preflight_controlinput_lr2x.py tests/test_controlinput_lr2x_continuation.py`
+
+PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest
+tests.test_controlinput_lr2x_continuation tests.test_train_mechanics` — 48 tests.

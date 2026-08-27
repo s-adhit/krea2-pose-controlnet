@@ -61,6 +61,17 @@ class TrainConfig:
     # Zero keeps the existing wall-clock-only HF mirror behavior.
     hf_mirror_every_steps: int = 0
 
+    # Immutable identity metadata for the narrowly scoped step-1500
+    # ControlInputLayer-LR continuation.  Disabled defaults keep historical
+    # checkpoints schema-compatible while allowing continuation checkpoints to
+    # prove their experiment identity on recovery.
+    source_checkpoint: str = ""
+    source_step: int = 0
+    target_step: int = 0
+    control_input_lr: float | None = None
+    control_input_lr_multiplier: float = 1.0
+    required_checkpoint_steps: tuple[int, ...] = ()
+
     # eval
     eval_steps: int = 8
     eval_guidance: float = 3.5

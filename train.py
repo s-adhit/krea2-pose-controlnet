@@ -7,11 +7,13 @@ It is not a production-run launcher.
 from __future__ import annotations
 
 import argparse
+import copy
 import math
 import random
 import signal
+import tempfile
 import time
-from dataclasses import asdict, fields, replace
+from dataclasses import MISSING, asdict, fields, replace
 from pathlib import Path
 from typing import Callable, Iterable
 
@@ -22,6 +24,7 @@ import torch.nn.functional as F
 from pose_controlnet.checkpointing import (
     HFTrainingCheckpointMirror, load_training_state, resolve_auto_resume,
     save_training_state, validated_hf_checkpoint_for_step,
+    validated_local_checkpoint_for_hf_step,
 )
 from pose_controlnet.config import TrainConfig
 from pose_controlnet.data import PreparedLatentShardDataset, collate
@@ -60,6 +63,26 @@ TIMESTEP_BRANCH_AUX_MIN = 0.04359494981207863
 TIMESTEP_BRANCH_AUX_MAX = 0.3773562340267345
 TIMESTEP_CONFIG_FIELDS = frozenset({"timestep_aux_prob", "timestep_aux_min", "timestep_aux_max"})
 
+# The overnight continuation intentionally changes exactly one optimization
+# value: model.first (ControlInputLayer) receives 2x the LoRA LR.  It is not a
+# timestep experiment and can only originate from the exact completed LR-only
+# step-1500 checkpoint.
+CONTROLINPUT_BRANCH_SOURCE_RUN = LR_BRANCH_RUN
+CONTROLINPUT_BRANCH_SOURCE_STEP = 1500
+CONTROLINPUT_BRANCH_RUN = "pose-learning-1500-controlinput-lr2x-to2800"
+CONTROLINPUT_BRANCH_TARGET_STEP = 2800
+CONTROLINPUT_BRANCH_LORA_LR = 5e-5
+CONTROLINPUT_BRANCH_CONTROL_LR = 1e-4
+CONTROLINPUT_BRANCH_CONTROL_LR_MULTIPLIER = 2.0
+CONTROLINPUT_BRANCH_REQUIRED_CHECKPOINT_STEPS = tuple(range(1600, 2801, 100))
+CONTROLINPUT_BRANCH_SOURCE_CHECKPOINT = (
+    Path(LR_BRANCH_CHECKPOINT_DIR) / CONTROLINPUT_BRANCH_SOURCE_RUN / "step_001500.pt"
+)
+CONTROLINPUT_CONFIG_FIELDS = frozenset({
+    "source_checkpoint", "source_step", "target_step", "control_input_lr",
+    "control_input_lr_multiplier", "required_checkpoint_steps",
+})
+
 
 def lr_branch_checkpoint_dir() -> Path:
     """The branch's isolated local root; never the source-run directory."""
@@ -70,11 +93,17 @@ def timestep_branch_checkpoint_dir() -> Path:
     return Path(LR_BRANCH_CHECKPOINT_DIR) / TIMESTEP_BRANCH_RUN
 
 
+def controlinput_branch_checkpoint_dir() -> Path:
+    """The isolated root for the 1500→2800 ControlInput-LR experiment."""
+    return Path(LR_BRANCH_CHECKPOINT_DIR) / CONTROLINPUT_BRANCH_RUN
+
+
 def train_config_from_checkpoint_values(values: dict) -> TrainConfig:
-    """Load historical checkpoint config, allowing only added disabled sampler keys."""
+    """Load checkpoint config while permitting only later defaulted metadata."""
     expected = {field.name for field in fields(TrainConfig)}
     missing, extra = expected - set(values), set(values) - expected
-    if extra or missing - TIMESTEP_CONFIG_FIELDS:
+    defaultable = {field.name for field in fields(TrainConfig) if field.default is not MISSING}
+    if extra or missing - defaultable:
         raise ValueError(f"Checkpoint config is incompatible; missing={sorted(missing)} extra={sorted(extra)}")
     expanded = dict(values)
     for field in fields(TrainConfig):
@@ -261,6 +290,98 @@ def _assert_finite_adamw_state(optimizer_state: dict, expected_lr: float) -> Non
                 raise ValueError(f"Timestep recovery checkpoint AdamW {name} is malformed for parameter {parameter_id}")
 
 
+def _validate_single_group_source_optimizer(optimizer_state: dict, model_state: dict[str, torch.Tensor],
+                                            expected_names: list[str]) -> dict[str, int]:
+    """Map a legacy one-group state to stable serialized trainable names.
+
+    The step-1500 checkpoint predates named optimizer groups.  Its parameter
+    IDs are positional serialization IDs, so the only safe migration is to
+    prove the original trainable-state ordering and map each ID to its stable
+    parameter name before constructing the two new groups.
+    """
+    groups, moments = optimizer_state.get("param_groups"), optimizer_state.get("state")
+    if not isinstance(groups, list) or len(groups) != 1 or not isinstance(moments, dict):
+        raise ValueError("ControlInput source checkpoint must contain exactly one complete AdamW group")
+    group = groups[0]
+    if (group.get("lr") != CONTROLINPUT_BRANCH_LORA_LR
+            or tuple(group.get("betas", ())) != (0.9, 0.99)
+            or group.get("eps") != 1e-8 or group.get("weight_decay") != 0.0):
+        raise ValueError("ControlInput source AdamW settings differ from the completed LR-only run")
+    identifiers = group.get("params")
+    if (not isinstance(identifiers, list) or len(identifiers) != len(expected_names)
+            or len(set(identifiers)) != len(identifiers) or set(identifiers) != set(moments)):
+        raise ValueError("ControlInput source optimizer has unmapped, duplicated, or missing parameter state")
+    if list(model_state) != expected_names:
+        raise ValueError("ControlInput source trainable tensor order cannot prove the optimizer state mapping")
+    mapping = dict(zip(expected_names, identifiers))
+    for name, identifier in mapping.items():
+        moment = moments[identifier]
+        if not isinstance(moment, dict) or not {"step", "exp_avg", "exp_avg_sq"}.issubset(moment):
+            raise ValueError(f"ControlInput source optimizer state is incomplete for {name}")
+        for moment_name in ("exp_avg", "exp_avg_sq"):
+            tensor = moment[moment_name]
+            if (not isinstance(tensor, torch.Tensor) or tensor.shape != model_state[name].shape
+                    or not torch.isfinite(tensor).all()):
+                raise ValueError(f"ControlInput source optimizer {moment_name} is invalid for {name}")
+        step = moment["step"]
+        numeric_step = float(step.item()) if isinstance(step, torch.Tensor) and step.numel() == 1 else step
+        if not isinstance(numeric_step, (int, float)) or not math.isfinite(numeric_step) or numeric_step < 1:
+            raise ValueError(f"ControlInput source optimizer step is invalid for {name}")
+    return mapping
+
+
+def _migrate_controlinput_optimizer_state(model: torch.nn.Module, optimizer: torch.optim.Optimizer,
+                                          source_optimizer_state: dict, source_model_state: dict[str, torch.Tensor]) -> dict[str, int]:
+    """Transfer every legacy AdamW moment by stable name into two exact groups."""
+    named = [(name, parameter) for name, parameter in model.named_parameters() if parameter.requires_grad]
+    lora, control = _controlinput_named_groups(named)
+    expected_names = [name for name, _ in named]
+    source_name_to_id = _validate_single_group_source_optimizer(
+        source_optimizer_state, source_model_state, expected_names,
+    )
+    source_moments = source_optimizer_state["state"]
+    exported = optimizer.state_dict()
+    target_name_to_id: dict[str, int] = {}
+    for live_group, serialized_group in zip(optimizer.param_groups, exported["param_groups"]):
+        for parameter, identifier in zip(live_group["params"], serialized_group["params"]):
+            name = next((candidate for candidate, candidate_parameter in named if candidate_parameter is parameter), None)
+            if name is None or name in target_name_to_id:
+                raise ValueError("ControlInput optimizer target parameter mapping is ambiguous")
+            target_name_to_id[name] = identifier
+    if set(target_name_to_id) != set(source_name_to_id):
+        raise ValueError("ControlInput optimizer migration leaves trainable parameters unmapped")
+    migrated_state = {target_name_to_id[name]: copy.deepcopy(source_moments[source_name_to_id[name]])
+                      for name in expected_names}
+    optimizer.load_state_dict({"state": migrated_state, "param_groups": exported["param_groups"]})
+    _assert_controlinput_optimizer(optimizer, require_active_lrs=False)
+    for name, parameter in named:
+        restored = optimizer.state[parameter]
+        source = source_moments[source_name_to_id[name]]
+        if (not torch.equal(restored["exp_avg"], source["exp_avg"].to(restored["exp_avg"].device))
+                or not torch.equal(restored["exp_avg_sq"], source["exp_avg_sq"].to(restored["exp_avg_sq"].device))
+                or float(restored["step"].item() if isinstance(restored["step"], torch.Tensor) else restored["step"])
+                != float(source["step"].item() if isinstance(source["step"], torch.Tensor) else source["step"])):
+            raise ValueError(f"ControlInput optimizer state migration failed for {name}")
+    return source_name_to_id
+
+
+def _restore_controlinput_source_state(model: torch.nn.Module, optimizer: torch.optim.Optimizer,
+                                       scheduler: "OptimizerStepWarmup", state: dict) -> tuple[int, int, int, object | None]:
+    """Restore exact step-1500 state while changing only optimizer LR grouping."""
+    load_trainable_state_dict(model, state["model"])
+    _migrate_controlinput_optimizer_state(model, optimizer, state["optimizer"], state["model"])
+    scheduler.load_state_dict({
+        "step_count": state["scheduler"]["step_count"],
+        "base_lrs": [CONTROLINPUT_BRANCH_LORA_LR, CONTROLINPUT_BRANCH_CONTROL_LR],
+        "warmup_steps": state["scheduler"]["warmup_steps"],
+    })
+    if scheduler.step_count != state["global_step"]:
+        raise ValueError("ControlInput scheduler progress was not preserved from the source checkpoint")
+    _assert_controlinput_optimizer(optimizer)
+    _restore_rng(state["rng"])
+    return state["global_step"], state["epoch"], state["batch_position"], state.get("flow_generator_state")
+
+
 def validate_timestep_branch_recovery_state(path: Path, state: dict, source_state: dict) -> TrainConfig:
     """Accept only a complete continuation checkpoint from this exact experiment.
 
@@ -317,6 +438,275 @@ def resolve_timestep_branch_recovery_checkpoint(source_state: dict) -> tuple[Pat
             failures.append(f"{path.name}: {error}")
     detail = "; ".join(failures) if failures else "no step_*.pt files"
     raise FileNotFoundError(f"No valid local timestep-continuation recovery checkpoint found in {directory}: {detail}")
+
+
+def _controlinput_named_groups(named_parameters: Iterable[tuple[str, torch.nn.Parameter]]) -> tuple[list[tuple[str, torch.nn.Parameter]], list[tuple[str, torch.nn.Parameter]]]:
+    """Return the exact disjoint LoRA and ControlInputLayer trainable groups."""
+    named = [(name, parameter) for name, parameter in named_parameters if parameter.requires_grad]
+    control = [(name, parameter) for name, parameter in named if name.startswith("first.")]
+    lora = [(name, parameter) for name, parameter in named if not name.startswith("first.")]
+    control_names, lora_names = {name for name, _ in control}, {name for name, _ in lora}
+    if control_names != {"first.weight", "first.bias"}:
+        raise ValueError(f"ControlInputLayer trainables must be exactly first.weight/first.bias, got {sorted(control_names)}")
+    if not lora or any(not (name.endswith(".A") or name.endswith(".B")) for name, _ in lora):
+        raise ValueError("Unexpected non-ControlInputLayer trainable parameter")
+    if control_names & lora_names or len(named) != len(control) + len(lora):
+        raise ValueError("Trainable parameter grouping is duplicated or incomplete")
+    return lora, control
+
+
+def _controlinput_state_names(model_state: dict[str, torch.Tensor]) -> tuple[list[str], list[str]]:
+    """Classify serialized trainable tensors with the same strict contract."""
+    fake_named = []
+    for name, tensor in model_state.items():
+        if not isinstance(tensor, torch.Tensor) or tensor.numel() == 0 or not torch.isfinite(tensor).all():
+            raise ValueError(f"Serialized trainable state is invalid for {name}")
+        parameter = torch.nn.Parameter(torch.empty_like(tensor), requires_grad=True)
+        fake_named.append((name, parameter))
+    lora, control = _controlinput_named_groups(fake_named)
+    return [name for name, _ in lora], [name for name, _ in control]
+
+
+def controlinput_optimizer_group_summary(model: torch.nn.Module) -> dict[str, object]:
+    lora, control = _controlinput_named_groups(model.named_parameters())
+    all_ids = [id(parameter) for _, parameter in lora + control]
+    expected_ids = {id(parameter) for parameter in model.parameters() if parameter.requires_grad}
+    if len(all_ids) != len(set(all_ids)) or set(all_ids) != expected_ids:
+        raise AssertionError("Every trainable parameter must appear exactly once in a ControlInput optimizer group")
+    return {
+        "lora_tensor_count": len(lora), "control_input_tensor_count": len(control),
+        "lora_scalar_count": sum(parameter.numel() for _, parameter in lora),
+        "control_input_scalar_count": sum(parameter.numel() for _, parameter in control),
+        "duplicated_parameter_count": len(all_ids) - len(set(all_ids)),
+        "assigned_trainable_tensor_count": len(all_ids),
+    }
+
+
+def _assert_controlinput_optimizer(optimizer: torch.optim.Optimizer, *, require_active_lrs: bool = True) -> None:
+    if len(optimizer.param_groups) != 2:
+        raise AssertionError("ControlInput continuation requires exactly two AdamW parameter groups")
+    expected = (("lora", CONTROLINPUT_BRANCH_LORA_LR), ("control_input", CONTROLINPUT_BRANCH_CONTROL_LR))
+    observed_ids: list[int] = []
+    for group, (name, learning_rate) in zip(optimizer.param_groups, expected):
+        if (group.get("group_name") != name or (require_active_lrs and group.get("lr") != learning_rate)
+                or tuple(group.get("betas", ())) != (0.9, 0.99)
+                or group.get("eps") != 1e-8 or group.get("weight_decay") != 0.0):
+            raise AssertionError(f"ControlInput optimizer group {name} does not have the fixed AdamW settings")
+        observed_ids.extend(id(parameter) for parameter in group["params"])
+    if len(observed_ids) != len(set(observed_ids)):
+        raise AssertionError("ControlInput optimizer parameter groups overlap")
+
+
+def controlinput_branch_config_from_source_state(source_state: dict) -> TrainConfig:
+    """Derive the strict 1500→2800 experiment without changing sampler/data settings."""
+    if source_state["global_step"] != CONTROLINPUT_BRANCH_SOURCE_STEP:
+        raise ValueError("ControlInput continuation requires embedded global_step 1500")
+    source_cfg = train_config_from_checkpoint_values(source_state["config"])
+    if (source_cfg.run_name != CONTROLINPUT_BRANCH_SOURCE_RUN or source_cfg.lr != CONTROLINPUT_BRANCH_LORA_LR
+            or source_cfg.max_steps != CONTROLINPUT_BRANCH_SOURCE_STEP
+            or source_cfg.hf_repo_id != LR_BRANCH_SOURCE_HF_REPO):
+        raise ValueError("ControlInput continuation source must be the exact completed LR-only step-1500 run")
+    if not source_cfg.allow_extended_training or source_cfg.warmup_steps >= CONTROLINPUT_BRANCH_SOURCE_STEP:
+        raise ValueError("ControlInput continuation source is incompatible with preserved warmup/authorization")
+    if source_cfg.control_input_lr is not None or source_cfg.control_input_lr_multiplier != 1.0:
+        raise ValueError("ControlInput continuation source must not already use a ControlInput LR override")
+    if any(getattr(source_cfg, key) != default for key, default in
+           (("timestep_aux_prob", 0.0), ("timestep_aux_min", 0.0), ("timestep_aux_max", 1.0))):
+        raise ValueError("ControlInput continuation must use the original source timestep sampler, not lowmid20")
+    scheduler = source_state["scheduler"]
+    if (scheduler.get("step_count") != CONTROLINPUT_BRANCH_SOURCE_STEP
+            or scheduler.get("warmup_steps") != source_cfg.warmup_steps
+            or list(scheduler.get("base_lrs", [])) != [CONTROLINPUT_BRANCH_LORA_LR]):
+        raise ValueError("ControlInput continuation source scheduler is not the exact post-warmup LR-only state")
+    _controlinput_state_names(source_state["model"])
+    _validate_single_group_source_optimizer(source_state["optimizer"], source_state["model"], list(source_state["model"]))
+    branch_cfg = replace(
+        source_cfg,
+        ckpt_dir=LR_BRANCH_CHECKPOINT_DIR,
+        run_name=CONTROLINPUT_BRANCH_RUN,
+        max_steps=CONTROLINPUT_BRANCH_TARGET_STEP,
+        save_every=100,
+        hf_mirror_every_steps=100,
+        metrics_jsonl_path=str(controlinput_branch_checkpoint_dir() / "metrics.jsonl"),
+        source_checkpoint=str(CONTROLINPUT_BRANCH_SOURCE_CHECKPOINT),
+        source_step=CONTROLINPUT_BRANCH_SOURCE_STEP,
+        target_step=CONTROLINPUT_BRANCH_TARGET_STEP,
+        control_input_lr=CONTROLINPUT_BRANCH_CONTROL_LR,
+        control_input_lr_multiplier=CONTROLINPUT_BRANCH_CONTROL_LR_MULTIPLIER,
+        required_checkpoint_steps=CONTROLINPUT_BRANCH_REQUIRED_CHECKPOINT_STEPS,
+    )
+    assert_controlinput_branch_output_namespace(branch_cfg)
+    return branch_cfg
+
+
+def assert_controlinput_branch_output_namespace(cfg: TrainConfig) -> None:
+    expected = controlinput_branch_checkpoint_dir()
+    actual = Path(cfg.ckpt_dir) / str(cfg.run_name)
+    if (cfg.run_name != CONTROLINPUT_BRANCH_RUN or actual != expected
+            or cfg.metrics_jsonl_path != str(expected / "metrics.jsonl")
+            or cfg.hf_repo_id != LR_BRANCH_SOURCE_HF_REPO
+            or cfg.source_checkpoint != str(CONTROLINPUT_BRANCH_SOURCE_CHECKPOINT)
+            or cfg.source_step != CONTROLINPUT_BRANCH_SOURCE_STEP
+            or cfg.target_step != CONTROLINPUT_BRANCH_TARGET_STEP
+            or cfg.lr != CONTROLINPUT_BRANCH_LORA_LR
+            or cfg.control_input_lr != CONTROLINPUT_BRANCH_CONTROL_LR
+            or cfg.control_input_lr_multiplier != CONTROLINPUT_BRANCH_CONTROL_LR_MULTIPLIER
+            or tuple(cfg.required_checkpoint_steps) != CONTROLINPUT_BRANCH_REQUIRED_CHECKPOINT_STEPS
+            or cfg.save_every != 100 or cfg.hf_mirror_every_steps != 100):
+        raise AssertionError("ControlInput continuation output namespace/configuration is not exact")
+    if actual == CONTROLINPUT_BRANCH_SOURCE_CHECKPOINT.parent or CONTROLINPUT_BRANCH_SOURCE_RUN in actual.parts:
+        raise AssertionError("ControlInput continuation must never write into the LR-only source namespace")
+    if any(getattr(cfg, key) != default for key, default in
+           (("timestep_aux_prob", 0.0), ("timestep_aux_min", 0.0), ("timestep_aux_max", 1.0))):
+        raise AssertionError("ControlInput continuation must keep the original timestep sampler active")
+
+
+def assert_controlinput_branch_destination_is_new() -> None:
+    """Refuse a fresh launch that could overwrite an existing experiment checkpoint."""
+    destination = controlinput_branch_checkpoint_dir()
+    existing = sorted(destination.glob("step_*.pt")) if destination.is_dir() else []
+    if existing:
+        raise FileExistsError(f"Refusing to overwrite existing ControlInput continuation checkpoints in {destination}")
+
+
+def resolve_controlinput_branch_source_checkpoint() -> Path:
+    """Validate only the named local step-1500 file against its exact HF marker."""
+    source = CONTROLINPUT_BRANCH_SOURCE_CHECKPOINT
+    if source.name != "step_001500.pt" or not source.is_file():
+        raise FileNotFoundError(f"Required exact local source checkpoint is unavailable: {source}")
+    with tempfile.TemporaryDirectory(prefix="krea2-controlinput-source-marker-") as temporary:
+        validated = validated_local_checkpoint_for_hf_step(
+            checkpoint=source, repo_id=LR_BRANCH_SOURCE_HF_REPO,
+            run_name=CONTROLINPUT_BRANCH_SOURCE_RUN, step=CONTROLINPUT_BRANCH_SOURCE_STEP,
+            marker_download_dir=temporary,
+        )
+    if validated != source:
+        raise ValueError("Exact LR-only step-1500 source failed HF completion-marker/SHA/schema validation")
+    state = load_training_state(source)
+    if state["global_step"] != CONTROLINPUT_BRANCH_SOURCE_STEP:
+        raise ValueError("Exact ControlInput source checkpoint embedded global_step is not 1500")
+    return source
+
+
+def _validate_controlinput_recovery_optimizer(optimizer_state: dict, model_state: dict[str, torch.Tensor]) -> None:
+    lora_names, control_names = _controlinput_state_names(model_state)
+    groups, moments = optimizer_state.get("param_groups"), optimizer_state.get("state")
+    if not isinstance(groups, list) or len(groups) != 2 or not isinstance(moments, dict):
+        raise ValueError("ControlInput recovery checkpoint must contain exactly two AdamW groups")
+    expected_groups = (("lora", CONTROLINPUT_BRANCH_LORA_LR, lora_names),
+                       ("control_input", CONTROLINPUT_BRANCH_CONTROL_LR, control_names))
+    seen: set[int] = set()
+    for group, (group_name, learning_rate, names) in zip(groups, expected_groups):
+        identifiers = group.get("params")
+        if (group.get("group_name") != group_name or group.get("lr") != learning_rate
+                or tuple(group.get("betas", ())) != (0.9, 0.99) or group.get("eps") != 1e-8
+                or group.get("weight_decay") != 0.0 or not isinstance(identifiers, list)
+                or len(identifiers) != len(names) or len(set(identifiers)) != len(identifiers)):
+            raise ValueError(f"ControlInput recovery {group_name} AdamW group is incompatible")
+        if seen & set(identifiers):
+            raise ValueError("ControlInput recovery optimizer groups duplicate parameters")
+        seen.update(identifiers)
+        for name, identifier in zip(names, identifiers):
+            moment = moments.get(identifier)
+            if not isinstance(moment, dict) or not {"step", "exp_avg", "exp_avg_sq"}.issubset(moment):
+                raise ValueError(f"ControlInput recovery optimizer state is incomplete for {name}")
+            for moment_name in ("exp_avg", "exp_avg_sq"):
+                value = moment[moment_name]
+                if (not isinstance(value, torch.Tensor) or value.shape != model_state[name].shape
+                        or not torch.isfinite(value).all()):
+                    raise ValueError(f"ControlInput recovery optimizer {moment_name} is invalid for {name}")
+            step = moment["step"]
+            number = float(step.item()) if isinstance(step, torch.Tensor) and step.numel() == 1 else step
+            if not isinstance(number, (float, int)) or not math.isfinite(number) or number < 1:
+                raise ValueError(f"ControlInput recovery optimizer step is invalid for {name}")
+    if seen != set(moments):
+        raise ValueError("ControlInput recovery optimizer has unmapped state")
+
+
+def validate_controlinput_branch_recovery_state(path: Path, state: dict, source_state: dict) -> TrainConfig:
+    expected_cfg = controlinput_branch_config_from_source_state(source_state)
+    expected_name = f"step_{state['global_step']:06d}.pt"
+    if path.name != expected_name:
+        raise ValueError(f"ControlInput recovery filename must be {expected_name}, got {path.name}")
+    if not CONTROLINPUT_BRANCH_SOURCE_STEP < state["global_step"] < CONTROLINPUT_BRANCH_TARGET_STEP:
+        raise ValueError("ControlInput recovery step is outside the unfinished 1500→2800 interval")
+    recovered_cfg = train_config_from_checkpoint_values(state["config"])
+    if asdict(recovered_cfg) != asdict(expected_cfg):
+        raise ValueError("ControlInput recovery checkpoint config is not identical to the fixed experiment")
+    assert_controlinput_branch_output_namespace(recovered_cfg)
+    scheduler = state["scheduler"]
+    if (scheduler.get("step_count") != state["global_step"]
+            or scheduler.get("warmup_steps") != expected_cfg.warmup_steps
+            or list(scheduler.get("base_lrs", [])) != [CONTROLINPUT_BRANCH_LORA_LR, CONTROLINPUT_BRANCH_CONTROL_LR]):
+        raise ValueError("ControlInput recovery scheduler progress was restarted or is incompatible")
+    _validate_controlinput_recovery_optimizer(state["optimizer"], state["model"])
+    rng = state["rng"]
+    if not isinstance(rng.get("python"), tuple) or not isinstance(rng.get("numpy"), tuple):
+        raise ValueError("ControlInput recovery CPU RNG state is malformed")
+    _assert_byte_rng_state(rng.get("torch"), "torch RNG state")
+    _assert_byte_rng_state(rng.get("cuda"), "CUDA RNG state", allow_list=True)
+    _assert_byte_rng_state(state["flow_generator_state"], "flow_generator_state")
+    source_model, recovered_model = source_state["model"], state["model"]
+    if source_model.keys() != recovered_model.keys() or any(
+            not isinstance(recovered_model[key], torch.Tensor)
+            or recovered_model[key].shape != source_model[key].shape
+            or not torch.isfinite(recovered_model[key]).all()
+            for key in source_model):
+        raise ValueError("ControlInput recovery trainable-model state differs from its exact source contract")
+    if state["epoch"] < source_state["epoch"] or state["batch_position"] < 0:
+        raise ValueError("ControlInput recovery data-progress state is malformed")
+    return recovered_cfg
+
+
+def resolve_controlinput_branch_recovery_checkpoint(source_state: dict) -> tuple[Path, dict, TrainConfig]:
+    """Choose only the newest valid local checkpoint from this isolated run."""
+    directory = controlinput_branch_checkpoint_dir()
+    failures: list[str] = []
+    for path in sorted(directory.glob("step_*.pt"), reverse=True):
+        try:
+            state = load_training_state(path)
+            return path, state, validate_controlinput_branch_recovery_state(path, state, source_state)
+        except ValueError as error:
+            failures.append(f"{path.name}: {error}")
+    detail = "; ".join(failures) if failures else "no step_*.pt files"
+    raise FileNotFoundError(f"No valid local ControlInput continuation recovery checkpoint found in {directory}: {detail}")
+
+
+def controlinput_preflight_summary(source_state: dict) -> dict[str, object]:
+    """CPU-only proof of source identity/config/state before any training is launched."""
+    cfg = controlinput_branch_config_from_source_state(source_state)
+    lora_names, control_names = _controlinput_state_names(source_state["model"])
+    mapping = _validate_single_group_source_optimizer(
+        source_state["optimizer"], source_state["model"], list(source_state["model"]),
+    )
+    return {
+        "run_name": cfg.run_name,
+        "source_checkpoint": cfg.source_checkpoint,
+        "source_embedded_global_step": source_state["global_step"],
+        "target_step": cfg.target_step,
+        "destination_root": str(controlinput_branch_checkpoint_dir()),
+        "hf_repo_id": cfg.hf_repo_id,
+        "hf_destination_namespace": f"{cfg.run_name}/full/",
+        "checkpoint_interval": cfg.save_every,
+        "required_milestones": list(cfg.required_checkpoint_steps),
+        "lora_lr": cfg.lr,
+        "control_input_lr": cfg.control_input_lr,
+        "control_input_lr_multiplier": cfg.control_input_lr_multiplier,
+        "lora_optimizer_tensor_count": len(lora_names),
+        "control_input_optimizer_tensor_count": len(control_names),
+        "duplicated_optimizer_parameter_count": 0,
+        "assigned_trainable_tensor_count": len(mapping),
+        "optimizer_state_mapped_tensor_count": len(mapping),
+        "optimizer": {"type": "AdamW", "betas": [0.9, 0.99], "eps": 1e-8, "weight_decay": 0.0},
+        "scheduler_source_step": source_state["scheduler"]["step_count"],
+        "rng_present": True,
+        "data_state": {"epoch": source_state["epoch"], "batch_position": source_state["batch_position"]},
+        "flow_generator_state_present": isinstance(source_state.get("flow_generator_state"), torch.Tensor),
+        "timestep_sampler": "original/source sampler",
+        "lowmid20_enabled": False,
+        "control_dropout": cfg.control_dropout,
+        "caption_dropout": cfg.caption_dropout,
+    }
 
 
 def resolve_lr_branch_source_checkpoint() -> Path:
@@ -381,12 +771,28 @@ def build_optimizer(model: torch.nn.Module, cfg: TrainConfig) -> torch.optim.Ada
     params = trainable_params(model)
     if not params or any(not parameter.requires_grad for parameter in params):
         raise AssertionError("Optimizer parameter selection includes frozen or no tensors")
-    optimizer = torch.optim.AdamW(params, lr=cfg.lr, betas=(0.9, 0.99), weight_decay=0.0)
+    if cfg.control_input_lr is None:
+        optimizer = torch.optim.AdamW(params, lr=cfg.lr, betas=(0.9, 0.99), eps=1e-8, weight_decay=0.0)
+    else:
+        if (cfg.lr != CONTROLINPUT_BRANCH_LORA_LR
+                or cfg.control_input_lr != CONTROLINPUT_BRANCH_CONTROL_LR
+                or cfg.control_input_lr_multiplier != CONTROLINPUT_BRANCH_CONTROL_LR_MULTIPLIER
+                or cfg.control_input_lr != cfg.lr * cfg.control_input_lr_multiplier):
+            raise ValueError("ControlInput optimizer LR configuration is not exactly 5e-5 / 1e-4 (2x)")
+        lora, control = _controlinput_named_groups(model.named_parameters())
+        optimizer = torch.optim.AdamW([
+            {"params": [parameter for _, parameter in lora], "lr": cfg.lr, "group_name": "lora"},
+            {"params": [parameter for _, parameter in control], "lr": cfg.control_input_lr, "group_name": "control_input"},
+        ], betas=(0.9, 0.99), eps=1e-8, weight_decay=0.0)
+    if cfg.control_input_lr is not None:
+        _assert_controlinput_optimizer(optimizer)
     optimizer_ids = {id(parameter) for group in optimizer.param_groups for parameter in group["params"]}
     expected_ids = {id(parameter) for parameter in model.parameters() if parameter.requires_grad}
     frozen_ids = {id(parameter) for parameter in model.parameters() if not parameter.requires_grad}
     if optimizer_ids != expected_ids or optimizer_ids & frozen_ids:
         raise AssertionError("Optimizer must contain exactly ControlInput and intended LoRA tensors")
+    if sum(len(group["params"]) for group in optimizer.param_groups) != len(optimizer_ids):
+        raise AssertionError("Optimizer contains a duplicated parameter")
     return optimizer
 
 
@@ -579,9 +985,14 @@ def parse_args() -> argparse.Namespace:
                         help="resume only exact local completed LR=5e-5 step 1500 into the isolated timestep-only branch")
     parser.add_argument("--recover-timestep-lowmid-1500-to1800", action="store_true",
                         help="resume only the newest fully validated local checkpoint from the fixed timestep-only branch")
+    parser.add_argument("--controlinput-lr2x-1500-to2800", action="store_true",
+                        help="resume only exact validated LR-only step 1500 into the isolated 2x ControlInputLayer-LR run")
+    parser.add_argument("--recover-controlinput-lr2x-1500-to2800", action="store_true",
+                        help="resume only the newest fully validated local checkpoint from the fixed ControlInputLayer-LR run")
     args = parser.parse_args()
     if sum((args.lr_branch_900_to_1500, args.timestep_lowmid_1500_to1800,
-            args.recover_timestep_lowmid_1500_to1800)) > 1:
+            args.recover_timestep_lowmid_1500_to1800, args.controlinput_lr2x_1500_to2800,
+            args.recover_controlinput_lr2x_1500_to2800)) > 1:
         parser.error("continuation branch selectors are mutually exclusive")
     if args.lr_branch_900_to_1500:
         if args.resume:
@@ -598,6 +1009,13 @@ def parse_args() -> argparse.Namespace:
             parser.error("--recover-timestep-lowmid-1500-to1800 selects its validated local checkpoint itself; do not pass --resume")
         if (args.timestep_aux_prob, args.timestep_aux_min, args.timestep_aux_max) != (0.0, 0.0, 1.0):
             parser.error("--recover-timestep-lowmid-1500-to1800 fixes its audited auxiliary sampler; do not pass timestep auxiliary flags")
+        return args
+    if args.controlinput_lr2x_1500_to2800 or args.recover_controlinput_lr2x_1500_to2800:
+        selector = "--controlinput-lr2x-1500-to2800" if args.controlinput_lr2x_1500_to2800 else "--recover-controlinput-lr2x-1500-to2800"
+        if args.resume:
+            parser.error(f"{selector} resolves only its fixed exact checkpoint; do not pass --resume")
+        if (args.timestep_aux_prob, args.timestep_aux_min, args.timestep_aux_max) != (0.0, 0.0, 1.0):
+            parser.error(f"{selector} keeps the original source timestep sampler; do not pass timestep auxiliary flags")
         return args
     if args.max_steps is None or args.run_name is None:
         parser.error("--run-name and --max-steps are required unless --lr-branch-900-to-1500 is used")
@@ -649,22 +1067,33 @@ def main() -> None:
     args = parse_args()
     if not torch.cuda.is_available(): raise RuntimeError("Run Gate-F smoke from the GH200 host shell with CUDA visible")
     branch_source_path = (resolve_lr_branch_source_checkpoint() if args.lr_branch_900_to_1500 else
+                          resolve_controlinput_branch_source_checkpoint() if args.controlinput_lr2x_1500_to2800 or args.recover_controlinput_lr2x_1500_to2800 else
                           resolve_timestep_branch_source_checkpoint() if args.timestep_lowmid_1500_to1800 or args.recover_timestep_lowmid_1500_to1800 else None)
     immutable_timestep_source_state = (load_training_state(branch_source_path)
                                        if args.recover_timestep_lowmid_1500_to1800 else None)
+    immutable_controlinput_source_state = (load_training_state(branch_source_path)
+                                           if args.recover_controlinput_lr2x_1500_to2800 else None)
     branch_source_state = (immutable_timestep_source_state if immutable_timestep_source_state is not None else
+                           immutable_controlinput_source_state if immutable_controlinput_source_state is not None else
                            load_training_state(branch_source_path) if branch_source_path is not None else None)
     recovery_path = recovery_state = None
     if args.recover_timestep_lowmid_1500_to1800:
         recovery_path, recovery_state, cfg = resolve_timestep_branch_recovery_checkpoint(immutable_timestep_source_state)
+    elif args.recover_controlinput_lr2x_1500_to2800:
+        recovery_path, recovery_state, cfg = resolve_controlinput_branch_recovery_checkpoint(immutable_controlinput_source_state)
     else:
         cfg = (lr_branch_config_from_source_state(branch_source_state) if args.lr_branch_900_to_1500 else
+               controlinput_branch_config_from_source_state(branch_source_state) if args.controlinput_lr2x_1500_to2800 else
                timestep_branch_config_from_source_state(branch_source_state) if args.timestep_lowmid_1500_to1800 else
                config_from_args(args))
     if args.lr_branch_900_to_1500:
         assert_lr_branch_output_namespace(cfg)
     if args.timestep_lowmid_1500_to1800 or args.recover_timestep_lowmid_1500_to1800:
         assert_timestep_branch_output_namespace(cfg)
+    if args.controlinput_lr2x_1500_to2800 or args.recover_controlinput_lr2x_1500_to2800:
+        assert_controlinput_branch_output_namespace(cfg)
+    if args.controlinput_lr2x_1500_to2800:
+        assert_controlinput_branch_destination_is_new()
     set_seed(cfg.seed); device = torch.device("cuda"); torch.cuda.reset_peak_memory_stats()
     print(f"effective_batch={effective_batch_size(cfg.microbatch_size, cfg.gradient_accumulation_steps)} (microbatch × accumulation × world_size=1)", flush=True)
     print(f"runtime: compile={cfg.compile} gradient_checkpointing_blocks={cfg.gradient_checkpointing_blocks} "
@@ -685,23 +1114,37 @@ def main() -> None:
         global_step, epoch, batch_position, resume_generator_state = restore_full_training_state(
             model, optimizer, scheduler, recovery_state,
         )
-        _assert_exact_learning_rate(optimizer, LR_BRANCH_LEARNING_RATE)
-        print(f"[timestep-recovery] restored newest validated local checkpoint {recovery_path} at optimizer step {global_step}; "
-              f"AdamW/scheduler/RNG/data state retained; LR={LR_BRANCH_LEARNING_RATE}; "
-              f"aux_prob={cfg.timestep_aux_prob} aux_pre_shift=[{cfg.timestep_aux_min}, {cfg.timestep_aux_max})", flush=True)
-        print(f"[timestep-recovery] verify scheduler_step={scheduler.step_count} warmup_steps={scheduler.warmup_steps} "
-              f"save_every={cfg.save_every} required_checkpoints={TIMESTEP_BRANCH_REQUIRED_CHECKPOINT_STEPS} "
-              f"hf={cfg.hf_repo_id}/{cfg.run_name}/full/ wandb_run={cfg.run_name}", flush=True)
+        if args.recover_controlinput_lr2x_1500_to2800:
+            _assert_controlinput_optimizer(optimizer)
+            print(f"[controlinput-recovery] restored {recovery_path} at step {global_step}; "
+                  f"lora_lr={CONTROLINPUT_BRANCH_LORA_LR} control_input_lr={CONTROLINPUT_BRANCH_CONTROL_LR}; "
+                  "AdamW/scheduler/RNG/data/flow-generator state retained", flush=True)
+        else:
+            _assert_exact_learning_rate(optimizer, LR_BRANCH_LEARNING_RATE)
+            print(f"[timestep-recovery] restored newest validated local checkpoint {recovery_path} at optimizer step {global_step}; "
+                  f"AdamW/scheduler/RNG/data state retained; LR={LR_BRANCH_LEARNING_RATE}; "
+                  f"aux_prob={cfg.timestep_aux_prob} aux_pre_shift=[{cfg.timestep_aux_min}, {cfg.timestep_aux_max})", flush=True)
     elif branch_source_state is not None:
-        global_step, epoch, batch_position, resume_generator_state = restore_full_training_state(
-            model, optimizer, scheduler, branch_source_state,
-            learning_rate_override=LR_BRANCH_LEARNING_RATE if args.lr_branch_900_to_1500 else None,
-        )
-        _assert_exact_learning_rate(optimizer, LR_BRANCH_LEARNING_RATE)
+        if args.controlinput_lr2x_1500_to2800:
+            global_step, epoch, batch_position, resume_generator_state = _restore_controlinput_source_state(
+                model, optimizer, scheduler, branch_source_state,
+            )
+            _assert_controlinput_optimizer(optimizer)
+            if global_step != CONTROLINPUT_BRANCH_SOURCE_STEP or scheduler.step_count != global_step:
+                raise AssertionError("ControlInput continuation did not restore exact global/scheduler progress")
+            print(f"[controlinput-branch] restored exact HF-validated local source {branch_source_path} at step {global_step}; "
+                  "all AdamW moments and counters migrated by stable trainable parameter name; "
+                  f"lora_lr={CONTROLINPUT_BRANCH_LORA_LR} control_input_lr={CONTROLINPUT_BRANCH_CONTROL_LR}", flush=True)
+        else:
+            global_step, epoch, batch_position, resume_generator_state = restore_full_training_state(
+                model, optimizer, scheduler, branch_source_state,
+                learning_rate_override=LR_BRANCH_LEARNING_RATE if args.lr_branch_900_to_1500 else None,
+            )
+            _assert_exact_learning_rate(optimizer, LR_BRANCH_LEARNING_RATE)
         if args.lr_branch_900_to_1500:
             print(f"[lr-branch] restored exact validated source {branch_source_path} at optimizer step {global_step}; "
                   f"AdamW/scheduler/RNG/data state retained and effective LR fixed at {LR_BRANCH_LEARNING_RATE}", flush=True)
-        else:
+        elif not args.controlinput_lr2x_1500_to2800:
             if global_step != TIMESTEP_BRANCH_SOURCE_STEP or scheduler.step_count != global_step:
                 raise AssertionError("Timestep branch did not restore exact global/scheduler progress")
             print(f"[timestep-branch] restored exact validated source {branch_source_path} at optimizer step {global_step}; "
@@ -721,8 +1164,13 @@ def main() -> None:
         print(f"[resume] loaded validated full checkpoint {resume_path} at optimizer step {global_step} "
               f"(epoch={epoch}, batch_position={batch_position})", flush=True)
     telemetry = TrainingTelemetry(cfg, cfg.run_name)
-    mirror = HFTrainingCheckpointMirror(repo_id=cfg.hf_repo_id, run_name=cfg.run_name,
-                                        interval_seconds=cfg.hf_push_every_seconds, telemetry=telemetry)
+    mirror = HFTrainingCheckpointMirror(
+        repo_id=cfg.hf_repo_id, run_name=cfg.run_name,
+        interval_seconds=cfg.hf_push_every_seconds, telemetry=telemetry,
+        protected_milestone_steps=(CONTROLINPUT_BRANCH_REQUIRED_CHECKPOINT_STEPS
+                                   if args.controlinput_lr2x_1500_to2800 or args.recover_controlinput_lr2x_1500_to2800
+                                   else ()),
+    )
     mirror.start()
     stopped = False
     def stop_handler(signum, _frame):
@@ -763,7 +1211,9 @@ def main() -> None:
                 before_step=capture_diagnostics if diagnostics_due else None,
             )
             global_step += 1
-            if branch_source_state is not None:
+            if args.controlinput_lr2x_1500_to2800 or args.recover_controlinput_lr2x_1500_to2800:
+                _assert_controlinput_optimizer(optimizer)
+            elif branch_source_state is not None:
                 _assert_exact_learning_rate(optimizer, LR_BRANCH_LEARNING_RATE)
             elapsed = time.monotonic() - start; samples = effective_batch_size(cfg.microbatch_size, cfg.gradient_accumulation_steps)
             telemetry.log_train(loss=float(loss.item()), learning_rate=learning_rate_used, global_grad_norm=grad_norm, sec_per_step=elapsed, samples_per_second=samples / elapsed, step=global_step)
