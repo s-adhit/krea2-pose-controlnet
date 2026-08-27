@@ -16,6 +16,7 @@ from einops import rearrange
 
 from pose_controlnet.diffusion import forward_pose_control, patchify_and_position
 from pose_controlnet.evaluation import ordered_checkpoints
+from pose_controlnet.checkpointing import load_training_state, validated_hf_checkpoint_for_step
 from pose_controlnet.model import trainable_state_dict
 from pose_controlnet.paired_preprocessing import resize_center_crop_geometry
 
@@ -30,6 +31,12 @@ TURBO_SIGMA = 1.0
 TURBO_CHECKPOINT_STEPS = (800, 900, 1200, 1500)
 DEFAULT_TURBO_CHECKPOINT_STEPS = (800, 1500)
 CANONICAL_EVALUATION_ROOT = Path("/lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-500")
+ORIGINAL_TURBO_EVALUATION_ROOT = Path("/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0")
+LR5E5_TURBO_EVALUATION_ROOT = Path("/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0-lr5e5")
+LR5E5_CHECKPOINT_ROOT = Path("/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500")
+LR5E5_HF_RUN_NAME = "pose-learning-900-lr5e5-to1500"
+LR5E5_HF_REPO_ID = "adhit-420/Krea-2-PoseControl-LoRA-checkpoints"
+LR5E5_TURBO_CHECKPOINT_STEPS = (1000, 1100, 1200, 1300, 1400, 1500)
 
 
 def turbo_schedule(*, image_sequence_length: int, steps: int = TURBO_STEPS,
@@ -120,6 +127,63 @@ def exact_turbo_checkpoints(*, checkpoint_dir: str | Path, hf_repo_id: str,
     if tuple(step for step, _ in resolved) != requested or any(path is None for _, path in resolved):
         raise AssertionError(f"Turbo benchmark must resolve exactly requested checkpoints {requested}")
     return [(step, path) for step, path in resolved if path is not None]
+
+
+def assert_lr5e5_turbo_output_isolated(output_dir: str | Path) -> Path:
+    """Reject both historical Turbo namespaces for the LR-continuation branch."""
+    output = assert_turbo_output_isolated(output_dir)
+    original = ORIGINAL_TURBO_EVALUATION_ROOT.resolve()
+    if output == original or original in output.parents:
+        raise ValueError(f"LR=5e-5 Turbo output must not collide with original Turbo results: {original}")
+    return output
+
+
+def exact_lr5e5_turbo_checkpoints(*, checkpoint_dir: str | Path, hf_repo_id: str,
+                                   hf_recovery_dir: str | Path | None = None,
+                                   steps: Iterable[int] = LR5E5_TURBO_CHECKPOINT_STEPS) -> list[tuple[int, Path]]:
+    """Resolve only marker-backed exact checkpoints from the LR=5e-5 HF branch.
+
+    A local file alone is deliberately insufficient: every selected state is
+    fetched through ``validated_hf_checkpoint_for_step`` from the sole branch
+    namespace, which checks the exact completion marker, SHA-256, full state
+    deserialization/schema, and embedded ``global_step``.  It therefore cannot
+    substitute the original 1500 run, a timed mirror, nearest, or latest state.
+    """
+    requested = tuple(steps)
+    if requested != LR5E5_TURBO_CHECKPOINT_STEPS:
+        raise ValueError(f"LR=5e-5 Turbo evaluation requires exactly {LR5E5_TURBO_CHECKPOINT_STEPS}, got {requested}")
+    if Path(checkpoint_dir).resolve() != LR5E5_CHECKPOINT_ROOT.resolve():
+        raise ValueError(f"LR=5e-5 Turbo evaluation requires checkpoint root {LR5E5_CHECKPOINT_ROOT}")
+    if hf_repo_id != LR5E5_HF_REPO_ID:
+        raise ValueError(f"LR=5e-5 Turbo evaluation requires HF repo {LR5E5_HF_REPO_ID}")
+    recovery_root = Path(hf_recovery_dir) if hf_recovery_dir is not None else LR5E5_CHECKPOINT_ROOT / "hf-recovery-turbo"
+    resolved: list[tuple[int, Path]] = []
+    for step in requested:
+        checkpoint = validated_hf_checkpoint_for_step(
+            repo_id=LR5E5_HF_REPO_ID, run_name=LR5E5_HF_RUN_NAME, step=step,
+            download_dir=recovery_root / LR5E5_HF_RUN_NAME,
+        )
+        if checkpoint is None:
+            remote = f"{LR5E5_HF_RUN_NAME}/full/step_{step:06d}.pt"
+            raise FileNotFoundError(f"Required exact completion-marked LR=5e-5 checkpoint is unavailable: {remote}")
+        state = load_training_state(checkpoint)
+        if state["global_step"] != step:
+            raise ValueError(f"LR=5e-5 checkpoint filename/embedded step mismatch: {checkpoint} has {state['global_step']}")
+        resolved.append((step, checkpoint))
+    return resolved
+
+
+def assert_lr5e5_diagnostic_contract(spec: Mapping[str, Any], original_spec: Mapping[str, Any]) -> None:
+    """Require exactly the established Turbo diagnostic inputs and seeds."""
+    required = ("stems", "per_stem_seeds", "sample_identities")
+    if spec.get("kind") != "turbo_fixed_pose" or original_spec.get("kind") != "turbo_fixed_pose":
+        raise ValueError("LR=5e-5 Turbo evaluation requires the established turbo_fixed_pose diagnostic spec")
+    if spec.get("seed") != 420200 or original_spec.get("seed") != 420200:
+        raise ValueError("LR=5e-5 Turbo evaluation requires the immutable diagnostic seed 420200")
+    if any(spec.get(key) != original_spec.get(key) for key in required):
+        raise ValueError("LR=5e-5 Turbo diagnostic stems, inputs, or per-stem seeds differ from original Turbo evaluation")
+    if spec.get("turbo") != turbo_metadata() or original_spec.get("turbo") != turbo_metadata():
+        raise ValueError("LR=5e-5 Turbo contract differs from the established 8-step CFG-0 mu=1.15 contract")
 
 
 @torch.inference_mode()
