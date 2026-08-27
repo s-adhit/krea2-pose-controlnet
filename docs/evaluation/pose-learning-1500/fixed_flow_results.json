@@ -1,0 +1,3319 @@
+{
+  "checkpoints": [
+    {
+      "checkpoint_step": 0,
+      "mean_fixed_flow_loss": 0.07596157060470432,
+      "median_fixed_flow_loss": 0.06783165037631989,
+      "per_sample": [
+        {
+          "loss": 0.05174208804965019,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07333984225988388,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.07584752142429352,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.06783165037631989,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10527084022760391,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.07341410964727402,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06713691353797913,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.058604128658771515,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.0656275600194931,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07886821031570435,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.07099013030529022,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06864859163761139,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.13365326821804047,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.045640479773283005,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.060252320021390915,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.0627131462097168,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.056889232248067856,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.09647484868764877,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.08954143524169922,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09171489626169205,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04250209033489227,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.0743078663945198,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06429096311330795,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.1068691611289978,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07348216325044632,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.062147803604602814,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.050254080444574356,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.04834235832095146,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07233187556266785,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.23240873217582703,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.04315352812409401,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.0664784237742424,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.0342209792323145
+    },
+    {
+      "checkpoint_step": 20,
+      "mean_fixed_flow_loss": 0.07581461896188557,
+      "median_fixed_flow_loss": 0.06709101796150208,
+      "per_sample": [
+        {
+          "loss": 0.05165264010429382,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.0729050487279892,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.07535602152347565,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.06635794043540955,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10544085502624512,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.07335278391838074,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06709101796150208,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.0586366169154644,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.0656328946352005,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07873894274234772,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.07087333500385284,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06905203312635422,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.13357745110988617,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04570077359676361,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.060237735509872437,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.06265959143638611,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.05683033540844917,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.09602425992488861,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.08898851275444031,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09177073836326599,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04234147071838379,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.07405199110507965,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06359709054231644,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10687137395143509,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.0734553337097168,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.062185466289520264,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.05006137490272522,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.04831623286008835,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07221245765686035,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.2324538677930832,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.04304823279380798,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06659338623285294,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.03424673988406368
+    },
+    {
+      "checkpoint_step": 40,
+      "mean_fixed_flow_loss": 0.07586427999194711,
+      "median_fixed_flow_loss": 0.06722856312990189,
+      "per_sample": [
+        {
+          "loss": 0.05173782259225845,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07222394645214081,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.07712581008672714,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.06722856312990189,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10542311519384384,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.0733015239238739,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06707921624183655,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.058706965297460556,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.06613513082265854,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07877591252326965,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.07098343968391418,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06929942220449448,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.133596733212471,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04575337469577789,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.06015963479876518,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.06266123056411743,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.05672239139676094,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.0957932099699974,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.08850135654211044,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09183434396982193,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04247027635574341,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.07373619824647903,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06298097968101501,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.1068696454167366,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07357531785964966,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.0622517429292202,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.050109196454286575,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.04832003265619278,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07205432653427124,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.2324768602848053,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.04308077692985535,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06668846309185028,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.03422941654527231
+    },
+    {
+      "checkpoint_step": 60,
+      "mean_fixed_flow_loss": 0.07575360755436122,
+      "median_fixed_flow_loss": 0.0670623853802681,
+      "per_sample": [
+        {
+          "loss": 0.05158408731222153,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.0733393207192421,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.07427097856998444,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.06567195057868958,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10555899143218994,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.0731622651219368,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.0670623853802681,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.05865019932389259,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.06564000248908997,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07869452983140945,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.07095395773649216,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06861899793148041,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.13364765048027039,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04557222127914429,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.06010713800787926,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.06260994076728821,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.056715358048677444,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.09589268267154694,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.08881837129592896,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09158109128475189,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.042290098965168,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.0742441862821579,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06416960805654526,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10687030851840973,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07331281900405884,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.06211407110095024,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.05008986219763756,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.04829278215765953,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07248280942440033,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.23241595923900604,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.04325316846370697,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06642764806747437,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.03424980346824357
+    },
+    {
+      "checkpoint_step": 80,
+      "mean_fixed_flow_loss": 0.07581050728913397,
+      "median_fixed_flow_loss": 0.06876472383737564,
+      "per_sample": [
+        {
+          "loss": 0.051738712936639786,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07167255133390427,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.07808633148670197,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.06916641443967819,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10558409988880157,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.07313952594995499,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06695924699306488,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.058541569858789444,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.06508901715278625,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07881905883550644,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.07095003128051758,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06876472383737564,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.13365167379379272,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04553034529089928,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.06027722731232643,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.062713623046875,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.05653957650065422,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.09621167182922363,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.08827481418848038,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09163658320903778,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04251334071159363,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.07331137359142303,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06276251375675201,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10684165358543396,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07336235046386719,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.06209632009267807,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.04998946934938431,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.04840172827243805,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07203412055969238,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.2322932481765747,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.04251674562692642,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.0664665699005127,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.034250497200155786
+    },
+    {
+      "checkpoint_step": 100,
+      "mean_fixed_flow_loss": 0.07568202062975615,
+      "median_fixed_flow_loss": 0.06763772666454315,
+      "per_sample": [
+        {
+          "loss": 0.051677994430065155,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07219823449850082,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.0765509232878685,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.06763772666454315,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10487234592437744,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.07324666529893875,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06683668494224548,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.05852559581398964,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.06508465111255646,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07861208915710449,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.07120642811059952,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.0684560015797615,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.1335778683423996,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04541008174419403,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.059782933443784714,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.06272359937429428,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.056445132941007614,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.09539537131786346,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.0876261442899704,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.0916726142168045,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04246864467859268,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.07378596067428589,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06314241886138916,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10690928250551224,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.0734713152050972,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.062085751444101334,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.05014682188630104,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.04824591428041458,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07201363146305084,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.23213183879852295,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.04340263456106186,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06648135930299759,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.034175022558309405
+    },
+    {
+      "checkpoint_step": 200,
+      "mean_fixed_flow_loss": 0.07508771878201514,
+      "median_fixed_flow_loss": 0.06652854382991791,
+      "per_sample": [
+        {
+          "loss": 0.051171742379665375,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07221784442663193,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.06621341407299042,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.0678497701883316,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10586993396282196,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.07308419793844223,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.0665261447429657,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.05854881927371025,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.0639135092496872,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07860076427459717,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.07033777236938477,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06880875676870346,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.13322700560092926,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04557378217577934,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.057843878865242004,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.06268119812011719,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.05591621994972229,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.09541767090559006,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.0875292494893074,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09177285432815552,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.042335253208875656,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.0733112171292305,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06284472346305847,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10689233988523483,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07316145300865173,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.0621747151017189,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.04921889305114746,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.04810869321227074,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07199585437774658,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.2318911999464035,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.04123958572745323,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06652854382991791,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.034344836412236575
+    },
+    {
+      "checkpoint_step": 225,
+      "mean_fixed_flow_loss": 0.07509986904915422,
+      "median_fixed_flow_loss": 0.0675559788942337,
+      "per_sample": [
+        {
+          "loss": 0.05150482803583145,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07224900275468826,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.06771425902843475,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.0675559788942337,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10507182031869888,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.07311731576919556,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06656486541032791,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.05847474932670593,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.06472402065992355,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07856366783380508,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.07057083398103714,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.0676489844918251,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.13367490470409393,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04541952162981033,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.056077029556035995,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.06277138739824295,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.056048933416604996,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.09529951214790344,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.0877029225230217,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09168935567140579,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04210841655731201,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.07304787635803223,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06366515904664993,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10684356093406677,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07334160804748535,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.06198093667626381,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.04938432574272156,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.04813867062330246,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07198059558868408,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.23161126673221588,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.04234541207551956,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06630408763885498,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.03428034046054492
+    },
+    {
+      "checkpoint_step": 350,
+      "mean_fixed_flow_loss": 0.07466151984408498,
+      "median_fixed_flow_loss": 0.06595343351364136,
+      "per_sample": [
+        {
+          "loss": 0.05114975571632385,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07364330440759659,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.06287609785795212,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.06237927824258804,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10446405410766602,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.0729285478591919,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06597201526165009,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.05848504602909088,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.06519673764705658,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07850129157304764,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.06996369361877441,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06837496906518936,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.13318383693695068,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04525691270828247,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.058506183326244354,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.0623432993888855,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.05583963915705681,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.0953194871544838,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.08703850209712982,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09171957522630692,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04209193214774132,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.07312974333763123,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06234709173440933,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10678651928901672,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07297259569168091,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.061995167285203934,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.048860304057598114,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.04815123230218887,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07150360941886902,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.23143884539604187,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.040795933455228806,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06595343351364136,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.03434916142607003
+    },
+    {
+      "checkpoint_step": 475,
+      "mean_fixed_flow_loss": 0.07472028001211584,
+      "median_fixed_flow_loss": 0.06624996662139893,
+      "per_sample": [
+        {
+          "loss": 0.05105001479387283,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07319630682468414,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.06320814043283463,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.0655476301908493,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10515135526657104,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.07252921164035797,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06624996662139893,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.05844421684741974,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.06531202048063278,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07867077738046646,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.06978800147771835,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06767567247152328,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.13299229741096497,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04522744566202164,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.058058612048625946,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.06227533519268036,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.05615294352173805,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.0952635183930397,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.08761186897754669,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09147290885448456,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.042112018913030624,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.0720718652009964,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06271403282880783,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10684555768966675,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07303883880376816,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.061974067240953445,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.049176134169101715,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.048003826290369034,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07128385454416275,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.23130959272384644,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.04002813994884491,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06661278754472733,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.03433100411756654
+    },
+    {
+      "checkpoint_step": 500,
+      "mean_fixed_flow_loss": 0.07479419477749616,
+      "median_fixed_flow_loss": 0.06622976064682007,
+      "per_sample": [
+        {
+          "loss": 0.05117230862379074,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07335250079631805,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.06413671374320984,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.06472954154014587,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10549355298280716,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.07269743084907532,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06622976064682007,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.05853081867098808,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.06547296792268753,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07852333784103394,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.0697890967130661,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06807530671358109,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.13292013108730316,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04526901990175247,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.05871342495083809,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.06248203665018082,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.05600009113550186,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.09479933977127075,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.0874384269118309,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09145791828632355,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.042205799371004105,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.07224967330694199,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06264559179544449,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10700232535600662,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.0730663388967514,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.06190958991646767,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.04909145459532738,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.048077210783958435,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07172804325819016,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.2313738763332367,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.04018915444612503,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06659144908189774,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.034310348908646156
+    },
+    {
+      "checkpoint_step": 600,
+      "mean_fixed_flow_loss": 0.07463890209328383,
+      "median_fixed_flow_loss": 0.06569759547710419,
+      "per_sample": [
+        {
+          "loss": 0.05087340995669365,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07411744445562363,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.06152660772204399,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.05986395850777626,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10561253130435944,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.07283791154623032,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06569759547710419,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.05863119289278984,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.0648607462644577,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07880376279354095,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.06986291706562042,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.0679824948310852,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.1329956352710724,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04539591819047928,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.05829721316695213,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.06254506856203079,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.055917322635650635,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.09492760896682739,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.08780304342508316,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09154138714075089,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04245724901556969,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.07312316447496414,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06331519037485123,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.1068716049194336,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07291010022163391,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.06215820834040642,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.04938190057873726,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.04800477996468544,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07163253426551819,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.23104985058307648,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.040847666561603546,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06659884750843048,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.03433309389370521
+    },
+    {
+      "checkpoint_step": 700,
+      "mean_fixed_flow_loss": 0.07437351683620363,
+      "median_fixed_flow_loss": 0.06577115505933762,
+      "per_sample": [
+        {
+          "loss": 0.050891365855932236,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07441401481628418,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.06135592609643936,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.05843333899974823,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10434386134147644,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.0726848617196083,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06577115505933762,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.05830525979399681,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.06484381854534149,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07852587103843689,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.06923409551382065,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06830562651157379,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.1326833963394165,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04527592658996582,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.05744528770446777,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.06239086017012596,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.055765390396118164,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.0946604311466217,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.08693987131118774,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09130670875310898,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04217955842614174,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.0727490559220314,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06218816712498665,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10704691708087921,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07282724976539612,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.06188174709677696,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.04900317266583443,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.048012323677539825,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.0714656412601471,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.23094308376312256,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.041164837777614594,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06691371649503708,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.034320145719944614
+    },
+    {
+      "checkpoint_step": 800,
+      "mean_fixed_flow_loss": 0.0745796577539295,
+      "median_fixed_flow_loss": 0.06613592058420181,
+      "per_sample": [
+        {
+          "loss": 0.050697263330221176,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07444150745868683,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.06163732334971428,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.06021198630332947,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10462997853755951,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.07241092622280121,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06613592058420181,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.05848877876996994,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.0652928501367569,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.0786861702799797,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.06968247890472412,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06810908764600754,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.13333916664123535,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.045338328927755356,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.0582846999168396,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.06246871501207352,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.0557287335395813,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.0947851613163948,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.0874389186501503,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.0913359746336937,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04259553179144859,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.07331140339374542,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06285721063613892,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10691452771425247,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07289339601993561,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.06201418116688728,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.04915129765868187,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.047935016453266144,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07130476832389832,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.23085634410381317,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.04091443866491318,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06665696203708649,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.034294213418921055
+    },
+    {
+      "checkpoint_step": 900,
+      "mean_fixed_flow_loss": 0.07457765773870051,
+      "median_fixed_flow_loss": 0.06576704978942871,
+      "per_sample": [
+        {
+          "loss": 0.050754617899656296,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07353343814611435,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.06390731781721115,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.06262344866991043,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10459201037883759,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.072215735912323,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06576704978942871,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.05858185142278671,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.06419573724269867,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.0786607563495636,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.06968430429697037,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06755850464105606,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.1327841877937317,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04539598152041435,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.059063870459795,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.06246282160282135,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.056069884449243546,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.09473763406276703,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.08733102679252625,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09136553108692169,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04232577234506607,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.07203518599271774,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06224501505494118,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10678985714912415,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07327227294445038,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.06205649673938751,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.049076374620199203,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.04807162284851074,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.071219801902771,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.23073044419288635,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.04082120209932327,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06655529141426086,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.03420069952574251
+    },
+    {
+      "checkpoint_step": 1000,
+      "mean_fixed_flow_loss": 0.07442143908701837,
+      "median_fixed_flow_loss": 0.0657949149608612,
+      "per_sample": [
+        {
+          "loss": 0.050863638520240784,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07266931980848312,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.06257916986942291,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.060540225356817245,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.1042056754231453,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.07186219096183777,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.0657949149608612,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.05821087956428528,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.06461592018604279,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07854869216680527,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.06973185390233994,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06661416590213776,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.13325358927249908,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04516002535820007,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.057251304388046265,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.062443897128105164,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.05591133236885071,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.09433819353580475,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.0892295092344284,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.0913565382361412,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04217391088604927,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.07264671474695206,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06265956163406372,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10700999945402145,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07355575263500214,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.06190364062786102,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.04898529499769211,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.04803837090730667,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.0713338553905487,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.23077742755413055,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.041254326701164246,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.0659661591053009,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.034319839661007705
+    },
+    {
+      "checkpoint_step": 1100,
+      "mean_fixed_flow_loss": 0.07440371497068554,
+      "median_fixed_flow_loss": 0.06562135368585587,
+      "per_sample": [
+        {
+          "loss": 0.05096353590488434,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07244852185249329,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.06232792139053345,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.06120467931032181,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10397964715957642,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.07171887159347534,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06562135368585587,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.058603812009096146,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.06404033303260803,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07881440222263336,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.06976523250341415,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06727457046508789,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.1326112300157547,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04539202153682709,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.05841799080371857,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.06257140636444092,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.05594147741794586,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.09487148374319077,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.08757907897233963,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09134966880083084,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04252919554710388,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.07210151851177216,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06202144920825958,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10691262036561966,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07288256287574768,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.06200107932090759,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.049260176718235016,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.04819449782371521,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07100481539964676,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.2307402789592743,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.041063591837882996,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06670985370874405,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.034213126133156996
+    },
+    {
+      "checkpoint_step": 1200,
+      "mean_fixed_flow_loss": 0.07431719696614891,
+      "median_fixed_flow_loss": 0.0659441202878952,
+      "per_sample": [
+        {
+          "loss": 0.05066177621483803,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07378733903169632,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.05996111035346985,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.06053634360432625,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10384390503168106,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.07193725556135178,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.0659441202878952,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.05853725224733353,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.06418831646442413,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07860542833805084,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.06918827444314957,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06817121058702469,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.13281191885471344,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04545067250728607,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.058279555290937424,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.062424395233392715,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.055919043719768524,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.09486771374940872,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.0867614895105362,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09136193990707397,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04230918735265732,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.07251058518886566,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06182388588786125,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10700008273124695,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07280681282281876,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.06205332279205322,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.0489463284611702,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.0481686070561409,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07148820161819458,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.2307605892419815,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.040762729942798615,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06628090888261795,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.034279392433747384
+    },
+    {
+      "checkpoint_step": 1300,
+      "mean_fixed_flow_loss": 0.07434124802239239,
+      "median_fixed_flow_loss": 0.06571823358535767,
+      "per_sample": [
+        {
+          "loss": 0.05066646263003349,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07373245805501938,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.061861924827098846,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.06226338818669319,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10372327268123627,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.07102103531360626,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06571823358535767,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.05851925164461136,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.06426678597927094,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07850562781095505,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.06949812918901443,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06767883151769638,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.13254065811634064,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04551250860095024,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.05662115290760994,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.06250359117984772,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.0557691752910614,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.09517368674278259,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.08750677853822708,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09125494956970215,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04209277778863907,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.07160677760839462,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06189483031630516,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10706682503223419,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07320088893175125,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.06210177764296532,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.049152228981256485,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.04804259166121483,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.0710180252790451,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.23058103024959564,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.0410449281334877,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06677935272455215,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.034231363385004564
+    },
+    {
+      "checkpoint_step": 1400,
+      "mean_fixed_flow_loss": 0.07433489279355854,
+      "median_fixed_flow_loss": 0.06552577763795853,
+      "per_sample": [
+        {
+          "loss": 0.05071573331952095,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07307478785514832,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.06174248084425926,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.0629032626748085,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10289059579372406,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.0708196684718132,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06552577763795853,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.058624718338251114,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.06379211694002151,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07839283347129822,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.06944483518600464,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06662506610155106,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.1326051503419876,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04529273509979248,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.058113373816013336,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.06240347772836685,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.05578463524580002,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.09518224000930786,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.0885985717177391,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09134047478437424,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04181745648384094,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.0721246525645256,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.062085580080747604,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.10723720490932465,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07303149253129959,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.06190507486462593,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.04899925738573074,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.04823106527328491,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07113698124885559,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.23060448467731476,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.041472502052783966,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06619828194379807,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.03422286125634645
+    },
+    {
+      "checkpoint_step": 1500,
+      "mean_fixed_flow_loss": 0.07403592637274414,
+      "median_fixed_flow_loss": 0.06533356755971909,
+      "per_sample": [
+        {
+          "loss": 0.05059304088354111,
+          "stem": "painting_humanart_1000000000851"
+        },
+        {
+          "loss": 0.07296431064605713,
+          "stem": "painting_humanart_10000000000845"
+        },
+        {
+          "loss": 0.05969208851456642,
+          "stem": "real_human_humanart_15000000000477"
+        },
+        {
+          "loss": 0.059613071382045746,
+          "stem": "coco_258399_422036"
+        },
+        {
+          "loss": 0.10363708436489105,
+          "stem": "painting_humanart_2000000001016"
+        },
+        {
+          "loss": 0.07075385004281998,
+          "stem": "painting_humanart_10000000004350"
+        },
+        {
+          "loss": 0.06533356755971909,
+          "stem": "painting_humanart_10000000000396"
+        },
+        {
+          "loss": 0.05860288813710213,
+          "stem": "danbooru_anime_11904916"
+        },
+        {
+          "loss": 0.0638626292347908,
+          "stem": "coco_554669_crowd"
+        },
+        {
+          "loss": 0.07842439413070679,
+          "stem": "real_human_humanart_17000000000580"
+        },
+        {
+          "loss": 0.06945660710334778,
+          "stem": "painting_humanart_10000000006327"
+        },
+        {
+          "loss": 0.06692461669445038,
+          "stem": "sculpture_humanart_14000000000326"
+        },
+        {
+          "loss": 0.13264687359333038,
+          "stem": "painting_humanart_2000000000257"
+        },
+        {
+          "loss": 0.04539315775036812,
+          "stem": "painting_humanart_2000000001905"
+        },
+        {
+          "loss": 0.056773506104946136,
+          "stem": "painting_humanart_1000000006447"
+        },
+        {
+          "loss": 0.06249919533729553,
+          "stem": "painting_humanart_6000000000119"
+        },
+        {
+          "loss": 0.055863309651613235,
+          "stem": "painting_humanart_10000000001475"
+        },
+        {
+          "loss": 0.09489826112985611,
+          "stem": "coco_438723_536721"
+        },
+        {
+          "loss": 0.08684418350458145,
+          "stem": "coco_479950_crowd"
+        },
+        {
+          "loss": 0.09139537066221237,
+          "stem": "coco_327255_crowd"
+        },
+        {
+          "loss": 0.04191664978861809,
+          "stem": "danbooru_anime_11913842"
+        },
+        {
+          "loss": 0.071342334151268,
+          "stem": "painting_humanart_10000000001552"
+        },
+        {
+          "loss": 0.06154875457286835,
+          "stem": "painting_humanart_10000000002909"
+        },
+        {
+          "loss": 0.1070636510848999,
+          "stem": "danbooru_anime_11910660"
+        },
+        {
+          "loss": 0.07341974973678589,
+          "stem": "coco_443556_crowd"
+        },
+        {
+          "loss": 0.062071993947029114,
+          "stem": "painting_humanart_1000000007876"
+        },
+        {
+          "loss": 0.048831988126039505,
+          "stem": "painting_humanart_10000000002510"
+        },
+        {
+          "loss": 0.04804966226220131,
+          "stem": "danbooru_anime_11912946"
+        },
+        {
+          "loss": 0.07121316343545914,
+          "stem": "coco_124013_crowd"
+        },
+        {
+          "loss": 0.23054508864879608,
+          "stem": "painting_humanart_9000000000807"
+        },
+        {
+          "loss": 0.04092112183570862,
+          "stem": "sculpture_humanart_14000000004558"
+        },
+        {
+          "loss": 0.06605347990989685,
+          "stem": "coco_160726_200105"
+        }
+      ],
+      "sample_count": 32,
+      "std_fixed_flow_loss": 0.03431490551557115
+    }
+  ],
+  "config": {
+    "allow_extended_training": false,
+    "alpha": null,
+    "caption_dropout": 0.1,
+    "checkpoint_every_seconds": 3600,
+    "ckpt_dir": "/ckpts",
+    "compile": false,
+    "control_dropout": 0.0,
+    "diagnostics_every": 50,
+    "eval_guidance": 3.5,
+    "eval_steps": 8,
+    "gradient_accumulation_steps": 32,
+    "gradient_checkpointing": false,
+    "gradient_checkpointing_blocks": 0,
+    "hf_push_every_seconds": 3600,
+    "hf_repo_id": "",
+    "log_every": 10,
+    "lr": 0.0001,
+    "max_grad_norm": 1.0,
+    "max_steps": 6000,
+    "metrics_jsonl_path": "/lambda/nfs/adhit/krea2-pose/evaluation/pose-learning-500/metrics.jsonl",
+    "microbatch_size": 1,
+    "mu_x1": 256.0,
+    "mu_x2": 6400.0,
+    "mu_y1": 0.5,
+    "mu_y2": 1.15,
+    "rank": 64,
+    "raw_ckpt": "/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors",
+    "run_name": null,
+    "save_every": 500,
+    "seed": 42,
+    "shard_dir": "/lambda/nfs/adhit/krea2-pose/posebridge_latents",
+    "val_every": 250,
+    "validation_batches": 8,
+    "wandb_enabled": true,
+    "wandb_entity": "adhit-projects",
+    "wandb_mode": "online",
+    "wandb_project": "Krea-2-PoseControl-Lora",
+    "warmup_steps": 200
+  },
+  "format_version": 1,
+  "kind": "fixed_flow",
+  "spec": {
+    "format_version": 1,
+    "kind": "fixed_flow",
+    "per_stem_seeds": {
+      "coco_124013_crowd": {
+        "noise": 8854756638244629533,
+        "sampling": 1650535607148042783,
+        "timestep": 920049654670620550
+      },
+      "coco_160726_200105": {
+        "noise": 3224643550972734980,
+        "sampling": 148957768090770956,
+        "timestep": 4581578429339599458
+      },
+      "coco_258399_422036": {
+        "noise": 5319548628505147926,
+        "sampling": 553314347904956982,
+        "timestep": 2507851244042067338
+      },
+      "coco_327255_crowd": {
+        "noise": 2584114957298738203,
+        "sampling": 2256525272012559047,
+        "timestep": 7668934180978131197
+      },
+      "coco_438723_536721": {
+        "noise": 623282515055256070,
+        "sampling": 6235733271606284510,
+        "timestep": 2105946425801508555
+      },
+      "coco_443556_crowd": {
+        "noise": 5693399078755001757,
+        "sampling": 3766350001377453443,
+        "timestep": 3211688858410438668
+      },
+      "coco_479950_crowd": {
+        "noise": 2493671012947270846,
+        "sampling": 1207122162393176374,
+        "timestep": 4561085557771018353
+      },
+      "coco_554669_crowd": {
+        "noise": 8350729291483439106,
+        "sampling": 764811382752334159,
+        "timestep": 7880556898021222222
+      },
+      "danbooru_anime_11904916": {
+        "noise": 5484830659055126977,
+        "sampling": 2778722499751786462,
+        "timestep": 202581551268435635
+      },
+      "danbooru_anime_11910660": {
+        "noise": 2589095293794936757,
+        "sampling": 4787848350038212464,
+        "timestep": 1630101003563797287
+      },
+      "danbooru_anime_11912946": {
+        "noise": 4498062180133343012,
+        "sampling": 4302080484848461891,
+        "timestep": 1285195916403591584
+      },
+      "danbooru_anime_11913842": {
+        "noise": 1541742548440727099,
+        "sampling": 7959881823130685515,
+        "timestep": 6306968992457038540
+      },
+      "painting_humanart_10000000000396": {
+        "noise": 5030545700743120739,
+        "sampling": 4384577921002127702,
+        "timestep": 2085678843892955808
+      },
+      "painting_humanart_10000000000845": {
+        "noise": 3071532743241364373,
+        "sampling": 8245258427117133171,
+        "timestep": 2915871548112708984
+      },
+      "painting_humanart_10000000001475": {
+        "noise": 8049062990014039205,
+        "sampling": 7270022670976519830,
+        "timestep": 2549850380785744332
+      },
+      "painting_humanart_10000000001552": {
+        "noise": 6331340188138485559,
+        "sampling": 7533633550582835431,
+        "timestep": 1145019620239302263
+      },
+      "painting_humanart_10000000002510": {
+        "noise": 8055982617076982882,
+        "sampling": 1490226627070898400,
+        "timestep": 2778541474647888792
+      },
+      "painting_humanart_10000000002909": {
+        "noise": 8993283662550702414,
+        "sampling": 7146893630661497014,
+        "timestep": 692468662865023490
+      },
+      "painting_humanart_10000000004350": {
+        "noise": 4165425754123913663,
+        "sampling": 1870536318106025536,
+        "timestep": 4882915983061456172
+      },
+      "painting_humanart_10000000006327": {
+        "noise": 3177453219005958803,
+        "sampling": 7146809291523800427,
+        "timestep": 2237895773280506430
+      },
+      "painting_humanart_1000000000851": {
+        "noise": 8650047459302486366,
+        "sampling": 8808625166356941645,
+        "timestep": 5293065087305038209
+      },
+      "painting_humanart_1000000006447": {
+        "noise": 4920209510402001918,
+        "sampling": 3655339644838116495,
+        "timestep": 1551184621606048292
+      },
+      "painting_humanart_1000000007876": {
+        "noise": 4928305163087907771,
+        "sampling": 2360806992511816792,
+        "timestep": 5841620826016598630
+      },
+      "painting_humanart_2000000000257": {
+        "noise": 6622641156161340854,
+        "sampling": 3330045165670145462,
+        "timestep": 7751779886961527645
+      },
+      "painting_humanart_2000000001016": {
+        "noise": 2406172415950612572,
+        "sampling": 3103201513473431069,
+        "timestep": 6715859637871107310
+      },
+      "painting_humanart_2000000001905": {
+        "noise": 4162442912439964295,
+        "sampling": 6444946915154230026,
+        "timestep": 8694055925939620387
+      },
+      "painting_humanart_6000000000119": {
+        "noise": 7024780470757443914,
+        "sampling": 4823167714234632053,
+        "timestep": 1972171490683892528
+      },
+      "painting_humanart_9000000000807": {
+        "noise": 9162275660915679696,
+        "sampling": 3824541072774380184,
+        "timestep": 8201116507137894624
+      },
+      "real_human_humanart_15000000000477": {
+        "noise": 7164880152582916597,
+        "sampling": 400241714026567106,
+        "timestep": 1941381938399592180
+      },
+      "real_human_humanart_17000000000580": {
+        "noise": 1122444012655242300,
+        "sampling": 8473748511447365370,
+        "timestep": 2453372157633043214
+      },
+      "sculpture_humanart_14000000000326": {
+        "noise": 1948719245575453328,
+        "sampling": 7390993923588629341,
+        "timestep": 1789264969262541473
+      },
+      "sculpture_humanart_14000000004558": {
+        "noise": 4360036985744728639,
+        "sampling": 4651852669564197773,
+        "timestep": 878786036197277925
+      }
+    },
+    "sample_identities": {
+      "coco_124013_crowd": {
+        "context_sha256": "762f4d2b05a6762f10d36720f10f5e7e464da62481e45cc65a5fb9ff83e15a59",
+        "control_latent_sha256": "8a2cafcf334b2c64837590981518d8d1cf409147ba8425d9c3684482a21f208e",
+        "image_latent_sha256": "a45af852bd86dc8ce6b2b461d7ec7111a714a570555a6904aa2b11886d2ce997",
+        "mask_sha256": "3138d235a7ca60682f1a1dc9722c736bf24d187e3f8ed5e33ae4dd170fc447df"
+      },
+      "coco_160726_200105": {
+        "context_sha256": "d115fc67df610db58e386458cdd23806d11d6c5b1de7b45c198e88f91a465707",
+        "control_latent_sha256": "a71a18532a68888e8fd470dd279c8789baface18caf59dac8eb755f8fa0c7e36",
+        "image_latent_sha256": "e0f5e390cfbd298584c11ae3eb5a9145fb3d204d9c9bcf76824e8cd51025be51",
+        "mask_sha256": "256c8c9c8801e74667b5ba03b9f80d125a326c6bf0acfcf7a8f087be59e3a565"
+      },
+      "coco_258399_422036": {
+        "context_sha256": "e642edad06c22a5bd91204c0bfa975291f35cf97e385c820921e3d9feb5693eb",
+        "control_latent_sha256": "4349a44925c0246f2dbc251ffcfa6eaf489df99cca9b5129f71b3af6fcba392e",
+        "image_latent_sha256": "f8e42b3228c9df6f150096ad2f01c6090f7112f3fe608c8b453ac30ba1855021",
+        "mask_sha256": "e22f8491f06f56dc5fae953cc50f47b966e6e7e0ca2cbc851e86f887d5e547d4"
+      },
+      "coco_327255_crowd": {
+        "context_sha256": "4a12da55a3dd195a092eba9bd3605dd5f0076425b33be011c620768210121bc9",
+        "control_latent_sha256": "91c6017dbd35e951f039f5faedb695365b3c862d5c526de30e001b1daaa45ebe",
+        "image_latent_sha256": "e0855b2542c3ee3cd7cb5c33ebd23338e8abc636e15787d5e6e465785f80830b",
+        "mask_sha256": "bcaaf19d6513ff0ff8698f6161d914be3f5546ed2b6107fda8b48447657d33ea"
+      },
+      "coco_438723_536721": {
+        "context_sha256": "3549583d70e1a6f85abf8394193990c077daabac63cf955089e5ae945f5ca506",
+        "control_latent_sha256": "5674fb3710b31641d4ca147b7d35348ae91552bc26a54a7be080d6725612545b",
+        "image_latent_sha256": "b2bfb8153e0b0f2b0a3d7e7f9cf753cf53510dbb39519c30849670105aa5968a",
+        "mask_sha256": "3f2e8f940e8f74b4d421d0341a66a4e04906a901b2e9ce165bf298afc4c39a8c"
+      },
+      "coco_443556_crowd": {
+        "context_sha256": "7b01a80011d2c26b1e6e0955352b0050d9531066fff32c9d70107d3867ba6c8a",
+        "control_latent_sha256": "8f2d0dcc5245ef056a27b95d467c520fd7f65354fa2dbb741c9d84557b1a963e",
+        "image_latent_sha256": "a12cd0249fa24001dcc473e199d07adc7ef31a934bd4d25c4c05c0be4b29346c",
+        "mask_sha256": "160919079700e28ac6545fcc60d351991e64c953578ca48511744df4c9f19da2"
+      },
+      "coco_479950_crowd": {
+        "context_sha256": "e2b2278175342dfc554655c652f4950b712ccbb32923c757c9be7fbd853edf8b",
+        "control_latent_sha256": "37e65ec11eea7efe9a37a05d49cfcfe746ff81f610e37fa72f84d1ce0384d275",
+        "image_latent_sha256": "8437c1192e37f728b3d8c02e811328a4adadfc991cf8a5150cdccbf54f13ea4e",
+        "mask_sha256": "769feed6b846a2e7f082745c1d83af0073ae48344cc0a50b623843ceedd3c764"
+      },
+      "coco_554669_crowd": {
+        "context_sha256": "04366270f1093b8fbd8c62008995d1e15ca4af46585ef0a29410b1b4586e81f1",
+        "control_latent_sha256": "7183c35f7f129ea6bc7db348a4477c7d7ef8b051f4f539c33c6594b3c4a82683",
+        "image_latent_sha256": "57c2b0e3c2f65a521663e76d1ab256964e84455c7904f6573c6c9d1e74c09fa5",
+        "mask_sha256": "df5e7ef8b4a2dcbf2d99a0a0ac4527f9b3967daa799f7e0b7c11b06c4cd56a80"
+      },
+      "danbooru_anime_11904916": {
+        "context_sha256": "83a64758d4c3119c45eb98f77941d4d96b61c5bf67eba484ab1694683c94297b",
+        "control_latent_sha256": "5b2fb831ed9fad9b1f7dbe047d57e34f231dceaf12ce0e4e318fda7c9e26d9a8",
+        "image_latent_sha256": "b399f67cab89fe48bafbdef65547c506644199adbf8b87fe00a09e453fbf1245",
+        "mask_sha256": "dc7156746a46cbe6edfaceb4ccfb9b27fc7250d2608a991848cfec6f62f39932"
+      },
+      "danbooru_anime_11910660": {
+        "context_sha256": "430f5d47c65228f95c9e7189cadbeb8ba2805460b12843858c816842a3fbdbbc",
+        "control_latent_sha256": "7fa438d157cc490bb579c9d5400daa04377dc4708d3ecbb83def3c93aaf84dce",
+        "image_latent_sha256": "1daae443fd42e5afc5e5ff9cf0cc301bc73c2ef66926da5f532a22f959eda125",
+        "mask_sha256": "8681f4a931cc91f7bd66ac8ae2ae8b228782c22a0740bf45890e681f8bb0cef2"
+      },
+      "danbooru_anime_11912946": {
+        "context_sha256": "47044dbf88c0eafafd1244083f8ab13c45a9dc856836b755b78aed5dc1e610ab",
+        "control_latent_sha256": "d9b75ecb89e96a098481551d567ba4fdf5f693fa2d680e00b07c361025c0002b",
+        "image_latent_sha256": "7fe71e0807398dc4c649493717b5df059515357f4b1945290c162bdc21342db2",
+        "mask_sha256": "8e1bc4b6253c93705e7935f7116fba1bda3383997ca588db079d1eab68bd7c0b"
+      },
+      "danbooru_anime_11913842": {
+        "context_sha256": "df3d89e39f3973a1a268a555cb70b5e34e3e9d8b4265c736471d05fde1163fc5",
+        "control_latent_sha256": "7243cca021f154bf4c4bef8d50b8d97c6e4eca0280a86c72bea038fb51624273",
+        "image_latent_sha256": "603ed97437f2734699e3045cc9f9dad6c244cddcc5af5825e89f39157f84e0d5",
+        "mask_sha256": "bcaaf19d6513ff0ff8698f6161d914be3f5546ed2b6107fda8b48447657d33ea"
+      },
+      "painting_humanart_10000000000396": {
+        "context_sha256": "0add6ec6bece46ecacd124a1589e96362cfa234dfca447505aacda72d8dfbec1",
+        "control_latent_sha256": "b5beb29f5f691d458261250cadc0dcbc23e4d2ca6289cdf5f9c99380ebd269ee",
+        "image_latent_sha256": "23ec5744824887799d7dd830aaeea14c91f25acb62eadc0c87dbd9819a9c2043",
+        "mask_sha256": "8681f4a931cc91f7bd66ac8ae2ae8b228782c22a0740bf45890e681f8bb0cef2"
+      },
+      "painting_humanart_10000000000845": {
+        "context_sha256": "f29f948a9abf6846487a0c3fc2edf3b02325cc1e0a19976854c23024da019a10",
+        "control_latent_sha256": "5da75fb9946dbb066c758dc2c214466f82e22958fbe22432510dadbf2515b7bd",
+        "image_latent_sha256": "754cd9eaec26fa7da7ea3d126abede2d77c6f7b7c7133078dcdcb707fe9b4e8b",
+        "mask_sha256": "754b58164ca4660ee2d2ad3b87d97a9f086b1f6dca6621808cdcc8db87741de0"
+      },
+      "painting_humanart_10000000001475": {
+        "context_sha256": "165a93a1dc8a0533cc854267eb6611619320c559f1f7094c297260b2b6866d34",
+        "control_latent_sha256": "4498c29ffffba4469b16cb7de509e710e327960b5041c6c7ad4229637a9a0531",
+        "image_latent_sha256": "d8f547961b33ee83ebb1a4955fa3dee9f65dee52ad26997df14ec2a4a59610f8",
+        "mask_sha256": "3f2e8f940e8f74b4d421d0341a66a4e04906a901b2e9ce165bf298afc4c39a8c"
+      },
+      "painting_humanart_10000000001552": {
+        "context_sha256": "e35dc08926e505ffe2a08e0399913d05aa09d2f88b11b12de636cf0b12be17bb",
+        "control_latent_sha256": "2ffa3adf7170b9dd53753fe546cc8a210e5951837c149697de0cf41da46c0fef",
+        "image_latent_sha256": "54a40a1f967f83d575789aee76dcb9f5eb547e6739157e8e8b1b085f6c25a736",
+        "mask_sha256": "7424496143dee66a9d6848a67410ab443113637809fe98ccd4f8d5a8680a108d"
+      },
+      "painting_humanart_10000000002510": {
+        "context_sha256": "15d8633100e1dbd5b4ee2a6edc87b695452d4c52ab15b75662b77f4587f5fd0e",
+        "control_latent_sha256": "7850df379b55c9386b6e12136aeb2e88a18ce851464f4b718b565e6aba5477ff",
+        "image_latent_sha256": "d73ab6550d1005477f4e0d6488dfdc2633605850fc7e846aa9a58bfa11d90fe4",
+        "mask_sha256": "fb9d10a6313f47e61cdc916eb04b1311aa8076756bbe4d2f113af77aef0199b8"
+      },
+      "painting_humanart_10000000002909": {
+        "context_sha256": "550f82f6a784fc07389001d6a38b4e307389523e2806ec55cb9c622a3fd867b4",
+        "control_latent_sha256": "57bae5333463785001b646033f960256efb7d6bf03d2339e68f9818458934759",
+        "image_latent_sha256": "ddb33caf98e6a86fd16ddef14b4c508d4d95e638115f9c63aae8a532c9e44157",
+        "mask_sha256": "9fa43c30d3f8d763ac2fedbb53f6a32275fa18cf31427436c7f5f107fa561640"
+      },
+      "painting_humanart_10000000004350": {
+        "context_sha256": "bc415807ef5ce5428ebe147cd1cdcfe341ed2bb38feb42b49fb237a9f8610e8e",
+        "control_latent_sha256": "2fb519b9c6e9a972a1fd6a7a1ea98ca7c4c160f34c17902aa8482ffeba9c331f",
+        "image_latent_sha256": "6023c1ea2b2ecdb1d257e21b26f36709b0501418b20b4800b7167a95e43c6a26",
+        "mask_sha256": "60c285d83690be0345cc75ae7c286b6ed670deb3b87b965f09cae717837b84d3"
+      },
+      "painting_humanart_10000000006327": {
+        "context_sha256": "d402255ff8bf6e5db68174f9ceba9c65ebeb3a1b24f4599210586e88554fd277",
+        "control_latent_sha256": "e3e0980b1e05f279606969243c922d779dd53e650f154824fb73e97724053452",
+        "image_latent_sha256": "f8569c7d8f25f3d432ec0322cdf4cc5e9ab13ec27a06d51a06bce38d603eedb0",
+        "mask_sha256": "0b95e43a4e96d320c6e9686ff6ad3c1a0255c17f7883332a0a9ce7f914d62cc7"
+      },
+      "painting_humanart_1000000000851": {
+        "context_sha256": "f315aab9358300778facd62654da4cc52d2dbd817a774feb2bdb0b81a1c1a1fc",
+        "control_latent_sha256": "4fc695b5781d321ce6196519941820ff7a1459f77f88a4d9b14d454e09db4b07",
+        "image_latent_sha256": "99942e3f06e97bb946e7922ecbea60fbebaaf9f913c26b7d08b3ad27cb97b92d",
+        "mask_sha256": "7eb24a18990ee4c958c89773da6cc9fbc5c278357762d02ec6ab947eb28726ff"
+      },
+      "painting_humanart_1000000006447": {
+        "context_sha256": "259b714b4ebfdf624b30fa8e72c440b53f2a2f7689b831472ad8a0770e55c729",
+        "control_latent_sha256": "cdf4e1e742d814e169417829d13e6098641532548eae9ea282b8fcb2862d6cc6",
+        "image_latent_sha256": "e74984bf7135adc9064b346e99de273e50c6087853db3ccd85627cf71061cf33",
+        "mask_sha256": "862ab177ce950621517f02390d726827bc8b2ed09e653e7a73e24efe69b6bc5b"
+      },
+      "painting_humanart_1000000007876": {
+        "context_sha256": "4d1952cefabc115e7375b3d7c06a5438660100453af1cac2363e3b63da0e9a1e",
+        "control_latent_sha256": "62e863cac0b64ad8e8c9247ea67c7a22fbb037841a4f252a4ebc3f2018802a85",
+        "image_latent_sha256": "be274021deb5b4c149c3f9693d710329a86487e874bab70f6f4792b5803de071",
+        "mask_sha256": "b57444d0764cef85bc7ddc6e606adb6b64d5b9df9f5debc008f39ddc1760ff4b"
+      },
+      "painting_humanart_2000000000257": {
+        "context_sha256": "96c09d24f345a5bce201f02e77dd4fe0f6a6255c289aaad77081220fc1ebe4d2",
+        "control_latent_sha256": "6dc80d859ee4545cea7370dda7d30e36a5986c29532dc72a0ccf40cc2f2dcd9c",
+        "image_latent_sha256": "3e8807f00fc278ea16fe02b1b67105bb29357d77e19fb156dbc638145db5fdb8",
+        "mask_sha256": "173aa5eb8051905e1fb3b019c6f4dcc334af0f03d006f84ec6f3fe4d63630911"
+      },
+      "painting_humanart_2000000001016": {
+        "context_sha256": "5ef64a18f8b7285a38c582494f34f9c004fdece063dd791ec36322d6331491a2",
+        "control_latent_sha256": "a128f737a0a9d55256c3d17522f2a279a78ffb9234e1ae3151291127c50f9edf",
+        "image_latent_sha256": "1948ade27ad3226a548f49225770ad9ad03db5a70ae9083549fb0a934ef85502",
+        "mask_sha256": "92ed78c705017b645f06277f8d19bc2fd7e15e48c05f7470ffc57587a78c214f"
+      },
+      "painting_humanart_2000000001905": {
+        "context_sha256": "8b548883c19bd086e5bd5458f620420d54d4c4e0dd1d30da9efe1a7e3b0fc1f7",
+        "control_latent_sha256": "73f96e051d4d5437cca81cfc8bfc6d60e9c7c231fdc8146907c3b62afe82a695",
+        "image_latent_sha256": "32d01fb9645069823f8cbced67c97faaa1e7372199aa678ab6d7c00f44861079",
+        "mask_sha256": "f31331bec89dd9543f6df7fd77acc946d07522e8981632c8c76ed13948cdcf9e"
+      },
+      "painting_humanart_6000000000119": {
+        "context_sha256": "e946b14a81ada40a7b0ef56c8f6ce5b0f4258890e50ee130cda65732d7d4c884",
+        "control_latent_sha256": "0b38d86d2f61c3154794d9b01ba4869a2a79902022ddd97efe3603ee6fcbe46e",
+        "image_latent_sha256": "e108a41d9bfcc595f1d583fb0c1c81deb83e84c79a2d978ace7f1302e6295507",
+        "mask_sha256": "7c8975e1e60a5c8337f28edf8c33c3b180360b7279644a9bc1af3c51e6220bf5"
+      },
+      "painting_humanart_9000000000807": {
+        "context_sha256": "5faf2d6e9ccc440105d945fd620d2f5c45c3bbda8a06d3dac9b776a5e8064861",
+        "control_latent_sha256": "8dd9e6345d9090e7c925ac00acb8f92d3a24442597ba4c9aa5db8627743f2f4b",
+        "image_latent_sha256": "a9a97bfff4e754b24860f866234403f7cb805c5b13f086ca759d5d5b8d10cade",
+        "mask_sha256": "7eb24a18990ee4c958c89773da6cc9fbc5c278357762d02ec6ab947eb28726ff"
+      },
+      "real_human_humanart_15000000000477": {
+        "context_sha256": "0b15b0111b8a33c80af91ebb59fa1c74e938a0ebc6b650590e0ccc1f7f1e0b88",
+        "control_latent_sha256": "7448e3f16f594e7562b0f070002d464b74e5de7d3bdf1bbd700ebbf329743306",
+        "image_latent_sha256": "e981388f69a656610f7aabf736db1adea6aaeebe9f1805d427ffb4aaa9cf1afb",
+        "mask_sha256": "d25c1c865d4af2a3760d32f3bd503d50745e48021582ff8ed36874a92e6dcfc4"
+      },
+      "real_human_humanart_17000000000580": {
+        "context_sha256": "2c684df2db11ec22e1f2b3824def37be400210307ea7c47e9ca93416a313426b",
+        "control_latent_sha256": "4f2bee9f8316174a8fbde1353f980bb405baf9fdb24f192d5ad575e35f4e7b1c",
+        "image_latent_sha256": "48bc9026f61803aecb5fb6fd2be833182d0388fe6387f565f5fa78c5c8f93c54",
+        "mask_sha256": "f4af5a6a69b66db58e7972a923497046abed65a5ffa25a86f6de87154a9b59b7"
+      },
+      "sculpture_humanart_14000000000326": {
+        "context_sha256": "a80f2223fa896bcd53d4e64fc944c853a20d49b3cfa4ac4c855a2b6f1b2c02f1",
+        "control_latent_sha256": "8ca415c0ea31e110af268f7230b437d3dc2f4ece07bc44b95bce33eb36c11163",
+        "image_latent_sha256": "2c6a00d52e44a693cf75e6246b912b11cfa6ff9bb7445cba4c23d7054ce15327",
+        "mask_sha256": "f295de94fbb60df3e196481a7a4a3f969386a5ab437835f8411bc53028c1ae88"
+      },
+      "sculpture_humanart_14000000004558": {
+        "context_sha256": "dc347747523fe4e5f41f0eb9e0980932e15d870d67864fe5764d369f357fa7f6",
+        "control_latent_sha256": "1bf8e83a187eddf166e28284d80b1e744fd18f1eba873771855d238c26a39903",
+        "image_latent_sha256": "3ed6e08b470a596a86eab6825feb43292b85cc685dbff2201b22a7cdd4316bfd",
+        "mask_sha256": "d04df6fe98a21ae966bd98adb7269da8739578f14060d9ad166485bd5995b944"
+      }
+    },
+    "seed": 420100,
+    "split": "val",
+    "stems": [
+      "painting_humanart_1000000000851",
+      "painting_humanart_10000000000845",
+      "real_human_humanart_15000000000477",
+      "coco_258399_422036",
+      "painting_humanart_2000000001016",
+      "painting_humanart_10000000004350",
+      "painting_humanart_10000000000396",
+      "danbooru_anime_11904916",
+      "coco_554669_crowd",
+      "real_human_humanart_17000000000580",
+      "painting_humanart_10000000006327",
+      "sculpture_humanart_14000000000326",
+      "painting_humanart_2000000000257",
+      "painting_humanart_2000000001905",
+      "painting_humanart_1000000006447",
+      "painting_humanart_6000000000119",
+      "painting_humanart_10000000001475",
+      "coco_438723_536721",
+      "coco_479950_crowd",
+      "coco_327255_crowd",
+      "danbooru_anime_11913842",
+      "painting_humanart_10000000001552",
+      "painting_humanart_10000000002909",
+      "danbooru_anime_11910660",
+      "coco_443556_crowd",
+      "painting_humanart_1000000007876",
+      "painting_humanart_10000000002510",
+      "danbooru_anime_11912946",
+      "coco_124013_crowd",
+      "painting_humanart_9000000000807",
+      "sculpture_humanart_14000000004558",
+      "coco_160726_200105"
+    ]
+  }
+}

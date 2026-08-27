@@ -1,0 +1,26 @@
+{
+  "aspect_bucket": {
+    "1024x1024": 1436,
+    "1152x896": 1864,
+    "1216x832": 3251,
+    "1344x768": 951,
+    "1472x704": 169,
+    "704x1472": 1060,
+    "768x1344": 823,
+    "832x1216": 3816,
+    "896x1152": 3133
+  },
+  "diagnostic_source_family": {
+    "COCO": 4,
+    "Danbooru": 3,
+    "Human-Art": 17
+  },
+  "immutable_manifest_path": "data/manifests/train.jsonl",
+  "source_family": {
+    "COCO": 3688,
+    "Danbooru": 2133,
+    "Human-Art": 10682
+  },
+  "training_person_count_metadata": "unavailable in immutable manifests/shards; not fabricated",
+  "training_sample_count": 16503
+}

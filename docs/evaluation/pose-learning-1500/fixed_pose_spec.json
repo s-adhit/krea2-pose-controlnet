@@ -1,0 +1,108 @@
+{
+  "format_version": 1,
+  "kind": "fixed_pose",
+  "per_stem_seeds": {
+    "coco_156320_crowd": {
+      "noise": 8665436860356381343,
+      "sampling": 4911567592567212507,
+      "timestep": 8648298132847383793
+    },
+    "coco_64240_crowd": {
+      "noise": 1807007160652469904,
+      "sampling": 594100244186452314,
+      "timestep": 8070829125627756484
+    },
+    "painting_humanart_10000000000838": {
+      "noise": 8377759567303263848,
+      "sampling": 3217584380567046935,
+      "timestep": 1387057312707619579
+    },
+    "painting_humanart_1000000000218": {
+      "noise": 2914534884989778446,
+      "sampling": 9022673857389605354,
+      "timestep": 8369331581327896559
+    },
+    "painting_humanart_1000000001225": {
+      "noise": 1155427122437270819,
+      "sampling": 8854799449003965586,
+      "timestep": 8120486319807302009
+    },
+    "painting_humanart_9000000002722": {
+      "noise": 2551975987621754684,
+      "sampling": 573803802872078447,
+      "timestep": 4684265194341564970
+    },
+    "real_human_humanart_17000000000288": {
+      "noise": 625752451347580673,
+      "sampling": 6163039533559699249,
+      "timestep": 3256559466726671426
+    },
+    "sculpture_humanart_14000000000243": {
+      "noise": 7895683264360377364,
+      "sampling": 7268152311884585886,
+      "timestep": 7293354284748472381
+    }
+  },
+  "sample_identities": {
+    "coco_156320_crowd": {
+      "context_sha256": "a845206be9f86cde8e5c5a78d03e1c81ac9f7835e7df203c1ae4f84507e1bab3",
+      "control_latent_sha256": "fdb9896702a5aaed65b9b0c7338856f6dbeac0dd1f51d356b7bbfb81dd350908",
+      "image_latent_sha256": "4347235819195ef68931aa05093891dbd6f6dfe7640fd168f9eccd3cf684e266",
+      "mask_sha256": "60c285d83690be0345cc75ae7c286b6ed670deb3b87b965f09cae717837b84d3"
+    },
+    "coco_64240_crowd": {
+      "context_sha256": "6062837b2412adf9360ec6bcffabfc649e39191187fae05c61872a3441e87daa",
+      "control_latent_sha256": "87ab1d469b12fbebad62c646fe22d92dd31d57e9796addac766a052e3613fdfb",
+      "image_latent_sha256": "ce7bcc073911336b996b9535b88cb6f3fcef83d65f179964aff0c552630fb32a",
+      "mask_sha256": "754b58164ca4660ee2d2ad3b87d97a9f086b1f6dca6621808cdcc8db87741de0"
+    },
+    "painting_humanart_10000000000838": {
+      "context_sha256": "b5fa6f8ec8d536f30d6ac8038ae2bd13bbddea4a3b88815e90258a678138c133",
+      "control_latent_sha256": "099ace7442d0b231f4d59edc6fbcc103cdd710a08335071e1b3b04f442f28085",
+      "image_latent_sha256": "29881130d25c12f36e0b7cb84d4d9e1b896354058e0c01cda97317503eec6ecf",
+      "mask_sha256": "7b88f73d78854730c49ec021b24e240118d050696d032e75d9e6283bc252106c"
+    },
+    "painting_humanart_1000000000218": {
+      "context_sha256": "d0f6661fad906e8b6665f49ea3cd3871959e74e278e97ffd263a03e3a77edaf0",
+      "control_latent_sha256": "e8a4226d6cc97faa8aa79a2f90dc2f0e3d376c2ebc2bd9878630126be29ffc9d",
+      "image_latent_sha256": "55174228d41ba0ac4c8ff11e4ee8ae7a5126bf62dcd3f8a8de04dafeaa4c3cf1",
+      "mask_sha256": "9aaa1e8265eb471776dcb8442f453711d4f4e69c3c62c6c8d2a043c726b47e4f"
+    },
+    "painting_humanart_1000000001225": {
+      "context_sha256": "495aa3832e230ce620938afd3974535c67a2c3e7c78512c0b5260c3d9fdace01",
+      "control_latent_sha256": "a80deaa3dfff2dcf3205624320ce27c0d6d923a29087c5f77a0942fba68d6fbc",
+      "image_latent_sha256": "c197952dec6a3076266897716f58996f5d4da1262ee0f92cf76ade7fd10d949e",
+      "mask_sha256": "670787be7891bd03b300ab086b5ffef16dfd7cab77157e1dd040c6d7bef42e71"
+    },
+    "painting_humanart_9000000002722": {
+      "context_sha256": "8dbcc0228e61692143ee55669f7a9c9c10ef24a29e70e8bc3cee2a4a19ac9bc3",
+      "control_latent_sha256": "a68ebd9b66ec4506754a7de0c0e0573f341b5642b0251fd6af48c60fdbd1affe",
+      "image_latent_sha256": "218ec4c0805c6631e7e6c10223f858de7f812786c39ea7a31aa4c6c28b71b9d8",
+      "mask_sha256": "8f1277c1cedd5d59903aac66a49dccc2a06be1deb4cda483d60226d2de87b880"
+    },
+    "real_human_humanart_17000000000288": {
+      "context_sha256": "42fdc53f0ca7a2f851fed8a2e6022f2777ab9c69a7a408493bbf08883de743d2",
+      "control_latent_sha256": "1bf5e5f19b1b1137223b968b19caf0fe746bda7417c6858f115507bc0ccb992e",
+      "image_latent_sha256": "e9dc58c0ad218ef4895f271f2d59dafcd9bdeed3d1bb2d1140b3e6c6ad8a0e16",
+      "mask_sha256": "f31331bec89dd9543f6df7fd77acc946d07522e8981632c8c76ed13948cdcf9e"
+    },
+    "sculpture_humanart_14000000000243": {
+      "context_sha256": "03ca24a34cde6462f843f55248512d2b7bddd6561ed5ab236d5c91886506b55c",
+      "control_latent_sha256": "2dbaf217aa63b3349259eead14c2542e2bc957a6a22ca83253eaef3da997c92e",
+      "image_latent_sha256": "46552d0c5d1c9ec162f3db94d71559d3affd963ccdd0209398fcd4f7c6232e74",
+      "mask_sha256": "3cd15194ad28eab01fec46faee93c2fcf20e386a5811927a4a2c3671543195a6"
+    }
+  },
+  "seed": 420200,
+  "split": "diagnostic_val",
+  "stems": [
+    "real_human_humanart_17000000000288",
+    "coco_156320_crowd",
+    "sculpture_humanart_14000000000243",
+    "coco_64240_crowd",
+    "painting_humanart_1000000000218",
+    "painting_humanart_1000000001225",
+    "painting_humanart_9000000002722",
+    "painting_humanart_10000000000838"
+  ]
+}

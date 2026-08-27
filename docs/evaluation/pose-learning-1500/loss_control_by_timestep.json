@@ -1,0 +1,453 @@
+{
+  "checkpoints": [
+    {
+      "checkpoint_step": 500,
+      "sample_count": 8,
+      "seed": 420100,
+      "timesteps": [
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.02588219959764156,
+            "median": 0.02581012205208852,
+            "sample_count": 8,
+            "std": 0.0010694510708040938
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.025123933097347617,
+            "median": 0.025061163119971752,
+            "sample_count": 8,
+            "std": 0.0027547355943864206
+          },
+          "flow_mse": {
+            "mean": 0.3174199312925339,
+            "median": 0.3430434465408325,
+            "sample_count": 8,
+            "std": 0.12516024365851575
+          },
+          "timestep": 0.1
+        },
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.013566571656615269,
+            "median": 0.012853682846166174,
+            "sample_count": 8,
+            "std": 0.001357322220654203
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.014544397476129234,
+            "median": 0.014648729003965855,
+            "sample_count": 8,
+            "std": 0.0014020896666684152
+          },
+          "flow_mse": {
+            "mean": 0.12376551609486341,
+            "median": 0.14043638482689857,
+            "sample_count": 8,
+            "std": 0.04779676861752499
+          },
+          "timestep": 0.3
+        },
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.011597553102407081,
+            "median": 0.010919555880091011,
+            "sample_count": 8,
+            "std": 0.0016958434314334088
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.012710603070445359,
+            "median": 0.012495807372033596,
+            "sample_count": 8,
+            "std": 0.0016777424751042204
+          },
+          "flow_mse": {
+            "mean": 0.07591109909117222,
+            "median": 0.08147900551557541,
+            "sample_count": 8,
+            "std": 0.02414731790073136
+          },
+          "timestep": 0.5
+        },
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.01330208441729527,
+            "median": 0.012520157630003557,
+            "sample_count": 8,
+            "std": 0.002657894041966977
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.01459645596332848,
+            "median": 0.013757938984781504,
+            "sample_count": 8,
+            "std": 0.0026338220944053547
+          },
+          "flow_mse": {
+            "mean": 0.06363434810191393,
+            "median": 0.06521851196885109,
+            "sample_count": 8,
+            "std": 0.017023543606931174
+          },
+          "timestep": 0.7
+        },
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.021586499692438924,
+            "median": 0.020280243244912236,
+            "sample_count": 8,
+            "std": 0.005925374877171843
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.023567182361148298,
+            "median": 0.02263623382896185,
+            "sample_count": 8,
+            "std": 0.006329580421546022
+          },
+          "flow_mse": {
+            "mean": 0.07882510032504797,
+            "median": 0.07423395663499832,
+            "sample_count": 8,
+            "std": 0.023373324622962023
+          },
+          "timestep": 0.9
+        }
+      ]
+    },
+    {
+      "checkpoint_step": 800,
+      "sample_count": 8,
+      "seed": 420100,
+      "timesteps": [
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.027174510367606604,
+            "median": 0.027424585588877025,
+            "sample_count": 8,
+            "std": 0.0011025618754892201
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.026603392092511058,
+            "median": 0.026004211977124214,
+            "sample_count": 8,
+            "std": 0.0035392884284233036
+          },
+          "flow_mse": {
+            "mean": 0.31705774925649166,
+            "median": 0.34240859746932983,
+            "sample_count": 8,
+            "std": 0.12517882109049222
+          },
+          "timestep": 0.1
+        },
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.014476893574203828,
+            "median": 0.014563641937531999,
+            "sample_count": 8,
+            "std": 0.001370687711393568
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.015569444163702428,
+            "median": 0.015607820823788643,
+            "sample_count": 8,
+            "std": 0.0017733861874098134
+          },
+          "flow_mse": {
+            "mean": 0.12369276164099574,
+            "median": 0.14038202539086342,
+            "sample_count": 8,
+            "std": 0.047754797700031895
+          },
+          "timestep": 0.3
+        },
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.011490490876827915,
+            "median": 0.01161373262039896,
+            "sample_count": 8,
+            "std": 0.0011496854325489772
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.012631468125618994,
+            "median": 0.012634636834263802,
+            "sample_count": 8,
+            "std": 0.0013292015425809352
+          },
+          "flow_mse": {
+            "mean": 0.07578813983127475,
+            "median": 0.08136701583862305,
+            "sample_count": 8,
+            "std": 0.024134222816309225
+          },
+          "timestep": 0.5
+        },
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.011924374781262317,
+            "median": 0.011719513212111315,
+            "sample_count": 8,
+            "std": 0.001245661324097443
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.01314816647209227,
+            "median": 0.013115907087922096,
+            "sample_count": 8,
+            "std": 0.001269498199533832
+          },
+          "flow_mse": {
+            "mean": 0.06374947307631373,
+            "median": 0.0650898925960064,
+            "sample_count": 8,
+            "std": 0.017012687128564238
+          },
+          "timestep": 0.7
+        },
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.019544636351109982,
+            "median": 0.01706088694721177,
+            "sample_count": 8,
+            "std": 0.007085192683871509
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.0214254898019135,
+            "median": 0.018899349495768547,
+            "sample_count": 8,
+            "std": 0.007794745781850257
+          },
+          "flow_mse": {
+            "mean": 0.07837368547916412,
+            "median": 0.07544076442718506,
+            "sample_count": 8,
+            "std": 0.02340213112283172
+          },
+          "timestep": 0.9
+        }
+      ]
+    },
+    {
+      "checkpoint_step": 1100,
+      "sample_count": 8,
+      "seed": 420100,
+      "timesteps": [
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.028133506489328414,
+            "median": 0.02831029961537082,
+            "sample_count": 8,
+            "std": 0.0009157997985111578
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.02751900814473629,
+            "median": 0.026579814963042736,
+            "sample_count": 8,
+            "std": 0.003226311320466932
+          },
+          "flow_mse": {
+            "mean": 0.31664772890508175,
+            "median": 0.34186550974845886,
+            "sample_count": 8,
+            "std": 0.12518859015201447
+          },
+          "timestep": 0.1
+        },
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.015277095420033554,
+            "median": 0.014279639336473514,
+            "sample_count": 8,
+            "std": 0.001901654486448524
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.01648779062088579,
+            "median": 0.015654749237000942,
+            "sample_count": 8,
+            "std": 0.002796718993470612
+          },
+          "flow_mse": {
+            "mean": 0.12369043845683336,
+            "median": 0.14030952751636505,
+            "sample_count": 8,
+            "std": 0.04771399479666362
+          },
+          "timestep": 0.3
+        },
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.011664598977253929,
+            "median": 0.011544129837818716,
+            "sample_count": 8,
+            "std": 0.0011540578505993965
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.012832117732614279,
+            "median": 0.01249384181573987,
+            "sample_count": 8,
+            "std": 0.001445711634073486
+          },
+          "flow_mse": {
+            "mean": 0.0757937952876091,
+            "median": 0.0813325047492981,
+            "sample_count": 8,
+            "std": 0.024148275128116993
+          },
+          "timestep": 0.5
+        },
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.011675337893348469,
+            "median": 0.01142836011028351,
+            "sample_count": 8,
+            "std": 0.0011908644416735736
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.012943879468366504,
+            "median": 0.012609934899955988,
+            "sample_count": 8,
+            "std": 0.0016957212494251922
+          },
+          "flow_mse": {
+            "mean": 0.06366806570440531,
+            "median": 0.06528440117835999,
+            "sample_count": 8,
+            "std": 0.016990234508180713
+          },
+          "timestep": 0.7
+        },
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.018716195127765792,
+            "median": 0.013856713709369355,
+            "sample_count": 8,
+            "std": 0.012212231877846208
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.020572087494656444,
+            "median": 0.015633776783943176,
+            "sample_count": 8,
+            "std": 0.013446635669250908
+          },
+          "flow_mse": {
+            "mean": 0.07762768166139722,
+            "median": 0.07368467003107071,
+            "sample_count": 8,
+            "std": 0.023304059735702265
+          },
+          "timestep": 0.9
+        }
+      ]
+    },
+    {
+      "checkpoint_step": 1500,
+      "sample_count": 8,
+      "seed": 420100,
+      "timesteps": [
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.02847099452664307,
+            "median": 0.02915824967636006,
+            "sample_count": 8,
+            "std": 0.0018466304606800667
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.027806534664705396,
+            "median": 0.027387958019971848,
+            "sample_count": 8,
+            "std": 0.004150044070535823
+          },
+          "flow_mse": {
+            "mean": 0.3166238069534302,
+            "median": 0.3414984494447708,
+            "sample_count": 8,
+            "std": 0.12504393319563298
+          },
+          "timestep": 0.1
+        },
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.015361064735969467,
+            "median": 0.01521729635901771,
+            "sample_count": 8,
+            "std": 0.0014475636350709741
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.01650605769827962,
+            "median": 0.016248155385255814,
+            "sample_count": 8,
+            "std": 0.0018292227921292317
+          },
+          "flow_mse": {
+            "mean": 0.12349165650084615,
+            "median": 0.1401553861796856,
+            "sample_count": 8,
+            "std": 0.047707525395607804
+          },
+          "timestep": 0.3
+        },
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.012747987019528841,
+            "median": 0.012127399258058481,
+            "sample_count": 8,
+            "std": 0.001598218284309186
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.013973984168842435,
+            "median": 0.013997006695717573,
+            "sample_count": 8,
+            "std": 0.0015410720715800554
+          },
+          "flow_mse": {
+            "mean": 0.07564544817432761,
+            "median": 0.08130831643939018,
+            "sample_count": 8,
+            "std": 0.02410211284905518
+          },
+          "timestep": 0.5
+        },
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.013769261716180804,
+            "median": 0.013519238758280212,
+            "sample_count": 8,
+            "std": 0.002087156264227565
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.015205345815047622,
+            "median": 0.014745999593287706,
+            "sample_count": 8,
+            "std": 0.002546911001910327
+          },
+          "flow_mse": {
+            "mean": 0.06349284737370908,
+            "median": 0.06494683772325516,
+            "sample_count": 8,
+            "std": 0.017003643549850272
+          },
+          "timestep": 0.7
+        },
+        {
+          "control_sensitivity_normalized_rms": {
+            "mean": 0.023502209044093794,
+            "median": 0.020786032949109398,
+            "sample_count": 8,
+            "std": 0.009700273786725742
+          },
+          "control_sensitivity_rms": {
+            "mean": 0.0257654944434762,
+            "median": 0.022493941709399223,
+            "sample_count": 8,
+            "std": 0.010765146223675665
+          },
+          "flow_mse": {
+            "mean": 0.07705641770735383,
+            "median": 0.073372021317482,
+            "sample_count": 8,
+            "std": 0.02390724824439942
+          },
+          "timestep": 0.9
+        }
+      ]
+    }
+  ],
+  "format_version": 1
+}
