@@ -1,0 +1,42 @@
+{
+  "experiment_name": "pose-learning-1500-controlinput-lr2x-to2800",
+  "checkpoint_root": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-controlinput-lr2x-to2800",
+  "hf_repo_id": "adhit-420/Krea-2-PoseControl-LoRA-checkpoints",
+  "hf_namespace": "pose-learning-1500-controlinput-lr2x-to2800/full/",
+  "output_root": "/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0-controlinput-lr2x",
+  "baseline": {
+    "checkpoint_step": 1500,
+    "output_root": "/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0-lr5e5",
+    "label": "LR-only 1500 @ 5e-5"
+  },
+  "labels": {
+    "checkpoint_template": "ControlInput-LR2x {step}"
+  },
+  "training_metadata": {
+    "lora_learning_rate": 5e-5,
+    "controlinput_learning_rate": 0.0001,
+    "controlinput_lr_multiplier": 2.0
+  },
+  "turbo_contract": {
+    "model": "Krea-2 Turbo",
+    "steps": 8,
+    "cfg": 0.0,
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "control_scale": 1.0
+  },
+  "diagnostics": {
+    "canonical_manifest": "data/manifests/diagnostic_val.jsonl",
+    "canonical_reference_spec": "/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0/turbo_spec.json",
+    "expected_count": 24,
+    "seed": 420200
+  },
+  "paths": {
+    "latent_root": "/lambda/nfs/adhit/krea2-pose/posebridge_latents",
+    "text_conditioning_root": "/lambda/nfs/adhit/krea2-pose/text_conditioning",
+    "turbo_ckpt": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+    "reference_sidecar": "data/manifests/diagnostic_reference_pose.json",
+    "clip_model_id": "openai/clip-vit-base-patch32"
+  }
+}

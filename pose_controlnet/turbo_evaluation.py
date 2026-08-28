@@ -8,6 +8,9 @@ constant shift is passed explicitly rather than inferred from resolution.
 from __future__ import annotations
 
 import math
+import json
+import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -48,15 +51,158 @@ TIMESTEP_HF_REPO_ID = "adhit-420/Krea-2-PoseControl-LoRA-checkpoints"
 TIMESTEP_TURBO_CHECKPOINT_STEPS = (1600, 1700, 1800)
 CONTROL_SCALE_TURBO_EVALUATION_ROOT = Path("/lambda/nfs/adhit/krea2-pose/evaluation/turbo-control-scale-step1500")
 CONTROL_SCALE_VALUES = (0.75, 1.0, 1.25, 1.5, 2.0)
-CONTROLINPUT_LR2X_TURBO_EVALUATION_ROOT = Path(
-    "/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0-controlinput-lr2x"
-)
-CONTROLINPUT_LR2X_CHECKPOINT_ROOT = Path(
-    "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-controlinput-lr2x-to2800"
-)
-CONTROLINPUT_LR2X_HF_RUN_NAME = "pose-learning-1500-controlinput-lr2x-to2800"
-CONTROLINPUT_LR2X_HF_REPO_ID = "adhit-420/Krea-2-PoseControl-LoRA-checkpoints"
-CONTROLINPUT_LR2X_TURBO_CHECKPOINT_STEPS = (1800, 2200, 2600, 2800)
+
+
+@dataclass(frozen=True)
+class TurboExperiment:
+    """Machine-readable, experiment-owned inputs for the generic evaluator."""
+
+    experiment_name: str
+    checkpoint_root: Path
+    hf_repo_id: str
+    hf_namespace: str
+    output_root: Path
+    steps: tuple[int, ...] | None
+    baseline: Mapping[str, Any] | None
+    labels: Mapping[str, Any]
+    training_metadata: Mapping[str, Any]
+    diagnostics: Mapping[str, Any]
+    paths: Mapping[str, Any]
+
+    @property
+    def hf_run_name(self) -> str:
+        return self.hf_namespace.removesuffix("/").removesuffix("/full")
+
+
+def _required_string(payload: Mapping[str, Any], key: str) -> str:
+    value = payload.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"Turbo experiment spec requires non-empty string {key!r}")
+    return value
+
+
+def load_turbo_experiment_spec(path: str | Path, *, overrides: Mapping[str, Any] | None = None) -> TurboExperiment:
+    """Load an evaluator spec; only locations/labels/metadata are configurable.
+
+    Metric and sampler semantics are intentionally validated separately against
+    the centrally-owned Turbo contract below.
+    """
+    source = Path(path)
+    try:
+        payload = json.loads(source.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Turbo experiment spec is missing: {source}") from None
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Turbo experiment spec is not valid JSON: {source}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("Turbo experiment spec must be a JSON object")
+    merged = dict(payload)
+    for key, value in (overrides or {}).items():
+        if value is not None:
+            merged[key] = value
+    experiment_name = _required_string(merged, "experiment_name")
+    namespace = _required_string(merged, "hf_namespace").rstrip("/") + "/"
+    if not re.fullmatch(r"[^/]+/full/", namespace):
+        raise ValueError("hf_namespace must be exactly '<experiment-name>/full/'")
+    if namespace != f"{experiment_name}/full/":
+        raise ValueError("hf_namespace must match experiment_name exactly")
+    diagnostics = merged.get("diagnostics", {})
+    paths = merged.get("paths", {})
+    if not isinstance(diagnostics, dict) or not isinstance(paths, dict):
+        raise ValueError("Turbo experiment diagnostics and paths must be JSON objects")
+    expected_contract = {**turbo_metadata(), "control_scale": 1.0}
+    if merged.get("turbo_contract") != expected_contract:
+        raise ValueError("Turbo experiment spec must use the established 8-step CFG-0 mu=1.15 control-scale-1.0 contract")
+    diagnostic_count = diagnostics.get("expected_count")
+    if not isinstance(diagnostic_count, int) or diagnostic_count < 1:
+        raise ValueError("Turbo experiment diagnostics.expected_count must be a positive integer")
+    _required_string(diagnostics, "canonical_manifest")
+    checkpoint_root = Path(_required_string(merged, "checkpoint_root"))
+    output_root = Path(_required_string(merged, "output_root"))
+    if output_root.resolve() == checkpoint_root.resolve() or checkpoint_root.resolve() in output_root.resolve().parents:
+        raise ValueError("Turbo evaluation output_root must not be inside checkpoint_root")
+    raw_steps = merged.get("steps")
+    if raw_steps is not None and (not isinstance(raw_steps, list) or any(isinstance(step, bool) or not isinstance(step, int) for step in raw_steps)):
+        raise ValueError("Turbo experiment spec steps must be a list of integer exact checkpoints")
+    spec_steps = normalize_turbo_steps(raw_steps) if raw_steps is not None else None
+    if "baseline" in merged and merged["baseline"] is not None and not isinstance(merged["baseline"], dict):
+        raise ValueError("Turbo experiment baseline must be an object when configured")
+    return TurboExperiment(
+        experiment_name=experiment_name,
+        checkpoint_root=checkpoint_root,
+        hf_repo_id=_required_string(merged, "hf_repo_id"),
+        hf_namespace=namespace,
+        output_root=output_root,
+        steps=spec_steps,
+        baseline=merged.get("baseline") if isinstance(merged.get("baseline"), dict) else None,
+        labels=merged.get("labels", {}) if isinstance(merged.get("labels", {}), dict) else {},
+        training_metadata=merged.get("training_metadata", {}) if isinstance(merged.get("training_metadata", {}), dict) else {},
+        diagnostics=diagnostics,
+        paths=paths,
+    )
+
+
+def normalize_turbo_steps(steps: Iterable[int]) -> tuple[int, ...]:
+    """Validate an explicit exact-step request without an experiment allowlist."""
+    result = tuple(steps)
+    if not result or any(isinstance(step, bool) or not isinstance(step, int) or step < 0 for step in result):
+        raise ValueError("Turbo checkpoint steps must be non-empty non-negative integers")
+    if len(result) != len(set(result)):
+        raise ValueError("Turbo checkpoint steps must be unique; duplicate requested steps are rejected")
+    return result
+
+
+def discover_turbo_checkpoint_steps(checkpoint_root: str | Path) -> tuple[int, ...]:
+    """Discover only direct exact-step checkpoint files under the configured root."""
+    root = Path(checkpoint_root)
+    if not root.is_dir():
+        raise FileNotFoundError(f"Configured checkpoint root is missing: {root}")
+    found: list[int] = []
+    for candidate in root.iterdir():
+        match = re.fullmatch(r"step_(\d{6})\.pt", candidate.name)
+        if match and candidate.is_file():
+            step = int(match.group(1))
+            state = load_training_state(candidate)
+            if state["global_step"] != step:
+                raise ValueError(f"Checkpoint filename/embedded step mismatch: {candidate} has {state['global_step']}")
+            found.append(step)
+    if not found:
+        raise FileNotFoundError(f"No valid step_XXXXXX.pt files found in configured checkpoint root: {root}")
+    return tuple(sorted(found))
+
+
+def exact_local_turbo_checkpoints(*, checkpoint_root: str | Path, hf_repo_id: str, hf_namespace: str,
+                                  marker_download_dir: str | Path, steps: Iterable[int]) -> list[tuple[int, Path]]:
+    """Strictly validate exact local checkpoints against their matching HF markers.
+
+    This never downloads a checkpoint payload and has no nearest/latest or
+    alternate-namespace fallback.  The checkpoint must exist at the exact
+    direct-child filename before marker/SHA/schema/global-step validation.
+    """
+    root = Path(checkpoint_root)
+    requested = normalize_turbo_steps(steps)
+    if not root.is_dir():
+        raise FileNotFoundError(f"Configured checkpoint root is missing: {root}")
+    run_name = hf_namespace.rstrip("/").removesuffix("/full")
+    if not run_name or hf_namespace.rstrip("/") != f"{run_name}/full":
+        raise ValueError("hf_namespace must be exactly '<experiment-name>/full/'")
+    resolved: list[tuple[int, Path]] = []
+    for step in requested:
+        checkpoint = root / f"step_{step:06d}.pt"
+        if not checkpoint.is_file():
+            raise FileNotFoundError(f"Required exact local checkpoint is missing: {checkpoint}")
+        validated = validated_local_checkpoint_for_hf_step(
+            checkpoint=checkpoint, repo_id=hf_repo_id, run_name=run_name, step=step,
+            marker_download_dir=Path(marker_download_dir) / run_name,
+        )
+        if validated is None:
+            remote = f"{hf_namespace}step_{step:06d}.pt.complete.json"
+            raise FileNotFoundError(f"Required exact HF completion marker/SHA/schema validation failed: {remote}")
+        state = load_training_state(validated)
+        if state["global_step"] != step:
+            raise ValueError(f"Checkpoint filename/embedded step mismatch: {validated} has {state['global_step']}")
+        resolved.append((step, validated))
+    return resolved
 
 
 def turbo_schedule(*, image_sequence_length: int, steps: int = TURBO_STEPS,
@@ -173,19 +319,6 @@ def assert_control_scale_turbo_output_isolated(output_dir: str | Path) -> Path:
     timestep = TIMESTEP_TURBO_EVALUATION_ROOT.resolve()
     if output == timestep or timestep in output.parents:
         raise ValueError(f"Control-scale Turbo output must not collide with timestep Turbo results: {timestep}")
-    return output
-
-
-def assert_controlinput_lr2x_turbo_output_isolated(output_dir: str | Path) -> Path:
-    """Require the dedicated read-only ControlInput-LR2x evaluation tree.
-
-    The exact namespace is intentionally pinned so this evaluator cannot write
-    into any established Turbo tree, including the control-scale diagnostic.
-    """
-    output = assert_control_scale_turbo_output_isolated(output_dir)
-    expected = CONTROLINPUT_LR2X_TURBO_EVALUATION_ROOT.resolve()
-    if output != expected:
-        raise ValueError(f"ControlInput-LR2x Turbo evaluation must use isolated output root: {expected}")
     return output
 
 
@@ -312,55 +445,6 @@ def exact_timestep_turbo_checkpoints(*, checkpoint_dir: str | Path, hf_repo_id: 
     return resolved
 
 
-def exact_controlinput_lr2x_turbo_checkpoints(*, checkpoint_dir: str | Path, hf_repo_id: str,
-                                               marker_download_dir: str | Path,
-                                               steps: Iterable[int] = CONTROLINPUT_LR2X_TURBO_CHECKPOINT_STEPS) -> list[tuple[int, Path]]:
-    """Return only local ControlInput-LR2x checkpoints with exact HF proof.
-
-    There is deliberately no remote payload, nearest-step, latest-step, or
-    cross-run fallback.  Each local full checkpoint must match the exact
-    completion marker/SHA-256 and deserialize as the requested global step.
-    """
-    requested = tuple(steps)
-    if requested != CONTROLINPUT_LR2X_TURBO_CHECKPOINT_STEPS:
-        raise ValueError(
-            "ControlInput-LR2x Turbo evaluation requires exactly "
-            f"{CONTROLINPUT_LR2X_TURBO_CHECKPOINT_STEPS}, got {requested}"
-        )
-    if Path(checkpoint_dir).resolve() != CONTROLINPUT_LR2X_CHECKPOINT_ROOT.resolve():
-        raise ValueError(
-            "ControlInput-LR2x Turbo evaluation requires checkpoint root "
-            f"{CONTROLINPUT_LR2X_CHECKPOINT_ROOT}"
-        )
-    if hf_repo_id != CONTROLINPUT_LR2X_HF_REPO_ID:
-        raise ValueError(
-            "ControlInput-LR2x Turbo evaluation requires HF repo "
-            f"{CONTROLINPUT_LR2X_HF_REPO_ID}"
-        )
-    resolved: list[tuple[int, Path]] = []
-    for step in requested:
-        checkpoint = validated_local_checkpoint_for_hf_step(
-            checkpoint=CONTROLINPUT_LR2X_CHECKPOINT_ROOT / f"step_{step:06d}.pt",
-            repo_id=CONTROLINPUT_LR2X_HF_REPO_ID,
-            run_name=CONTROLINPUT_LR2X_HF_RUN_NAME,
-            step=step,
-            marker_download_dir=Path(marker_download_dir),
-        )
-        if checkpoint is None:
-            remote = f"{CONTROLINPUT_LR2X_HF_RUN_NAME}/full/step_{step:06d}.pt"
-            raise FileNotFoundError(
-                "Required exact completion-marked ControlInput-LR2x checkpoint is unavailable or invalid: "
-                f"{remote}"
-            )
-        state = load_training_state(checkpoint)
-        if state["global_step"] != step:
-            raise ValueError(
-                f"ControlInput-LR2x checkpoint filename/embedded step mismatch: {checkpoint} has {state['global_step']}"
-            )
-        resolved.append((step, checkpoint))
-    return resolved
-
-
 def assert_turbo_diagnostic_contract(spec: Mapping[str, Any], original_spec: Mapping[str, Any], *, branch_name: str) -> None:
     """Require exactly the established Turbo diagnostic inputs and seeds."""
     required = ("stems", "per_stem_seeds", "sample_identities")
@@ -421,11 +505,14 @@ def sample_turbo_pose_image(model: Any, vae_decode_fn, sample: dict[str, Any], d
     return ((pixels.clamp(-1, 1) * 0.5 + 0.5) * 255.0)[0].permute(1, 2, 0).float().cpu().byte().numpy()
 
 
-def assert_exact_diagnostic_stems(manifest_stems: Iterable[str], dataset_stems: Iterable[str]) -> tuple[str, ...]:
-    """Require all and only the immutable 24-record diagnostic manifest order."""
+def assert_exact_diagnostic_stems(manifest_stems: Iterable[str], dataset_stems: Iterable[str], *,
+                                  expected_count: int = 24) -> tuple[str, ...]:
+    """Require all and only the configured immutable diagnostic manifest order."""
     stems = tuple(manifest_stems)
-    if len(stems) != 24 or len(stems) != len(set(stems)):
-        raise ValueError("Turbo benchmark requires exactly the complete 24-sample diagnostic manifest")
+    if not isinstance(expected_count, int) or expected_count < 1:
+        raise ValueError("Turbo diagnostic expected_count must be a positive integer")
+    if len(stems) != expected_count or len(stems) != len(set(stems)):
+        raise ValueError(f"Turbo benchmark requires exactly the complete {expected_count}-sample diagnostic manifest")
     if set(stems) != set(dataset_stems):
         raise ValueError("Prepared diagnostic dataset membership differs from immutable manifest")
     return stems
