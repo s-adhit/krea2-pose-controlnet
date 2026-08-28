@@ -55,6 +55,18 @@ def compare_control(record: Mapping[str, Any], control_path: str | Path, *, thre
     return metrics, expected, reconstructed, ImageChops.difference(expected, reconstructed)
 
 
+def select_reconstruction_records(records: Iterable[Mapping[str, Any]], *, per_source: int) -> dict[str, list[Mapping[str, Any]]]:
+    """Select only authoritative-target records; unavailable coverage is not a failure."""
+    selected: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for record in records:
+        if record.get("pose_reward_available") is not True:
+            continue
+        source = str(record["source"])
+        if len(selected[source]) < per_source:
+            selected[source].append(record)
+    return dict(selected)
+
+
 def summarize_reconstruction(rows: Iterable[dict[str, Any]], *, min_foreground_iou: float, max_mae: float) -> dict[str, Any]:
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:

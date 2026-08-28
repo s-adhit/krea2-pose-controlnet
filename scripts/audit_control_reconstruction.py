@@ -4,15 +4,14 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections import defaultdict
 from pathlib import Path
 
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pose_controlnet.control_reconstruction import compare_control, summarize_reconstruction
+from pose_controlnet.control_reconstruction import compare_control, select_reconstruction_records, summarize_reconstruction
 from pose_controlnet.dataset_index import DatasetIndex
-from pose_controlnet.pose_targets import load_sidecar
+from pose_controlnet.pose_targets import coverage_summary, load_sidecar
 
 
 def main() -> None:
@@ -27,10 +26,7 @@ def main() -> None:
     if args.per_source < 1:
         parser.error("--per-source must be positive")
     _, records = load_sidecar(args.sidecar); index = DatasetIndex.discover(args.dataset_root)
-    selected = defaultdict(list)
-    for record in records:
-        if len(selected[record["source"]]) < args.per_source:
-            selected[record["source"]].append(record)
+    selected = select_reconstruction_records(records, per_source=args.per_source)
     args.output_dir.mkdir(parents=True, exist_ok=False)
     rows, panels = [], []
     for source in sorted(selected):
@@ -40,6 +36,7 @@ def main() -> None:
             panels.extend([expected, reconstructed, difference])
     _contact_sheet(panels, args.output_dir / "contact_sheet.png")
     summary = summarize_reconstruction(rows, min_foreground_iou=args.min_foreground_iou, max_mae=args.max_mae)
+    summary["coverage"] = coverage_summary(records)
     (args.output_dir / "mismatches.json").write_text(json.dumps({"samples": rows, **summary}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({"output_dir": str(args.output_dir), **summary}, indent=2, sort_keys=True))
     if summary["status"] != "PASS":

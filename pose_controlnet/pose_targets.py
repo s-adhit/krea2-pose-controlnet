@@ -1,9 +1,10 @@
-"""Fail-closed, versioned authoritative pose-target sidecars.
+"""Versioned, partially-covered authoritative pose-target sidecars.
 
 This module deliberately keeps target provenance separate from both the raster
-conditioning image and the (future) frozen reward estimator.  It never runs a
-pose detector.  Annotated sources are read from their original annotation
-files; Danbooru is read only from an exported historical DWPose result.
+conditioning image and the frozen reward estimator.  It never runs a pose
+detector or derives joints from a control raster.  A source may explicitly be
+unavailable for pose reward; only a source claiming an authoritative target is
+fail-closed.
 """
 from __future__ import annotations
 
@@ -11,7 +12,6 @@ import hashlib
 import json
 import math
 import os
-import re
 import tempfile
 from collections import Counter
 from pathlib import Path
@@ -20,17 +20,24 @@ from typing import Any, Iterable, Mapping
 from pose_controlnet.reference_pose import COCO_17, load_coco_annotations, parse_coco_stem
 
 
-POSE_TARGET_SIDECAR_VERSION = 1
+POSE_TARGET_SIDECAR_VERSION = 2
 RECORDS_NAME = "records.jsonl"
 METADATA_NAME = "metadata.json"
 COMMON_BODY_17 = COCO_17
-# COCO index -> OpenPose/DWPose body-18 index.  The DWPose neck is deliberately
-# omitted: it is synthetic and must never become a reward target.
-OPENPOSE18_TO_COCO17 = (0, 15, 14, 17, 16, 5, 2, 6, 3, 7, 4, 11, 8, 12, 9, 13, 10)
-
-
 class PoseTargetError(ValueError):
     """Raised when authoritative target provenance is incomplete or ambiguous."""
+
+
+class _AuthoritativePeople(list[dict[str, Any]]):
+    """A source-grouped people list retaining image dimensions even when empty."""
+
+    def __init__(
+        self, people: Iterable[dict[str, Any]], source_size: Iterable[int] | None = None,
+        source_image_id: str | int | None = None,
+    ):
+        super().__init__(people)
+        self.source_size = tuple(source_size) if source_size is not None else None
+        self.source_image_id = source_image_id
 
 
 def source_for_stem(stem: str) -> str:
@@ -53,12 +60,9 @@ def common_body_mapping(schema: str) -> dict[str, Any]:
     All returned mappings have exactly the 17 physical COCO body joints.  No
     face, hand, foot-extra, or synthetic-neck target can enter the reward.
     """
-    if schema == "coco17":
-        indices = tuple(range(17))
-    elif schema == "openpose18":
-        indices = OPENPOSE18_TO_COCO17
-    else:
+    if schema != "coco17":
         raise PoseTargetError(f"Unsupported reward joint schema: {schema!r}")
+    indices = tuple(range(17))
     return {"common_schema": "coco17_body", "common_joints": list(COMMON_BODY_17), "source_indices": list(indices)}
 
 
@@ -86,8 +90,12 @@ def transform_person(
     sx, sy = rw / sw, rh / sh
     training, in_frame, reward_visible = [], [], []
     for x, y, score in raw:
+        if score < 0:
+            raise PoseTargetError("Authoritative keypoint visibility/confidence must be non-negative")
         mapped_x, mapped_y = x * sx - left, y * sy - top
         present = score > 0
+        if present and not (0.0 <= x < sw and 0.0 <= y < sh):
+            raise PoseTargetError("Visible authoritative keypoint lies outside its source image")
         inside = present and 0.0 <= mapped_x <= bw - 1 and 0.0 <= mapped_y <= bh - 1
         training.append([min(max(mapped_x, 0.0), bw - 1), min(max(mapped_y, 0.0), bh - 1), score])
         in_frame.append(inside)
@@ -106,26 +114,38 @@ def transform_person(
 def build_sidecar_records(
     geometry_by_stem: Mapping[str, Mapping[str, Any]], source_specs: Mapping[str, Mapping[str, Any]],
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Build all records, failing before publication if any source is unresolved."""
+    """Build all records, failing only for claimed-but-invalid targets."""
     expected = Counter(source_for_stem(stem) for stem in geometry_by_stem)
     missing = sorted(set(expected) - set(source_specs))
     if missing:
         raise PoseTargetError(f"No authoritative source specification for: {', '.join(missing)}")
-    loaders = {name: _load_source(name, source_specs[name]) for name in expected}
+    specs = {name: _validate_source_spec(name, source_specs[name]) for name in expected}
+    loaders = {name: _load_source(name, specs[name]) for name in expected if specs[name]["pose_reward_available"]}
     records: list[dict[str, Any]] = []
     unresolved: list[str] = []
     for stem, geometry in sorted(geometry_by_stem.items()):
         source = source_for_stem(stem)
-        spec, lookup = loaders[source]
+        spec = specs[source]
+        if not spec["pose_reward_available"]:
+            records.append(_unavailable_record(stem, source, geometry))
+            continue
+        _, lookup = loaders[source]
         people = lookup(stem)
         if people is None:
             unresolved.append(stem)
             continue
+        authoritative_source_size = getattr(people, "source_size", None)
+        if authoritative_source_size is not None and authoritative_source_size != tuple(geometry["source_size"]):
+            raise PoseTargetError(
+                f"Authoritative source size {authoritative_source_size} does not match persisted shard geometry {tuple(geometry['source_size'])}"
+            )
         transformed = [transform_person(person, source_size=geometry["source_size"], resized_size=geometry["resized_size"], crop_box=geometry["crop_box"], bucket=geometry["bucket"]) for person in people]
         records.append({
             "schema_version": POSE_TARGET_SIDECAR_VERSION, "stem": stem, "source": source,
+            "pose_reward_available": True,
             "target_provenance": spec["target_provenance"],
             "annotation_source": spec["annotation_source"],
+            "source_image_id": getattr(people, "source_image_id", None),
             "source_size": list(geometry["source_size"]), "resized_size": list(geometry["resized_size"]),
             "crop_box": list(geometry["crop_box"]), "bucket": list(geometry["bucket"]),
             "joint_schema": spec["joint_schema"], "common_body_mapping": common_body_mapping(spec["joint_schema"]),
@@ -134,8 +154,54 @@ def build_sidecar_records(
             "provenance_metadata": spec["provenance_metadata"],
         })
     if unresolved:
-        raise PoseTargetError(f"Authoritative targets missing for {len(unresolved)} samples (examples: {unresolved[:8]})")
-    return records, {"expected_counts": dict(sorted(expected.items())), "records": len(records)}
+        raise PoseTargetError(f"Claimed authoritative targets missing for {len(unresolved)} samples (examples: {unresolved[:8]})")
+    return records, {"expected_counts": dict(sorted(expected.items())), "records": len(records), "coverage": coverage_summary(records)}
+
+
+def coverage_summary(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
+    """Return stable authoritative-target coverage counts for all source stems."""
+    counts: dict[str, Counter[str]] = {}
+    for record in records:
+        source = str(record["source"])
+        bucket = counts.setdefault(source, Counter())
+        bucket["total"] += 1
+        bucket["available" if record.get("pose_reward_available") is True else "unavailable"] += 1
+    sources = {
+        source: _coverage_row(counts[source]["total"], counts[source]["available"])
+        for source in sorted(counts)
+    }
+    total = sum(row["total"] for row in sources.values())
+    available = sum(row["available"] for row in sources.values())
+    return {"total": _coverage_row(total, available), "sources": sources}
+
+
+def pose_reward_target_for_stem(records_by_stem: Mapping[str, Mapping[str, Any]], stem: str) -> Mapping[str, Any] | None:
+    """Training-facing lookup: return a target record or ``None`` when unavailable."""
+    try:
+        record = records_by_stem[stem]
+    except KeyError as exc:
+        raise PoseTargetError(f"No sidecar record for training stem: {stem}") from exc
+    _validate_record(record)
+    return record if record["pose_reward_available"] else None
+
+
+def _coverage_row(total: int, available: int) -> dict[str, Any]:
+    unavailable = total - available
+    return {
+        "total": total, "available": available, "unavailable": unavailable,
+        "available_percent": 0.0 if total == 0 else 100.0 * available / total,
+        "unavailable_percent": 0.0 if total == 0 else 100.0 * unavailable / total,
+    }
+
+
+def _unavailable_record(stem: str, source: str, geometry: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": POSE_TARGET_SIDECAR_VERSION, "stem": stem, "source": source,
+        "pose_reward_available": False, "target_provenance": "unavailable",
+        "annotation_source": None, "source_size": list(geometry["source_size"]),
+        "resized_size": list(geometry["resized_size"]), "crop_box": list(geometry["crop_box"]),
+        "bucket": list(geometry["bucket"]), "people": None,
+    }
 
 
 def write_sidecar(records: Iterable[Mapping[str, Any]], output_dir: str | Path, *, build_metadata: Mapping[str, Any]) -> dict[str, Any]:
@@ -144,6 +210,8 @@ def write_sidecar(records: Iterable[Mapping[str, Any]], output_dir: str | Path, 
     if destination.exists():
         raise PoseTargetError(f"Refusing to overwrite existing sidecar: {destination}")
     ordered = sorted(records, key=lambda row: str(row["stem"]))
+    for record in ordered:
+        _validate_record(record)
     content = "".join(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n" for row in ordered)
     digest = hashlib.sha256(content.encode()).hexdigest()
     parent = destination.parent; parent.mkdir(parents=True, exist_ok=True)
@@ -174,54 +242,65 @@ def load_sidecar(sidecar_dir: str | Path) -> tuple[dict[str, Any], list[dict[str
     records = [json.loads(line) for line in raw.decode().splitlines()]
     if len(records) != metadata.get("record_count") or len({row.get("stem") for row in records}) != len(records):
         raise PoseTargetError(f"Sidecar record membership invalid: {root}")
+    for record in records:
+        _validate_record(record)
     return metadata, records
 
 
-def _load_source(name: str, supplied: Mapping[str, Any]) -> tuple[dict[str, Any], Any]:
+def _validate_source_spec(name: str, supplied: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate one source's explicit coverage decision before any target load."""
     spec = dict(supplied)
-    required = ("target_provenance", "annotation_source", "joint_schema", "provenance_metadata", "format")
+    required = ("pose_reward_available", "target_provenance", "format")
     absent = [key for key in required if key not in spec]
     if absent:
         raise PoseTargetError(f"{name}: source specification missing {absent}")
-    expected_provenance = "dwpose_pseudolabel" if name == "danbooru" else "original_annotation"
-    if spec["target_provenance"] != expected_provenance:
-        raise PoseTargetError(f"{name}: requires target_provenance={expected_provenance!r}")
+    if not isinstance(spec["pose_reward_available"], bool):
+        raise PoseTargetError(f"{name}: pose_reward_available must be boolean")
+    if not spec["pose_reward_available"]:
+        if spec["target_provenance"] != "unavailable" or spec["format"] != "unavailable":
+            raise PoseTargetError(f"{name}: unavailable source requires target_provenance='unavailable' and format='unavailable'")
+        return spec
+    required_available = ("annotation_source", "joint_schema", "provenance_metadata")
+    absent_available = [key for key in required_available if key not in spec]
+    if absent_available:
+        raise PoseTargetError(f"{name}: available source specification missing {absent_available}")
+    if spec["target_provenance"] != "original_annotation":
+        raise PoseTargetError(f"{name}: available source requires target_provenance='original_annotation'")
+    if spec["joint_schema"] != "coco17":
+        raise PoseTargetError(f"{name}: available source requires joint_schema='coco17'")
     if not isinstance(spec["provenance_metadata"], Mapping) or not isinstance(spec["provenance_metadata"].get("renderer"), Mapping):
         raise PoseTargetError(f"{name}: provenance_metadata.renderer must identify the exact historical renderer")
-    if name == "danbooru":
-        required_dwpose = ("detector", "pose_checkpoint", "pose_checkpoint_sha256", "thresholds", "body_joint_mapping", "renderer")
-        absent_dwpose = [key for key in required_dwpose if key not in spec["provenance_metadata"]]
-        if absent_dwpose:
-            raise PoseTargetError(f"danbooru: historical DWPose provenance missing {absent_dwpose}")
+    return spec
+
+
+def _load_source(name: str, spec: Mapping[str, Any]) -> tuple[dict[str, Any], Any]:
+    """Load only an available authoritative source; no detector fallback exists."""
     if spec["format"] == "coco_keypoints":
+        if name != "coco":
+            raise PoseTargetError(f"{name}: coco_keypoints is reserved for original COCO annotations")
         paths = spec.get("annotation_paths")
         if not isinstance(paths, list) or not paths:
             raise PoseTargetError(f"{name}: coco_keypoints requires non-empty annotation_paths")
         images, by_image, by_annotation, hashes = load_coco_annotations(paths)
         spec["provenance_metadata"] = dict(spec["provenance_metadata"]) | {"annotation_sha256": hashes}
         return spec, _coco_lookup(name, spec, images, by_image, by_annotation)
-    if spec["format"] == "historical_dwpose_jsonl":
-        path = Path(spec.get("pseudolabel_path", ""))
+    if spec["format"] == "humanart_pose_adapter_jsonl":
+        if not name.startswith("humanart_"):
+            raise PoseTargetError(f"{name}: humanart_pose_adapter_jsonl is reserved for Human-Art sources")
+        path = Path(spec.get("adapter_path", ""))
         if not path.is_file():
-            raise PoseTargetError(f"danbooru: historical DWPose export missing: {path}")
-        rows = {row["stem"]: row for row in _jsonl(path)}
-        return spec, lambda stem: _dwpose_people(rows.get(stem), spec) if stem in rows else None
+            raise PoseTargetError(f"{name}: Human-Art adapter export missing: {path}")
+        rows = _adapter_rows(path)
+        spec["provenance_metadata"] = dict(spec["provenance_metadata"]) | {
+            "adapter_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        }
+        return spec, _humanart_adapter_lookup(name, rows)
     raise PoseTargetError(f"{name}: unsupported annotation format {spec['format']!r}")
 
 
 def _coco_lookup(name: str, spec: Mapping[str, Any], images: Mapping[int, Any], by_image: Mapping[int, list[Any]], by_annotation: Mapping[int, Any]):
-    pattern = spec.get("stem_image_id_regex")
-    compiled = re.compile(pattern) if isinstance(pattern, str) else None
     def lookup(stem: str) -> list[dict[str, Any]] | None:
-        if name == "coco":
-            image_id, annotation_id = parse_coco_stem(stem)
-        else:
-            if compiled is None:
-                raise PoseTargetError(f"{name}: requires stem_image_id_regex for authoritative image join")
-            match = compiled.fullmatch(stem)
-            if match is None or not match.groupdict().get("image_id"):
-                raise PoseTargetError(f"{name}: stem does not match image-id mapping: {stem}")
-            image_id, annotation_id = int(match["image_id"]), None
+        image_id, annotation_id = parse_coco_stem(stem)
         image = images.get(image_id)
         if image is None:
             return None
@@ -231,28 +310,85 @@ def _coco_lookup(name: str, spec: Mapping[str, Any], images: Mapping[int, Any], 
             if not annotation or annotation.get("image_id") != image_id or annotation.get("category_id") != 1 or annotation.get("iscrowd", 0):
                 continue
             keypoints = annotation.get("keypoints")
-            if not isinstance(keypoints, list) or len(keypoints) != 51 or int(annotation.get("num_keypoints", 0)) < 1:
+            if int(annotation.get("num_keypoints", 0)) < 1:
                 continue
+            if not isinstance(keypoints, list) or len(keypoints) != 51:
+                raise PoseTargetError(f"coco: malformed keypoints for annotation {annotation.get('id')}")
             people.append({"person_id": annotation["id"], "annotation_id": annotation["id"], "bbox_xywh": annotation.get("bbox"), "keypoints_source": [keypoints[index:index + 3] for index in range(0, 51, 3)], "_authoritative_source_size": [image["width"], image["height"]]})
-        return people if annotation_id is None or people else None
+        if annotation_id is not None and not people:
+            return None
+        return _AuthoritativePeople(people, [image["width"], image["height"]], image_id)
     return lookup
 
 
-def _dwpose_people(row: Mapping[str, Any], spec: Mapping[str, Any]) -> list[dict[str, Any]]:
-    if row.get("source_size") is None or not isinstance(row.get("people"), list):
-        raise PoseTargetError("danbooru: historical export must retain source_size and people")
-    people = []
-    for person in row["people"]:
-        points = person.get("body_keypoints")
-        if not isinstance(points, list) or len(points) != 18:
-            raise PoseTargetError("danbooru: expected 18 historical DWPose body keypoints per person")
-        ordered = [points[index] for index in OPENPOSE18_TO_COCO17]
-        people.append({"person_id": person.get("person_id"), "annotation_id": person.get("person_id"), "bbox_xywh": person.get("bbox_xywh"), "keypoints_source": ordered, "_authoritative_source_size": row["source_size"]})
-    return people
+def _adapter_rows(path: Path) -> dict[str, dict[str, Any]]:
+    """Read the canonical Human-Art import adapter, not a raw Human-Art file."""
+    rows: dict[str, dict[str, Any]] = {}
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise PoseTargetError(f"Human-Art adapter line {line_number}: invalid JSON") from exc
+        stem = row.get("stem")
+        if not isinstance(stem, str) or not stem:
+            raise PoseTargetError(f"Human-Art adapter line {line_number}: missing stem")
+        if stem in rows:
+            raise PoseTargetError(f"Human-Art adapter has duplicate stem: {stem}")
+        rows[stem] = row
+    return rows
 
 
-def _jsonl(path: Path) -> list[dict[str, Any]]:
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+def _humanart_adapter_lookup(name: str, rows: Mapping[str, Mapping[str, Any]]):
+    def lookup(stem: str) -> list[dict[str, Any]] | None:
+        row = rows.get(stem)
+        if row is None:
+            return None
+        declared_source = row.get("source")
+        if declared_source is not None and declared_source != name:
+            raise PoseTargetError(f"{stem}: Human-Art adapter source {declared_source!r} != {name!r}")
+        source_size = row.get("source_size")
+        if source_size is not None:
+            _size(source_size, f"{stem}.source_size")
+        people = row.get("people")
+        if not isinstance(people, list):
+            raise PoseTargetError(f"{stem}: Human-Art adapter requires a people list")
+        normalized = []
+        for index, person in enumerate(people):
+            if not isinstance(person, Mapping):
+                raise PoseTargetError(f"{stem}: Human-Art person {index} is not an object")
+            points = person.get("keypoints")
+            _keypoints(points)
+            item = {
+                "person_id": person.get("person_id"), "annotation_id": person.get("annotation_id", person.get("person_id")),
+                "bbox_xywh": person.get("bbox_xywh"), "keypoints_source": points,
+            }
+            if source_size is not None:
+                item["_authoritative_source_size"] = source_size
+            normalized.append(item)
+        source_image_id = row.get("source_image_id")
+        if source_image_id is not None and not isinstance(source_image_id, (str, int)):
+            raise PoseTargetError(f"{stem}: source_image_id must be a string or integer when present")
+        return _AuthoritativePeople(normalized, source_size, source_image_id)
+    return lookup
+
+
+def _validate_record(record: Mapping[str, Any]) -> None:
+    """Validate the availability branch consumed by training-facing readers."""
+    available = record.get("pose_reward_available")
+    if not isinstance(available, bool):
+        raise PoseTargetError(f"{record.get('stem')}: pose_reward_available must be boolean")
+    if available:
+        required = ("stem", "source", "annotation_source", "joint_schema", "common_body_mapping", "people", "renderer")
+        missing = [key for key in required if key not in record]
+        if missing or record.get("target_provenance") != "original_annotation" or record.get("joint_schema") != "coco17":
+            raise PoseTargetError(f"{record.get('stem')}: malformed available pose target")
+        if not isinstance(record["people"], list):
+            raise PoseTargetError(f"{record.get('stem')}: available pose target lacks people list")
+        return
+    if record.get("target_provenance") != "unavailable" or record.get("people") is not None:
+        raise PoseTargetError(f"{record.get('stem')}: malformed unavailable pose target")
 
 
 def _keypoints(points: Any) -> list[list[float]]:
@@ -269,7 +405,10 @@ def _keypoints(points: Any) -> list[list[float]]:
 def _transform_box(box: Any, *, sx: float, sy: float, left: int, top: int, width: int, height: int) -> list[float] | None:
     if not isinstance(box, list) or len(box) != 4:
         raise PoseTargetError("bbox_xywh must be a four-number list")
-    x, y, w, h = map(float, box); x0, y0 = x * sx - left, y * sy - top; x1, y1 = (x + w) * sx - left, (y + h) * sy - top
+    x, y, w, h = map(float, box)
+    if not all(math.isfinite(value) for value in (x, y, w, h)) or w < 0 or h < 0:
+        raise PoseTargetError("bbox_xywh must contain finite coordinates with non-negative width/height")
+    x0, y0 = x * sx - left, y * sy - top; x1, y1 = (x + w) * sx - left, (y + h) * sy - top
     x0, y0, x1, y1 = max(0.0, x0), max(0.0, y0), min(width - 1.0, x1), min(height - 1.0, y1)
     return [x0, y0, max(0.0, x1 - x0), max(0.0, y1 - y0)]
 

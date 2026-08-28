@@ -2,57 +2,65 @@
 
 ## Current objective and status
 
-Implemented pre-training, fail-closed authoritative pose-target sidecar and
-control-reconstruction infrastructure only. No training, generation, resume,
-checkpoint mutation, source-data mutation, network download, commit, or push
-occurred. The 1500→1800 continuation remains out of scope.
+Pose-target sidecars now support partial authoritative pose-reward coverage.
+No training, resume, generation, checkpoint mutation, dataset/manifest
+mutation, download, commit, or push occurred in this session.
 
-## Verified facts and provenance audit
+## Current decisions
 
-- The snapshot has 17,495 physical pairs; active immutable manifests have
-  17,416: COCO 3,893; Danbooru 2,255; Human-Art painting 6,423;
-  Human-Art real_human 3,257; Human-Art sculpture 1,588. The 79 exclusions
-  are Human-Art painting samples.
-- Latent shards retain only geometry and latents, not source pose metadata.
-  The snapshot has no COCO annotation JSON, Human-Art annotation export,
-  historical DWPose JSON/config/checkpoint, or historic renderer source.
-  Diagnostic reference annotations cover only 21 examples and are not a
-  training target source.
-- Therefore all five source families are currently blocked for full-sidecar
-  production; the code will not use a control raster or rerun DWPose as a
-  substitute. COCO/Human-Art require `original_annotation`; only Danbooru can
-  use `dwpose_pseudolabel` with a complete historical provenance record.
-- RTMPose-M raw-SimCC is still absent/unvalidated. It remains a future frozen
-  reward model only, not target provenance. Existing Keypoint R-CNN/PCK remains
-  evaluation-only.
+- First ControlNet++ pose-reward experiment: Human-Art and COCO claim
+  `pose_reward_available: true` with `target_provenance: original_annotation`.
+- Danbooru is intentionally flow-only: `pose_reward_available: false`,
+  `target_provenance: unavailable`, `format: unavailable`. It does not block a
+  sidecar build, coverage audit, or reconstruction audit.
+- The sidecar schema is v2. Available and unavailable records are explicit;
+  the training-facing `pose_reward_target_for_stem` returns a target record or
+  `None` only for an explicit unavailable record.
+- There is no raster-to-keypoint path and no DWPose/pseudo-label/rerun fallback
+  in the pose-target builder.
+- Human-Art must first be converted from the user-supplied raw schema into the
+  documented canonical JSONL adapter. Original source parsing remains outside
+  the common sidecar representation.
+- COCO uses its original `person_keypoints_train2017.json` annotations and the
+  immutable `coco_<image_id>_<annotation_id|crowd>` stem join.
 
-## Completed implementation
+## Completed/green gates
 
-- `pose_controlnet/pose_targets.py`: v1 sidecar schema, atomic new-directory
-  writer/digest verifier, strict COCO and historical-DWPose readers, source
-  size checks, persisted-geometry resize/crop/clipping, per-person boxes,
-  confidence/visibility masks, and explicit 17-body-joint mappings. DWPose
-  neck is excluded.
-- `pose_controlnet/control_reconstruction.py` plus audit script: stratified
-  stored-control reconstruction, per-source IoU/MAE mismatch report and
-  contact sheet. It refuses an unverified historical renderer.
-- `docs/POSE_TARGET_SIDECAR.md` documents the source-spec contract and exact
-  build/audit commands. No training modules were changed.
+- v2 records and metadata report exact total/available/unavailable coverage
+  counts and percentages per source and overall.
+- Claimed available targets fail closed for missing records, malformed COCO
+  keypoints, source-size mismatch, non-finite/negative keypoints, and visible
+  points outside source geometry.
+- Reconstruction selection considers only available records and adds complete
+  coverage to its output; unavailable Danbooru is not a reconstruction failure.
+- PASS: `python -m py_compile pose_controlnet/pose_targets.py
+  pose_controlnet/control_reconstruction.py scripts/build_pose_target_sidecar.py
+  scripts/audit_pose_target_sources.py scripts/audit_control_reconstruction.py
+  tests/test_pose_targets.py`.
+- PASS: `python -m unittest tests.test_pose_targets -v` (12 tests).
+- PASS: `git diff --check`.
 
-## Commands/tests this session
+## Files changed this session
 
-- PASS: `python -m py_compile ...` for all new modules/scripts.
-- PASS: `python -m unittest tests.test_pose_targets -v` (8 tests): resize,
-  aspect ratio, crop translation/clipping, partial/multi-person behavior,
-  mappings, readonly integrity, fail-closed sources, reconstruction gate.
-- PASS (read-only): `python scripts/audit_pose_target_sources.py --dataset-root
-  /lambda/nfs/adhit/krea2-pose/posebridge_hf` reports the above exact counts
-  and `BLOCKED_MISSING_AUTHORITATIVE_ARTIFACTS`.
+- `pose_controlnet/pose_targets.py`
+- `pose_controlnet/control_reconstruction.py`
+- `scripts/audit_pose_target_sources.py`
+- `scripts/audit_control_reconstruction.py`
+- `tests/test_pose_targets.py`
+- `docs/POSE_TARGET_SIDECAR.md`
+- `docs/CODEX_HANDOFF.md`
 
 ## Exact next action
 
-Recover the immutable COCO and Human-Art annotation files plus their exact
-stem/image-ID joins, and the historical Danbooru DWPose export/config/model
-hashes/renderer source. Put their verified paths and metadata in the documented
-source spec, run the source audit, then build and reconstruction-audit v1. Do
-not add reward/training code or start training until all sources pass.
+When the user supplies the Human-Art annotation export and original COCO JSON,
+create the canonical Human-Art adapter and source spec following
+`docs/POSE_TARGET_SIDECAR.md`, then run:
+
+```bash
+python scripts/audit_pose_target_sources.py \
+  --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
+  --source-spec /absolute/path/to/pose_reward_source_spec.json
+```
+
+If it passes, build v2 and run the available-only reconstruction audit. Do not
+start or resume training as part of that work unless separately authorized.

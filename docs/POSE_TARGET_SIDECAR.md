@@ -1,71 +1,150 @@
 # Unified pose-target sidecar
 
 `pose_controlnet.pose_targets` creates a new, versioned, read-only directory
-containing `metadata.json` and deterministic `records.jsonl`. It does not edit
-manifests, image/control files, or latent shards. It refuses an existing output
-directory and verifies the JSONL SHA-256 when loaded.
+containing deterministic `records.jsonl` and `metadata.json`. It never edits
+manifests, images, controls, or latent shards; it refuses to overwrite an
+existing output and verifies the JSONL SHA-256 on load.
 
-Each record contains `schema_version`, `stem`, `source`,
-`target_provenance`, `annotation_source`, source/resize/crop/bucket geometry,
-the input joint schema, explicit common-body mapping, renderer provenance, and
-one source-grouped `people` list. Every person retains source `xyv` or `xyc`,
-source box, source confidence/visibility, clipped training coordinates,
-in-frame mask, reward-visible mask, and clipped training box. The reward mask
-is authoritative visibility/confidence intersected with the final crop.
+Each training stem has exactly one explicit branch:
 
-The common reward schema is the 17 physical COCO body joints only. COCO-17 is
-identity mapped. Historical DWPose/OpenPose body-18 uses indices
-`[0,15,14,17,16,5,2,6,3,7,4,11,8,12,9,13,10]`; its neck (index 1) is not a
-target.
+```text
+pose_reward_available: true   target_provenance: original_annotation
+pose_reward_available: false  target_provenance: unavailable
+```
 
-## Source specification contract
+Available records contain the authoritative, source-grouped `people` list,
+source/resize/crop/bucket geometry, source and training keypoints, joint
+visibility/confidence, in-frame/reward masks, boxes when supplied, the COCO-17
+body mapping, and renderer provenance. Unavailable records have
+`people: null`; they are an intentional flow-only training decision, never an
+empty annotation. `pose_reward_target_for_stem(...)` returns the available
+record or `None` for this explicit unavailable branch.
 
-Pass a JSON object with one entry per source under `sources`: `coco`,
+The build fails closed only for a stem whose source claims
+`pose_reward_available: true` but has a missing, malformed, mismatched, or
+geometrically invalid target. It reports deterministic total, available, and
+unavailable counts and percentages for every source and overall.
+
+No path in this infrastructure derives keypoints from a raster control or runs
+DWPose (or another detector) as a fallback.
+
+## Source specification
+
+The JSON source spec must declare every source under `sources`: `coco`,
 `humanart_painting`, `humanart_real_human`, `humanart_sculpture`, and
-`danbooru`. An annotated entry requires `target_provenance` exactly
-`original_annotation`, `format: "coco_keypoints"`, immutable
-`annotation_paths`, `annotation_source`, `joint_schema: "coco17"`, and
-`provenance_metadata.renderer`. Human-Art additionally requires an explicit
-`stem_image_id_regex` with named `image_id`; this prevents an assumed join.
+`danbooru`.
 
-Danbooru requires `target_provenance: "dwpose_pseudolabel"` and
-`format: "historical_dwpose_jsonl"`. Its immutable export must contain `stem`,
-`source_size`, and source-grouped 18-body-keypoint people. Its provenance must
-contain detector, pose checkpoint and SHA-256, thresholds, body-joint mapping,
-and renderer. All sources must identify the exact historical renderer. The
-reconstruction gate additionally requires
-`renderer.validated_historical_renderer: true`; it cannot be set based on a
-raster guess.
+For the first ControlNet++ experiment, use this coverage shape:
+
+```json
+{
+  "sources": {
+    "coco": {
+      "pose_reward_available": true,
+      "target_provenance": "original_annotation",
+      "format": "coco_keypoints",
+      "annotation_source": "COCO 2017 person keypoints",
+      "joint_schema": "coco17",
+      "annotation_paths": ["/absolute/path/to/annotations/person_keypoints_train2017.json"],
+      "provenance_metadata": {"renderer": {"identifier": "...", "sha256": "...", "validated_historical_renderer": true, "topology": "openpose_body18"}}
+    },
+    "humanart_painting": {"pose_reward_available": true, "target_provenance": "original_annotation", "format": "humanart_pose_adapter_jsonl", "annotation_source": "user-supplied Human-Art export", "joint_schema": "coco17", "adapter_path": "/absolute/path/to/humanart_adapter.jsonl", "provenance_metadata": {"renderer": {"identifier": "...", "sha256": "..."}}},
+    "humanart_real_human": {"pose_reward_available": true, "target_provenance": "original_annotation", "format": "humanart_pose_adapter_jsonl", "annotation_source": "user-supplied Human-Art export", "joint_schema": "coco17", "adapter_path": "/absolute/path/to/humanart_adapter.jsonl", "provenance_metadata": {"renderer": {"identifier": "...", "sha256": "..."}}},
+    "humanart_sculpture": {"pose_reward_available": true, "target_provenance": "original_annotation", "format": "humanart_pose_adapter_jsonl", "annotation_source": "user-supplied Human-Art export", "joint_schema": "coco17", "adapter_path": "/absolute/path/to/humanart_adapter.jsonl", "provenance_metadata": {"renderer": {"identifier": "...", "sha256": "..."}}},
+    "danbooru": {"pose_reward_available": false, "target_provenance": "unavailable", "format": "unavailable"}
+  }
+}
+```
+
+The renderer metadata is required only for available records because it is a
+reconstruction-audit contract, not a source of targets. Exact renderer fields
+must be filled from verified provenance; do not claim validation from a raster
+comparison alone.
+
+## Human-Art importer contract
+
+The user supplies the actual Human-Art source file separately. Do **not** feed
+that unknown raw schema directly to the sidecar builder. Instead, write a
+small source-specific importer that preserves the original file unchanged and
+emits the canonical adapter JSONL below. This keeps source-format parsing
+separate from the common sidecar representation.
+
+One non-empty JSON object per line is required:
+
+```json
+{
+  "stem": "painting_humanart_10000000000838",
+  "source": "humanart_painting",
+  "source_image_id": "optional-original-image-id",
+  "source_size": [width, height],
+  "people": [
+    {
+      "person_id": "original-person-id",
+      "annotation_id": "optional-original-annotation-id",
+      "bbox_xywh": [x, y, width, height],
+      "keypoints": [[x, y, visibility_or_confidence], "... 16 more COCO-17 joints"]
+    }
+  ]
+}
+```
+
+- `stem` is required and must be the exact PoseBridge training stem. It is the
+  join key; `source_image_id` is optional provenance only.
+- `source` is optional but, when present, must equal the corresponding
+  Human-Art source family. It prevents an accidental cross-family join.
+- `people` preserves original person grouping. It may be an empty list only
+  when the original annotation explicitly contains no target people.
+- Each person has exactly 17 COCO-order body joints. The third value is the
+  original visibility or confidence; it must be finite and non-negative.
+- `bbox_xywh` is optional. If present it is source-image coordinates with a
+  non-negative width and height.
+- `source_size` is optional. If present, it must match the immutable shard
+  geometry exactly; otherwise the build fails for that claimed sample.
+
+The importer may translate any supplied Human-Art schema into this contract,
+but it must not run a pose model or inspect a control PNG. Store the raw export
+path/version/hash in `annotation_source` or provenance metadata outside the
+adapter's per-record source data as appropriate.
+
+## COCO contract
+
+Use the original COCO person-keypoint annotation JSON, normally
+`annotations/person_keypoints_train2017.json` for this training corpus. Do
+not use a generated pose export. The sidecar joins each PoseBridge COCO stem
+using the immutable form `coco_<image_id>_<annotation_id>.jpg` (or
+`coco_<image_id>_crowd.jpg`) to COCO `images[].id` and, for the non-crowd
+form, `annotations[].id`. The COCO `images[].width`/`height` must exactly
+match the persisted shard source geometry. Crowd stems use every non-crowd
+COCO person annotation for that image. No image download is performed.
 
 ## Commands
 
-Read-only inventory:
+Once the Human-Art adapter and COCO annotation paths exist, first audit the
+coverage decision and reachable authoritative artifacts:
 
 ```bash
 python scripts/audit_pose_target_sources.py \
   --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
-  --source-spec /path/to/recovered_source_spec.json
+  --source-spec /absolute/path/to/pose_reward_source_spec.json
 ```
 
-Build only after the preceding audit is PASS:
+Then build a new sidecar (only after the audit reports `PASS`):
 
 ```bash
 python scripts/build_pose_target_sidecar.py \
   --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
-  --source-spec /path/to/recovered_source_spec.json \
-  --output /lambda/nfs/adhit/krea2-pose/pose_targets/v1
+  --source-spec /absolute/path/to/pose_reward_source_spec.json \
+  --output /lambda/nfs/adhit/krea2-pose/pose_targets/v2
 ```
 
-Run the fail-closed stratified raster reconstruction gate:
+The reconstruction audit selects only `pose_reward_available: true` records.
+Danbooru remains in its coverage report as intentionally unavailable and is
+not sampled, rendered, or reported as a reconstruction failure:
 
 ```bash
 python scripts/audit_control_reconstruction.py \
-  --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets/v1 \
+  --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets/v2 \
   --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
-  --output-dir /lambda/nfs/adhit/krea2-pose/pose_target_audits/v1 \
+  --output-dir /lambda/nfs/adhit/krea2-pose/pose_target_audits/v2 \
   --per-source 16 --min-foreground-iou 0.995 --max-mae 0.25
 ```
-
-The audit writes per-sample metrics/mismatches and a compact stored/rebuilt/
-difference contact sheet. A provenance path is accepted only if every sampled
-source passes both thresholds.
