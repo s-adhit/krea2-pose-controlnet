@@ -2,65 +2,64 @@
 
 ## Current objective and status
 
-Pose-target sidecars now support partial authoritative pose-reward coverage.
-No training, resume, generation, checkpoint mutation, dataset/manifest
-mutation, download, commit, or push occurred in this session.
+Authoritative v1 pose-target sidecar integration is implemented but publication
+is correctly blocked by invalid active Human-Art coordinates in the supplied
+authoritative export. No training/evaluation run, dataset/manifest mutation,
+commit, or push occurred.
 
 ## Current decisions
 
-- First ControlNet++ pose-reward experiment: Human-Art and COCO claim
-  `pose_reward_available: true` with `target_provenance: original_annotation`.
-- Danbooru is intentionally flow-only: `pose_reward_available: false`,
-  `target_provenance: unavailable`, `format: unavailable`. It does not block a
-  sidecar build, coverage audit, or reconstruction audit.
-- The sidecar schema is v2. Available and unavailable records are explicit;
-  the training-facing `pose_reward_target_for_stem` returns a target record or
-  `None` only for an explicit unavailable record.
-- There is no raster-to-keypoint path and no DWPose/pseudo-label/rerun fallback
-  in the pose-target builder.
-- Human-Art must first be converted from the user-supplied raw schema into the
-  documented canonical JSONL adapter. Original source parsing remains outside
-  the common sidecar representation.
-- COCO uses its original `person_keypoints_train2017.json` annotations and the
-  immutable `coco_<image_id>_<annotation_id|crowd>` stem join.
+- `data/pose_targets_authoritative_v1.jsonl` is the only numerical COCO and
+  Human-Art source; no original annotation parsing, DWPose, or control-raster
+  target extraction is used.
+- Sidecar schema is now v3. Active COCO/Human-Art are available only with an
+  exact authoritative row; Danbooru remains explicit flow-only unavailable.
+- Source points use persisted shard geometry. Visible points beyond declared
+  source bounds fail closed; exact far-edge coordinates are accepted then
+  clipped only in the final frame.
+- Reconstruction uses historical body-only unified-18 semantics: renderer-only
+  neck, OpenPose rainbow limbs, thickness 3, white radius-4 endpoints.
 
-## Completed/green gates
+## Verified findings
 
-- v2 records and metadata report exact total/available/unavailable coverage
-  counts and percentages per source and overall.
-- Claimed available targets fail closed for missing records, malformed COCO
-  keypoints, source-size mismatch, non-finite/negative keypoints, and visible
-  points outside source geometry.
-- Reconstruction selection considers only available records and adds complete
-  coverage to its output; unavailable Danbooru is not a reconstruction failure.
-- PASS: `python -m py_compile pose_controlnet/pose_targets.py
-  pose_controlnet/control_reconstruction.py scripts/build_pose_target_sidecar.py
-  scripts/audit_pose_target_sources.py scripts/audit_control_reconstruction.py
-  tests/test_pose_targets.py`.
-- PASS: `python -m unittest tests.test_pose_targets -v` (12 tests).
-- PASS: `git diff --check`.
+- Active coverage by source: COCO 3,893; Danbooru 2,255; Human-Art painting
+  6,423; real_human 3,257; sculpture 1,588; total 17,416.
+- Exact join check before coordinate validation: all 15,161 active
+  COCO/Human-Art stems exist exactly once; 79 Human-Art export rows are
+  intentionally inactive; no active Danbooru rows are exported.
+- All 21 required annotated diagnostic stems are in the export. Diagnostic
+  Danbooru stems `danbooru_anime_11903560`, `danbooru_anime_11910154`, and
+  `danbooru_anime_11917323` are absent as required.
+- Hard blocker: 7 visible active Human-Art joints lie beyond declared source
+  geometry: five on `painting_humanart_2000000000804` and two on
+  `sculpture_humanart_14000000001208`. Source dimensions themselves match the
+  persisted shard dimensions, so this is an annotation-coordinate/provenance
+  inconsistency, not a resize/crop issue.
+- Representative renderer comparison (valid `coco_100098_193288`): source
+  frame IoU 0.7193 / MAE 0.5429; after persisted resize/crop IoU 0.3010 / MAE
+  0.8910. The reconstruction audit now preprocesses stored controls into the
+  final training frame; full audit remains blocked until the export is fixed.
 
 ## Files changed this session
 
 - `pose_controlnet/pose_targets.py`
 - `pose_controlnet/control_reconstruction.py`
+- `scripts/build_pose_target_sidecar.py`
 - `scripts/audit_pose_target_sources.py`
-- `scripts/audit_control_reconstruction.py`
 - `tests/test_pose_targets.py`
 - `docs/POSE_TARGET_SIDECAR.md`
 - `docs/CODEX_HANDOFF.md`
 
+## Commands/tests
+
+- PASS: `python -m py_compile pose_controlnet/pose_targets.py pose_controlnet/control_reconstruction.py scripts/build_pose_target_sidecar.py scripts/audit_pose_target_sources.py`
+- PASS: `python -m unittest tests.test_pose_targets -v` (15 tests).
+- EXPECTED FAIL: provenance audit and v3 build stop on the first out-of-range
+  active keypoint (`painting_humanart_2000000000804`, joint 9).
+
 ## Exact next action
 
-When the user supplies the Human-Art annotation export and original COCO JSON,
-create the canonical Human-Art adapter and source spec following
-`docs/POSE_TARGET_SIDECAR.md`, then run:
-
-```bash
-python scripts/audit_pose_target_sources.py \
-  --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
-  --source-spec /absolute/path/to/pose_reward_source_spec.json
-```
-
-If it passes, build v2 and run the available-only reconstruction audit. Do not
-start or resume training as part of that work unless separately authorized.
+Correct and version the authoritative export's invalid visible Human-Art
+coordinates (or correct the associated declared dimensions with evidence),
+then rerun the provenance audit, v3 sidecar build, and full reconstruction
+audit. Do not implement or enable pose reward until they pass.

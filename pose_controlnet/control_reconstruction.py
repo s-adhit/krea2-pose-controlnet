@@ -10,11 +10,15 @@ from PIL import Image, ImageChops, ImageDraw
 
 from pose_controlnet.pose_targets import PoseTargetError
 
+_LANCZOS = getattr(getattr(Image, "Resampling", Image), "LANCZOS")
+
 
 # OpenPose body-18 topology.  It matches the historic unified topology only
 # when the source specification explicitly verifies that renderer provenance.
-BODY18_LIMBS = ((1, 2), (1, 5), (2, 3), (3, 4), (5, 6), (6, 7), (1, 8), (8, 9), (9, 10), (1, 11), (11, 12), (12, 13), (0, 1), (0, 14), (0, 15), (14, 16), (15, 17))
+BODY_LIMBS = ((1, 2), (1, 5), (2, 3), (3, 4), (5, 6), (6, 7), (1, 8), (8, 9), (9, 10), (1, 11), (11, 12), (12, 13), (0, 1), (0, 14), (0, 15), (14, 16), (15, 17))
 COCO_TO_BODY18 = (0, 15, 14, 17, 16, 5, 2, 6, 3, 7, 4, 11, 8, 12, 9, 13, 10)
+# PoseBridge uses the standard OpenPose rainbow in limb order (RGB).
+BODY_COLORS = ((255, 0, 0), (255, 85, 0), (255, 170, 0), (255, 255, 0), (170, 255, 0), (85, 255, 0), (0, 255, 0), (0, 255, 85), (0, 255, 170), (0, 255, 255), (0, 170, 255), (0, 85, 255), (0, 0, 255), (85, 0, 255), (170, 0, 255), (255, 0, 255), (255, 0, 170))
 
 
 def render_record(record: Mapping[str, Any]) -> Image.Image:
@@ -25,11 +29,13 @@ def render_record(record: Mapping[str, Any]) -> Image.Image:
     if renderer.get("topology") != "openpose_body18":
         raise PoseTargetError(f"{record.get('stem')}: unsupported renderer topology")
     width, height = map(int, record["bucket"])
-    color = tuple(renderer.get("line_rgb", (255, 255, 255)))
-    line_width = int(renderer.get("line_width", 4))
-    if len(color) != 3 or line_width < 1:
+    line_width = int(renderer.get("line_width", 3))
+    endpoint_radius = int(renderer.get("endpoint_radius", 4))
+    endpoint_rgb = tuple(renderer.get("endpoint_rgb", (255, 255, 255)))
+    if line_width != 3 or endpoint_radius != 4 or endpoint_rgb != (255, 255, 255):
         raise PoseTargetError("Invalid historical renderer line parameters")
-    canvas = Image.new("RGB", (width, height), (0, 0, 0)); draw = ImageDraw.Draw(canvas)
+    canvas = Image.new("RGB", (width, height), (0, 0, 0))
+    draw = ImageDraw.Draw(canvas)
     for person in record["people"]:
         body = [[0.0, 0.0, 0.0] for _ in range(18)]
         for coco_index, body_index in enumerate(COCO_TO_BODY18):
@@ -37,14 +43,37 @@ def render_record(record: Mapping[str, Any]) -> Image.Image:
         left, right = body[5], body[2]
         if left[2] > 0 and right[2] > 0:
             body[1] = [(left[0] + right[0]) / 2, (left[1] + right[1]) / 2, min(left[2], right[2])]
-        for first, second in BODY18_LIMBS:
+        for limb_index, (first, second) in enumerate(BODY_LIMBS):
             if body[first][2] > 0 and body[second][2] > 0:
-                draw.line((body[first][0], body[first][1], body[second][0], body[second][1]), fill=color, width=line_width)
+                first_xy = tuple(int(round(value)) for value in body[first][:2])
+                second_xy = tuple(int(round(value)) for value in body[second][:2])
+                draw.line((first_xy, second_xy), fill=BODY_COLORS[limb_index], width=3)
+        # Endpoints are drawn after all limbs, matching PoseBridge's white
+        # radius-four landmark circles.  The synthesized neck is intentionally
+        # only here: no sidecar person receives it as a reward joint.
+        for x, y, visibility in body:
+            if visibility > 0:
+                cx, cy = int(round(x)), int(round(y))
+                draw.ellipse((cx - 4, cy - 4, cx + 4, cy + 4), fill=(255, 255, 255))
     return canvas
 
 
-def compare_control(record: Mapping[str, Any], control_path: str | Path, *, threshold: int = 10) -> tuple[dict[str, Any], Image.Image, Image.Image, Image.Image]:
+def prepared_control_image(record: Mapping[str, Any], control_path: str | Path) -> Image.Image:
+    """Put the stored source control into the exact persisted training frame."""
     expected = Image.open(control_path).convert("RGB")
+    source_size = tuple(record.get("source_size", ()))
+    resized_size = tuple(record.get("resized_size", ()))
+    crop_box = tuple(record.get("crop_box", ()))
+    if len(source_size) != 2 or len(resized_size) != 2 or len(crop_box) != 4:
+        # Unit-test fixtures may already provide a final-frame control.
+        return expected
+    if expected.size != source_size:
+        raise PoseTargetError(f"{record.get('stem')}: stored control size {expected.size} != source_size {source_size}")
+    return expected.resize(resized_size, _LANCZOS).crop(crop_box)
+
+
+def compare_control(record: Mapping[str, Any], control_path: str | Path | Image.Image, *, threshold: int = 10) -> tuple[dict[str, Any], Image.Image, Image.Image, Image.Image]:
+    expected = control_path.convert("RGB") if isinstance(control_path, Image.Image) else prepared_control_image(record, control_path)
     reconstructed = render_record(record)
     if expected.size != reconstructed.size:
         raise PoseTargetError(f"{record.get('stem')}: stored control size {expected.size} != bucket {reconstructed.size}")

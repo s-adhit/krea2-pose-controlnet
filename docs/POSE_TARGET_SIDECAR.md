@@ -1,5 +1,31 @@
 # Unified pose-target sidecar
 
+## Authoritative v1 export (current path)
+
+`data/pose_targets_authoritative_v1.jsonl` is the sole numerical target source
+for active COCO and Human-Art records. It is joined by exact final PoseBridge
+stem; the large original COCO/Human-Art datasets are not reread. Active
+Danbooru records receive explicit v3 `pose_reward_available: false` records.
+
+The v3 builder transforms source COCO-17 coordinates using each active
+latent shard's persisted `source_size`, `resized_size`, and `crop_box`.
+Visibility is preserved; the reward mask also excludes points cropped outside
+the final canvas. A visible source joint outside its declared source image
+(except an exact far-edge coordinate) is a provenance failure that blocks the
+build. Final points and xywh boxes are clipped to the inclusive pixel canvas.
+
+The reconstruction renderer is body-only: COCO-17 maps to unified-18, makes
+the neck only while drawing, renders the standard OpenPose rainbow limbs at
+thickness 3, and then draws visible white radius-4 endpoints. That synthetic
+neck is never a reward target.
+
+```bash
+python scripts/build_pose_target_sidecar.py \
+  --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
+  --authoritative-jsonl data/pose_targets_authoritative_v1.jsonl \
+  --output /new/nonexistent/pose_targets_v3
+```
+
 `pose_controlnet.pose_targets` creates a new, versioned, read-only directory
 containing deterministic `records.jsonl` and `metadata.json`. It never edits
 manifests, images, controls, or latent shards; it refuses to overwrite an

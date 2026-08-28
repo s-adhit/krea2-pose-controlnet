@@ -6,10 +6,11 @@ from pathlib import Path
 
 import pose_controlnet.pose_targets as pose_targets
 from pose_controlnet.pose_targets import (
-    PoseTargetError, build_sidecar_records, common_body_mapping, coverage_summary,
-    load_sidecar, pose_reward_target_for_stem, transform_person, write_sidecar,
+    PoseTargetError, build_authoritative_sidecar_records, build_sidecar_records,
+    common_body_mapping, coverage_summary, diagnostic_coverage, load_authoritative_export, load_sidecar,
+    pose_reward_target_for_stem, transform_person, write_sidecar,
 )
-from pose_controlnet.control_reconstruction import compare_control, render_record, select_reconstruction_records, summarize_reconstruction
+from pose_controlnet.control_reconstruction import BODY_COLORS, BODY_LIMBS, compare_control, render_record, select_reconstruction_records, summarize_reconstruction
 
 
 class PoseTargetGeometryTest(unittest.TestCase):
@@ -129,7 +130,7 @@ class PoseTargetSidecarTest(unittest.TestCase):
 
     def test_reconstruction_requires_verified_renderer_and_reports_metrics(self):
         record = {
-            "stem": "coco_1_1", "bucket": [20, 20], "renderer": {"validated_historical_renderer": True, "topology": "openpose_body18", "line_rgb": [255, 255, 255], "line_width": 2},
+            "stem": "coco_1_1", "bucket": [20, 20], "renderer": {"validated_historical_renderer": True, "topology": "openpose_body18", "line_width": 3, "endpoint_radius": 4, "endpoint_rgb": [255, 255, 255]},
             "people": [{"keypoints_training": [[5.0, 5.0, 2.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [10.0, 10.0, 2.0], [15.0, 10.0, 2.0]] + [[0.0, 0.0, 0.0] for _ in range(10)]}],
         }
         with tempfile.TemporaryDirectory() as temp:
@@ -141,3 +142,57 @@ class PoseTargetSidecarTest(unittest.TestCase):
             record["renderer"]["validated_historical_renderer"] = False
             with self.assertRaisesRegex(PoseTargetError, "has not been verified"):
                 render_record(record)
+
+    @staticmethod
+    def authoritative_row(stem="coco_12_34", *, source="coco", width=100, height=50, people=None):
+        if people is None:
+            people = [{"annotation_id": 34, "bbox_xywh": [1, 2, 3, 4], "num_visible_keypoints": 1,
+                       "keypoints_coco17": [[5, 4, 2]] + [[0, 0, 0] for _ in range(16)]}]
+        row = {"schema_version": 1, "stem": stem, "final_file_name": stem + ".jpg", "source": source,
+               "target_provenance": "original_annotation", "pose_reward_available": True,
+               "source_image_id": 12, "source_image_name": "source.jpg", "source_width": width,
+               "source_height": height, "source_annotation_split": "train", "joint_schema": "coco17",
+               "joint_names": list(pose_targets.COCO_17), "people": people}
+        if source == "coco": row["sample_type"] = "solo"
+        else: row["medium"] = "painting"
+        return row
+
+    def test_authoritative_export_loading_duplicate_detection_and_active_join(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "export.jsonl"; row = self.authoritative_row()
+            path.write_text(json.dumps(row) + "\n" + json.dumps(row) + "\n")
+            with self.assertRaisesRegex(PoseTargetError, "duplicate stem"):
+                load_authoritative_export(path)
+            row["people"][0]["keypoints_coco17"][0] = [101, 4, 2]
+            path.write_text(json.dumps(row) + "\n")
+            with self.assertRaisesRegex(PoseTargetError, "outside declared source geometry"):
+                load_authoritative_export(path)
+            row = self.authoritative_row()
+            human = self.authoritative_row("painting_humanart_7", source="humanart", people=[
+                {"annotation_id": 7, "bbox_xywh": [1, 2, 3, 4], "num_visible_keypoints": 1, "keypoints_coco17": [[5, 4, 2]] + [[0, 0, 0] for _ in range(16)]},
+                {"annotation_id": 8, "bbox_xywh": [2, 2, 3, 4], "num_visible_keypoints": 1, "keypoints_coco17": [[7, 4, 2]] + [[0, 0, 0] for _ in range(16)]},
+            ])
+            path.write_text(json.dumps(row) + "\n" + json.dumps(human) + "\n")
+            geometry = {stem: {"source_size": [100, 50], "resized_size": [200, 100], "crop_box": [10, 5, 190, 95], "bucket": [180, 90]}
+                        for stem in ("coco_12_34", "painting_humanart_7", "danbooru_1")}
+            records, summary = build_authoritative_sidecar_records(geometry, authoritative_jsonl=path)
+            by_stem = {record["stem"]: record for record in records}
+            self.assertEqual(summary["coverage"]["total"]["available"], 2)
+            self.assertFalse(by_stem["danbooru_1"]["pose_reward_available"])
+            self.assertEqual(by_stem["coco_12_34"]["people"][0]["keypoints_training"][0], [0.0, 3.0, 2.0])
+            self.assertEqual([person["annotation_id"] for person in by_stem["painting_humanart_7"]["people"]], [7, 8])
+
+    def test_annotated_diagnostic_contract(self):
+        records = {stem: {"pose_reward_available": True} for stem in pose_targets.AUTHORITATIVE_DIAGNOSTIC_STEMS}
+        self.assertEqual(diagnostic_coverage(records)["status"], "PASS")
+        records.pop(next(iter(records)))
+        self.assertEqual(diagnostic_coverage(records)["status"], "FAIL")
+
+    def test_historical_renderer_semantics(self):
+        self.assertEqual(len(BODY_LIMBS), 17); self.assertEqual(len(BODY_COLORS), 17)
+        points = [[0, 0, 0] for _ in range(17)]; points[0] = [5, 10, 2]; points[2] = [25, 10, 2]
+        record = {"stem": "coco_1_1", "bucket": [30, 30], "renderer": {"validated_historical_renderer": True, "topology": "openpose_body18", "line_width": 3, "endpoint_radius": 4, "endpoint_rgb": [255, 255, 255]},
+                  "people": [{"keypoints_training": points}]}
+        image = render_record(record)
+        self.assertEqual(image.getpixel((5, 10)), (255, 255, 255))
+        self.assertIn(BODY_COLORS[13], image.getdata())

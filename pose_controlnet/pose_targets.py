@@ -20,10 +20,45 @@ from typing import Any, Iterable, Mapping
 from pose_controlnet.reference_pose import COCO_17, load_coco_annotations, parse_coco_stem
 
 
-POSE_TARGET_SIDECAR_VERSION = 2
+POSE_TARGET_SIDECAR_VERSION = 3
 RECORDS_NAME = "records.jsonl"
 METADATA_NAME = "metadata.json"
 COMMON_BODY_17 = COCO_17
+
+# The checked-in v1 export is the sole numerical source for the available
+# targets.  It already contains the original COCO / Human-Art annotations, so
+# sidecar construction must never reopen either large upstream annotation set.
+AUTHORITATIVE_EXPORT_SCHEMA_VERSION = 1
+AUTHORITATIVE_EXPORT_FORMAT = "pose_targets_authoritative_v1_jsonl"
+
+# This describes the actual historical PoseBridge body raster, not the reward
+# target.  In particular, the renderer-only neck is absent from COCO-17.
+POSEBRIDGE_BODY_RENDERER = {
+    "validated_historical_renderer": True,
+    "identifier": "posebridge_body_renderer_v1",
+    "topology": "openpose_body18",
+    "coordinate_mapping": "coco17_to_unified18_with_renderer_only_neck",
+    "line_width": 3,
+    "endpoint_radius": 4,
+    "endpoint_rgb": [255, 255, 255],
+    "body_colors": "openpose_18_rainbow_rgb",
+    "hands": False,
+}
+
+AUTHORITATIVE_DIAGNOSTIC_STEMS = frozenset({
+    "coco_156320_crowd", "coco_299468_426600", "coco_379542_449327", "coco_64240_crowd",
+    "painting_humanart_10000000000555", "painting_humanart_10000000000838",
+    "painting_humanart_1000000000218", "painting_humanart_1000000001225",
+    "painting_humanart_1000000002653", "painting_humanart_6000000000319",
+    "painting_humanart_6000000002434", "painting_humanart_9000000000608",
+    "painting_humanart_9000000002722", "real_human_humanart_15000000000201",
+    "real_human_humanart_15000000002196", "real_human_humanart_17000000000288",
+    "real_human_humanart_17000000001552", "real_human_humanart_17000000001695",
+    "sculpture_humanart_14000000000243", "sculpture_humanart_14000000001143",
+    "sculpture_humanart_14000000004479",
+})
+
+
 class PoseTargetError(ValueError):
     """Raised when authoritative target provenance is incomplete or ambiguous."""
 
@@ -33,11 +68,13 @@ class _AuthoritativePeople(list[dict[str, Any]]):
 
     def __init__(
         self, people: Iterable[dict[str, Any]], source_size: Iterable[int] | None = None,
-        source_image_id: str | int | None = None,
+        source_image_id: str | int | None = None, **metadata: Any,
     ):
         super().__init__(people)
         self.source_size = tuple(source_size) if source_size is not None else None
         self.source_image_id = source_image_id
+        for key, value in metadata.items():
+            setattr(self, key, value)
 
 
 def source_for_stem(stem: str) -> str:
@@ -94,7 +131,7 @@ def transform_person(
             raise PoseTargetError("Authoritative keypoint visibility/confidence must be non-negative")
         mapped_x, mapped_y = x * sx - left, y * sy - top
         present = score > 0
-        if present and not (0.0 <= x < sw and 0.0 <= y < sh):
+        if present and not (0.0 <= x <= sw and 0.0 <= y <= sh):
             raise PoseTargetError("Visible authoritative keypoint lies outside its source image")
         inside = present and 0.0 <= mapped_x <= bw - 1 and 0.0 <= mapped_y <= bh - 1
         training.append([min(max(mapped_x, 0.0), bw - 1), min(max(mapped_y, 0.0), bh - 1), score])
@@ -158,6 +195,176 @@ def build_sidecar_records(
     return records, {"expected_counts": dict(sorted(expected.items())), "records": len(records), "coverage": coverage_summary(records)}
 
 
+def load_authoritative_export(path: str | Path) -> tuple[dict[str, _AuthoritativePeople], dict[str, Any]]:
+    """Load and validate the checked-in original-annotation export once.
+
+    The returned lookup is deliberately keyed only by the final PoseBridge
+    stem.  Duplicate records, including records outside the active manifests,
+    are an ambiguity and fail the build.
+    """
+    artifact = Path(path)
+    if not artifact.is_file():
+        raise PoseTargetError(f"Authoritative export missing: {artifact}")
+    rows: dict[str, _AuthoritativePeople] = {}
+    raw = artifact.read_bytes()
+    for line_number, line in enumerate(raw.decode("utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise PoseTargetError(f"Authoritative export line {line_number}: invalid JSON") from exc
+        stem, people = _authoritative_export_row(row, line_number)
+        if stem in rows:
+            raise PoseTargetError(f"Authoritative export has duplicate stem: {stem}")
+        rows[stem] = people
+    if not rows:
+        raise PoseTargetError("Authoritative export contains no records")
+    return rows, {
+        "format": AUTHORITATIVE_EXPORT_FORMAT,
+        "schema_version": AUTHORITATIVE_EXPORT_SCHEMA_VERSION,
+        "path": str(artifact.resolve()),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "record_count": len(rows),
+    }
+
+
+def build_authoritative_sidecar_records(
+    geometry_by_stem: Mapping[str, Mapping[str, Any]], *, authoritative_jsonl: str | Path,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Build v3 records from the authoritative export and persisted shard geometry."""
+    export, export_metadata = load_authoritative_export(authoritative_jsonl)
+    expected = Counter(source_for_stem(stem) for stem in geometry_by_stem)
+    records: list[dict[str, Any]] = []
+    unresolved: list[str] = []
+    for stem, geometry in sorted(geometry_by_stem.items()):
+        source = source_for_stem(stem)
+        if source == "danbooru":
+            records.append(_unavailable_record(stem, source, geometry))
+            continue
+        people = export.get(stem)
+        if people is None:
+            unresolved.append(stem)
+            continue
+        row_source = getattr(people, "export_source", None)
+        if row_source != ("coco" if source == "coco" else "humanart"):
+            raise PoseTargetError(f"{stem}: authoritative export source {row_source!r} disagrees with active source {source!r}")
+        if people.source_size != tuple(geometry["source_size"]):
+            raise PoseTargetError(
+                f"{stem}: authoritative source size {people.source_size} does not match persisted shard geometry {tuple(geometry['source_size'])}"
+            )
+        transformed = [transform_person(
+            person, source_size=geometry["source_size"], resized_size=geometry["resized_size"],
+            crop_box=geometry["crop_box"], bucket=geometry["bucket"],
+        ) for person in people]
+        records.append({
+            "schema_version": POSE_TARGET_SIDECAR_VERSION, "stem": stem, "source": source,
+            "pose_reward_available": True, "target_provenance": "original_annotation",
+            "annotation_source": AUTHORITATIVE_EXPORT_FORMAT,
+            "source_image_id": people.source_image_id,
+            "source_image_name": getattr(people, "source_image_name", None),
+            "source_annotation_split": getattr(people, "source_annotation_split", None),
+            "source_size": list(geometry["source_size"]), "resized_size": list(geometry["resized_size"]),
+            "crop_box": list(geometry["crop_box"]), "bucket": list(geometry["bucket"]),
+            "geometry_transform": "x_final=clip(x_source*resized_width/source_width-crop_left,0,bucket_width-1); y_final=clip(y_source*resized_height/source_height-crop_top,0,bucket_height-1)",
+            "bbox_clip_convention": "xywh is transformed then intersected with the inclusive final pixel canvas [0,width-1] x [0,height-1]",
+            "joint_schema": "coco17", "common_body_mapping": common_body_mapping("coco17"),
+            "person_grouping": "original image-level people list preserved; renderer-only neck is never a target joint",
+            "people": transformed, "renderer": dict(POSEBRIDGE_BODY_RENDERER),
+            "provenance_metadata": {"authoritative_export": export_metadata, **getattr(people, "export_metadata", {})},
+        })
+    if unresolved:
+        raise PoseTargetError(f"Claimed authoritative targets missing for {len(unresolved)} active samples (examples: {unresolved[:8]})")
+    diagnostic = diagnostic_coverage({record["stem"]: record for record in records}) if AUTHORITATIVE_DIAGNOSTIC_STEMS <= set(geometry_by_stem) else {
+        "expected_annotated_stems": len(AUTHORITATIVE_DIAGNOSTIC_STEMS), "status": "NOT_APPLICABLE_PARTIAL_GEOMETRY",
+    }
+    summary = {
+        "expected_counts": dict(sorted(expected.items())), "records": len(records),
+        "coverage": coverage_summary(records), "authoritative_export": export_metadata,
+        "inactive_authoritative_records": len(set(export) - set(geometry_by_stem)),
+        "diagnostic_coverage": diagnostic,
+    }
+    if summary["diagnostic_coverage"]["status"] == "FAIL":
+        raise PoseTargetError(f"Authoritative diagnostic stems unresolved: {summary['diagnostic_coverage']}")
+    return records, summary
+
+
+def _authoritative_export_row(row: Any, line_number: int) -> tuple[str, _AuthoritativePeople]:
+    """Normalize exactly one checked-in export row without altering its meaning."""
+    if not isinstance(row, Mapping):
+        raise PoseTargetError(f"Authoritative export line {line_number}: record is not an object")
+    stem = row.get("stem")
+    if not isinstance(stem, str) or not stem:
+        raise PoseTargetError(f"Authoritative export line {line_number}: missing stem")
+    if row.get("schema_version") != AUTHORITATIVE_EXPORT_SCHEMA_VERSION:
+        raise PoseTargetError(f"{stem}: unsupported authoritative export schema version")
+    if row.get("final_file_name") != f"{stem}.jpg":
+        raise PoseTargetError(f"{stem}: final_file_name must be the exact final PoseBridge JPG name")
+    source = row.get("source")
+    if source not in {"coco", "humanart"}:
+        raise PoseTargetError(f"{stem}: unsupported authoritative export source {source!r}")
+    expected_source = source_for_stem(stem)
+    if expected_source == "danbooru" or (source == "coco") != (expected_source == "coco"):
+        raise PoseTargetError(f"{stem}: export source does not match final PoseBridge stem")
+    if source == "humanart":
+        medium = row.get("medium")
+        expected_medium = expected_source.removeprefix("humanart_")
+        if medium != expected_medium:
+            raise PoseTargetError(f"{stem}: authoritative Human-Art medium {medium!r} != stem medium {expected_medium!r}")
+    if row.get("target_provenance") != "original_annotation" or row.get("pose_reward_available") is not True:
+        raise PoseTargetError(f"{stem}: authoritative export record does not claim original available annotations")
+    if row.get("joint_schema") != "coco17" or tuple(row.get("joint_names", ())) != tuple(COCO_17):
+        raise PoseTargetError(f"{stem}: authoritative export must contain named COCO-17 joints")
+    source_size = (row.get("source_width"), row.get("source_height"))
+    _size(source_size, f"{stem}.source_size")
+    source_image_id = row.get("source_image_id")
+    if not isinstance(source_image_id, (str, int)):
+        raise PoseTargetError(f"{stem}: source_image_id must be a string or integer")
+    if not isinstance(row.get("source_image_name"), str) or not row["source_image_name"]:
+        raise PoseTargetError(f"{stem}: source_image_name is required")
+    if not isinstance(row.get("source_annotation_split"), str) or not row["source_annotation_split"]:
+        raise PoseTargetError(f"{stem}: source_annotation_split is required")
+    people_payload = row.get("people")
+    if not isinstance(people_payload, list):
+        raise PoseTargetError(f"{stem}: people must be a list")
+    people: list[dict[str, Any]] = []
+    for person_index, person in enumerate(people_payload):
+        if not isinstance(person, Mapping):
+            raise PoseTargetError(f"{stem}: person {person_index} is not an object")
+        annotation_id = person.get("annotation_id")
+        if not isinstance(annotation_id, (str, int)):
+            raise PoseTargetError(f"{stem}: person {person_index} lacks original annotation_id")
+        points = _keypoints(person.get("keypoints_coco17"))
+        for joint_index, (x, y, visibility) in enumerate(points):
+            # Annotation coordinates are continuous; a point exactly at the
+            # far image boundary is retained and then clipped only after the
+            # persisted resize/crop transform.  Anything beyond that is a
+            # source-coordinate/provenance mismatch, never a crop artifact.
+            if visibility > 0 and not (0.0 <= x <= source_size[0] and 0.0 <= y <= source_size[1]):
+                raise PoseTargetError(
+                    f"{stem}: person {person_index} joint {joint_index} visible keypoint "
+                    f"({x}, {y}) lies outside declared source geometry {source_size}"
+                )
+        bbox = person.get("bbox_xywh")
+        if bbox is not None:
+            _transform_box(bbox, sx=1.0, sy=1.0, left=0, top=0, width=source_size[0], height=source_size[1])
+        declared_visible = person.get("num_visible_keypoints")
+        if not isinstance(declared_visible, int) or declared_visible != sum(point[2] > 0 for point in points):
+            raise PoseTargetError(f"{stem}: person {person_index} has inconsistent num_visible_keypoints")
+        people.append({
+            "person_id": annotation_id, "annotation_id": annotation_id, "bbox_xywh": bbox,
+            "keypoints_source": points, "_authoritative_source_size": list(source_size),
+        })
+    return stem, _AuthoritativePeople(
+        people, source_size, source_image_id, export_source=source,
+        source_image_name=row["source_image_name"], source_annotation_split=row["source_annotation_split"],
+        export_metadata={
+            "source": source, "medium": row.get("medium"), "sample_type": row.get("sample_type"),
+            "source_schema_version": row["schema_version"],
+        },
+    )
+
+
 def coverage_summary(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     """Return stable authoritative-target coverage counts for all source stems."""
     counts: dict[str, Counter[str]] = {}
@@ -173,6 +380,15 @@ def coverage_summary(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     total = sum(row["total"] for row in sources.values())
     available = sum(row["available"] for row in sources.values())
     return {"total": _coverage_row(total, available), "sources": sources}
+
+
+def diagnostic_coverage(records_by_stem: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
+    """Fail-closed result for the explicitly reviewed 21 annotation stems."""
+    missing = sorted(stem for stem in AUTHORITATIVE_DIAGNOSTIC_STEMS if stem not in records_by_stem)
+    unavailable = sorted(stem for stem in AUTHORITATIVE_DIAGNOSTIC_STEMS
+                         if stem in records_by_stem and records_by_stem[stem].get("pose_reward_available") is not True)
+    return {"expected_annotated_stems": len(AUTHORITATIVE_DIAGNOSTIC_STEMS), "resolved": len(AUTHORITATIVE_DIAGNOSTIC_STEMS) - len(missing) - len(unavailable),
+            "missing": missing, "unavailable": unavailable, "status": "PASS" if not missing and not unavailable else "FAIL"}
 
 
 def pose_reward_target_for_stem(records_by_stem: Mapping[str, Mapping[str, Any]], stem: str) -> Mapping[str, Any] | None:
