@@ -15,7 +15,7 @@ from PIL import Image, ImageDraw
 from pose_controlnet.dataset_index import DatasetIndex, ManifestRecord
 from pose_controlnet.paired_preprocessing import preprocess_pair
 from pose_controlnet.pose_critic import (crop_to_critic, load_official_rtmpose, pose_loss,
-    sidecar_person_target, simcc_statistics)
+    sidecar_person_target, simcc_argmax_decode, simcc_statistics)
 from pose_controlnet.pose_targets import load_sidecar
 
 SOURCES = ("coco", "humanart_painting", "humanart_real_human", "humanart_sculpture")
@@ -31,7 +31,7 @@ def main():
     a.output_dir.mkdir(parents=True, exist_ok=True); _, rows=load_sidecar(a.sidecar); idx=DatasetIndex.discover(a.dataset_root)
     selected={s:[r for r in rows if r.get("source")==s and r.get("pose_reward_available") is True][:a.per_source] for s in SOURCES}
     if any(len(v)<a.per_source for v in selected.values()): raise RuntimeError(f"Insufficient eligible records: { {k:len(v) for k,v in selected.items()} }")
-    critic=load_official_rtmpose(a.config,a.weights,a.device); metrics=defaultdict(lambda: defaultdict(list)); contact=[]
+    critic=load_official_rtmpose(a.config,a.weights,a.device); metrics={source: defaultdict(list) for source in SOURCES}; contact=[]
     for source, records in selected.items():
       for n,row in enumerate(records):
         rgb,control=idx.resolve(row["stem"]+".jpg"); pair=preprocess_pair(ManifestRecord("audit",row["stem"],row["stem"]+".jpg","audit",rgb,control))
@@ -39,19 +39,36 @@ def main():
         for person in row["people"]:
           crop, target, valid=sidecar_person_target(person); valid=valid.to(a.device); target=target.to(a.device)
           logits_x,logits_y=critic(crop_to_critic(x,crop,critic.spec)); stats=simcc_statistics(logits_x,logits_y,critic.spec)
-          predicted=stats["coords"][0]; err=(predicted-target).square().sum(-1).sqrt(); diag=float((person["bbox_training_xywh"][2]**2+person["bbox_training_xywh"][3]**2)**.5)
+          predicted=stats["coords"][0]
+          argmax_predicted=simcc_argmax_decode(logits_x,logits_y,critic.spec)[0]
+          soft_err=(predicted-target).square().sum(-1).sqrt()
+          argmax_err=(argmax_predicted-target).square().sum(-1).sqrt()
+          diag=float((person["bbox_training_xywh"][2]**2+person["bbox_training_xywh"][3]**2)**.5)
           if valid.any():
-            metrics[source]["error_over_diag"].extend((err[valid]/diag).detach().cpu().tolist()); metrics[source]["confidence"].extend(stats["confidence"][0,valid].detach().cpu().tolist()); metrics[source]["entropy"].extend(stats["entropy"][0,valid].detach().cpu().tolist())
-            for kind in ("expectation_huber","gaussian_cross_entropy"): metrics[source][kind].append(float(pose_loss(logits_x,logits_y,target[None],valid[None],kind=kind, spec=critic.spec).detach()))
-            per_losses.append(pose_loss(logits_x,logits_y,target[None],valid[None],kind="gaussian_cross_entropy",spec=critic.spec))
+            metrics[source]["soft_expectation_error_over_diag"].extend((soft_err[valid]/diag).detach().cpu().tolist())
+            metrics[source]["argmax_error_over_diag"].extend((argmax_err[valid]/diag).detach().cpu().tolist())
+            metrics[source]["beta_softmax_confidence"].extend(stats["beta_softmax_confidence"][0,valid].detach().cpu().tolist())
+            metrics[source]["entropy"].extend(stats["entropy"][0,valid].detach().cpu().tolist())
+            for kind in ("expectation_huber","official_simcc_kl"): metrics[source][kind].append(float(pose_loss(logits_x,logits_y,target[None],valid[None],kind=kind, spec=critic.spec).detach()))
+            per_losses.append(pose_loss(logits_x,logits_y,target[None],valid[None],kind="official_simcc_kl",spec=critic.spec))
         if n==0 and per_losses:
           torch.stack(per_losses).mean().backward(); metrics[source]["image_gradient_norm"].append(float(x.grad.norm().detach()))
           if not torch.isfinite(x.grad).all() or not x.grad.norm()>0: raise FloatingPointError(f"{source}: invalid image gradient")
+          if not all(param.grad is None for param in critic.parameters()):
+            raise AssertionError(f"{source}: frozen critic parameter received a gradient")
         if len(contact)<64:
           im=pair.rgb.copy(); d=ImageDraw.Draw(im)
           for person in row["people"]: d.rectangle(tuple(person["bbox_training_xywh"][:2])+tuple(np.add(person["bbox_training_xywh"][:2],person["bbox_training_xywh"][2:])), outline="red", width=3)
           contact.append(im.resize((192,192)))
     sheet=Image.new("RGB",(8*192,8*192)); [sheet.paste(im,((i%8)*192,(i//8)*192)) for i,im in enumerate(contact)]; sheet.save(a.output_dir/"real_image_contact_sheet.jpg")
-    summary={s:{k:float(np.mean(v)) if v else None for k,v in d.items()} | {"joint_count":len(d["error_over_diag"]),"pck_005":float(np.mean(np.array(d["error_over_diag"])<=.05)),"pck_010":float(np.mean(np.array(d["error_over_diag"])<=.10))} for s,d in metrics.items()}
+    def mean_or_none(values): return float(np.mean(values)) if values else None
+    def pck_or_none(values, threshold): return float(np.mean(np.asarray(values)<=threshold)) if values else None
+    summary={s:{k:mean_or_none(v) for k,v in d.items()} | {
+        "joint_count":len(d["soft_expectation_error_over_diag"]),
+        "soft_expectation_pck_005":pck_or_none(d["soft_expectation_error_over_diag"], .05),
+        "soft_expectation_pck_010":pck_or_none(d["soft_expectation_error_over_diag"], .10),
+        "argmax_pck_005":pck_or_none(d["argmax_error_over_diag"], .05),
+        "argmax_pck_010":pck_or_none(d["argmax_error_over_diag"], .10),
+    } for s,d in metrics.items()}
     (a.output_dir/"real_image_audit.json").write_text(json.dumps(summary,indent=2)); print(json.dumps(summary,indent=2))
 if __name__=="__main__": main()

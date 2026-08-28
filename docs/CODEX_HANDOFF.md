@@ -87,11 +87,19 @@ provenance/reconstruction milestone is complete and must remain unchanged.
 - Fixed crop uses sidecar-v3 `bbox_training_xywh`, MMPose validation padding
   1.25/aspect correction, differentiable bilinear `grid_sample`, and jointly
   masks provenance-invalid plus SimCC-OOB joints. Candidate losses are
-  soft-expectation Huber and Gaussian-SimCC cross entropy.
+  beta-softmax expectation Huber and `official_simcc_kl`.
+- Phase-2 audit correction complete: `CriticSpec` now carries official
+  `beta=10`/`label_beta=10`; differentiable expectations, entropy, and
+  confidence use beta-softmax probabilities; raw SimCC Gaussian labels remain
+  non-normalized before label softmax; and `official_simcc_kl` matches the
+  verified KLDiscretLoss formula while averaging only valid joints. Detached
+  raw argmax decoding is metric-only. The real-image gradient check uses only
+  `official_simcc_kl` and fails if any frozen critic parameter has a gradient.
 - Added `scripts/audit_pose_critic.py` for deterministic real RGB 16/source
-  metrics, contact sheet, raw confidence/entropy, both losses, and image
-  gradient checks. It writes only to a supplied external directory. Added CPU
-  toy tests and `docs/POSE_CRITIC_AUDIT.md`.
+  metrics, contact sheet, beta-softmax confidence/entropy, separate soft
+  expectation and detached raw-argmax PCK/error metrics, both losses, and
+  image-gradient checks. It writes only to a supplied external directory.
+  Added CPU toy tests and `docs/POSE_CRITIC_AUDIT.md`.
 
 ## Current Phase 2 blockers
 
@@ -106,6 +114,10 @@ provenance/reconstruction milestone is complete and must remain unchanged.
 
 ## Phase 2 commands/tests
 
-- PASS: `uv run python -m unittest tests.test_pose_critic` (5 tests).
-- PASS: `uv run python -m py_compile pose_controlnet/pose_critic.py scripts/audit_pose_critic.py`.
-- Rerun `git diff --check` and `git status --short` before review.
+- PASS: `PYTHONPATH=. python -m unittest tests.test_pose_critic` (9 tests).
+- PASS: `python -m py_compile pose_controlnet/pose_critic.py scripts/audit_pose_critic.py tests/test_pose_critic.py`.
+- PASS: `git diff --check` after the audit correction.
+- Current changed files: `pose_controlnet/pose_critic.py`,
+  `scripts/audit_pose_critic.py`, `tests/test_pose_critic.py`,
+  `docs/POSE_CRITIC_AUDIT.md`, and this handoff. Untracked `.venv-rtmpose/`
+  pre-existed and was not modified.

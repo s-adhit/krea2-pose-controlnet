@@ -2,7 +2,8 @@
 
 This module is intentionally not imported by ``train.py``.  It keeps people
 fixed to sidecar-v3 boxes and exposes raw body-17 SimCC logits; it never calls
-an MMPose inferencer, detector, NMS, argmax, or renderer.
+an MMPose inferencer, detector, NMS, or renderer. The one raw SimCC maximum
+decoder below is detached and strictly for audit metrics.
 """
 from __future__ import annotations
 
@@ -24,6 +25,8 @@ class CriticSpec:
     input_size: tuple[int, int] = (192, 256)  # official config: (W, H)
     split_ratio: float = 2.0
     sigma: tuple[float, float] = (4.9, 5.66)  # SimCC-bin units
+    beta: float = 10.0  # official KLDiscretLoss prediction logit scale
+    label_beta: float = 10.0  # official KLDiscretLoss label logit scale
     bbox_padding: float = 1.25
     mean: tuple[float, float, float] = (123.675, 116.28, 103.53)
     std: tuple[float, float, float] = (58.395, 57.12, 57.375)
@@ -94,21 +97,49 @@ def sidecar_person_target(person: Mapping[str, Any], spec: CriticSpec = CriticSp
 
 
 def simcc_gaussian_targets(coords: torch.Tensor, valid: torch.Tensor, spec: CriticSpec = CriticSpec()) -> tuple[torch.Tensor, torch.Tensor]:
-    """Official Gaussian SimCC labels, normalized only for probability losses."""
+    """Return official ``normalize=False`` raw Gaussian SimCC label vectors.
+
+    ``valid`` is kept in the signature to make target construction and loss
+    call sites explicit; invalid joints are masked by :func:`pose_loss`, not
+    altered here. These vectors are deliberately not normalized before the
+    KLDiscretLoss-style label softmax.
+    """
     if coords.shape[-2:] != (17, 2): raise ValueError("coords must be ...x17x2")
     lx, ly = spec.vector_lengths; bins_x = torch.arange(lx, device=coords.device, dtype=coords.dtype); bins_y = torch.arange(ly, device=coords.device, dtype=coords.dtype)
     mu = torch.round(coords * spec.split_ratio)
     tx = torch.exp(-((bins_x - mu[..., 0, None]) ** 2) / (2 * spec.sigma[0] ** 2))
     ty = torch.exp(-((bins_y - mu[..., 1, None]) ** 2) / (2 * spec.sigma[1] ** 2))
-    return tx / tx.sum(-1, keepdim=True).clamp_min(1e-12), ty / ty.sum(-1, keepdim=True).clamp_min(1e-12)
+    return tx, ty
 
 
 def simcc_statistics(logits_x: torch.Tensor, logits_y: torch.Tensor, spec: CriticSpec = CriticSpec()) -> dict[str, torch.Tensor]:
-    px, py = logits_x.float().softmax(-1), logits_y.float().softmax(-1)
+    """Differentiable beta-softmax expectation statistics for audit use."""
+    px = (logits_x.float() * spec.beta).softmax(-1)
+    py = (logits_y.float() * spec.beta).softmax(-1)
     bx = torch.arange(px.shape[-1], device=px.device, dtype=px.dtype); by = torch.arange(py.shape[-1], device=py.device, dtype=py.dtype)
     coords = torch.stack(((px * bx).sum(-1) / spec.split_ratio, (py * by).sum(-1) / spec.split_ratio), -1)
     entropy = -(px * px.clamp_min(1e-12).log()).sum(-1) - (py * py.clamp_min(1e-12).log()).sum(-1)
-    return {"coords": coords, "confidence": px.max(-1).values * py.max(-1).values, "entropy": entropy}
+    x_peak, y_peak = px.max(-1).values, py.max(-1).values
+    return {
+        "coords": coords,
+        "entropy": entropy,
+        "x_beta_softmax_peak_probability": x_peak,
+        "y_beta_softmax_peak_probability": y_peak,
+        "beta_softmax_confidence": x_peak * y_peak,
+    }
+
+
+def simcc_argmax_decode(logits_x: torch.Tensor, logits_y: torch.Tensor, spec: CriticSpec = CriticSpec()) -> torch.Tensor:
+    """Official-style raw SimCC maximum decode, detached and audit-only.
+
+    This mirrors ``SimCCLabel.decode`` with ``use_dark=False``: maximize raw
+    x/y vectors independently, then divide SimCC-bin positions by split ratio.
+    It must never be used in a loss or other gradient-bearing path.
+    """
+    return torch.stack((
+        logits_x.detach().argmax(dim=-1).to(torch.float32) / spec.split_ratio,
+        logits_y.detach().argmax(dim=-1).to(torch.float32) / spec.split_ratio,
+    ), dim=-1)
 
 
 def pose_loss(logits_x: torch.Tensor, logits_y: torch.Tensor, coords: torch.Tensor, valid: torch.Tensor, *, kind: str, spec: CriticSpec = CriticSpec()) -> torch.Tensor:
@@ -117,9 +148,16 @@ def pose_loss(logits_x: torch.Tensor, logits_y: torch.Tensor, coords: torch.Tens
     stat = simcc_statistics(logits_x, logits_y, spec)
     if kind == "expectation_huber":
         per = F.huber_loss(stat["coords"], coords, reduction="none", delta=4.0).mean(-1)
-    elif kind == "gaussian_cross_entropy":
+    elif kind == "official_simcc_kl":
         tx, ty = simcc_gaussian_targets(coords, valid, spec)
-        per = -(tx * logits_x.float().log_softmax(-1)).sum(-1) - (ty * logits_y.float().log_softmax(-1)).sum(-1)
+        log_px = F.log_softmax(logits_x.float() * spec.beta, dim=-1)
+        log_py = F.log_softmax(logits_y.float() * spec.beta, dim=-1)
+        target_px = F.softmax(tx.float() * spec.label_beta, dim=-1)
+        target_py = F.softmax(ty.float() * spec.label_beta, dim=-1)
+        per = (
+            F.kl_div(log_px, target_px, reduction="none").mean(dim=-1)
+            + F.kl_div(log_py, target_py, reduction="none").mean(dim=-1)
+        )
     else: raise ValueError(f"Unknown audit loss {kind!r}")
     return per.masked_select(valid).mean()
 

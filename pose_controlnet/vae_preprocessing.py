@@ -97,7 +97,43 @@ def normalize_qwen_latents(latents: torch.Tensor, vae: _VAE) -> torch.Tensor:
 
 @torch.inference_mode()
 def decode_normalized_latents(vae: _VAE, latents: torch.Tensor) -> torch.Tensor:
-    """Invert this project's Qwen latent normalization and decode one-frame images."""
+    """Inference-only wrapper around the project's normalized Qwen VAE decode."""
+    return _decode_normalized_latents(vae, latents)
+
+
+def decode_normalized_latents_autograd(vae: _VAE, latents: torch.Tensor) -> torch.Tensor:
+    """Decode normalized image latents while preserving their autograd graph.
+
+    This is intentionally narrow: production evaluation continues to use the
+    inference-mode wrapper above, while audit code can prove gradients through
+    the exact same denormalize/decode convention.  The VAE must be frozen so
+    the graph terminates at ``latents``, not at VAE parameters.
+    """
+    parameters = getattr(vae, "parameters", None)
+    if callable(parameters) and any(parameter.requires_grad for parameter in parameters()):
+        raise VAEPreprocessingError("Autograd VAE decode requires frozen VAE parameters")
+    decoded = _decode_normalized_latents(vae, latents)
+    if latents.requires_grad and (not decoded.requires_grad or decoded.grad_fn is None):
+        raise VAEPreprocessingError("Autograd VAE decode detached the latent graph")
+    return decoded
+
+
+def qwen_decoded_to_unit_rgb(decoded: torch.Tensor) -> torch.Tensor:
+    """Map Qwen VAE output to the [0, 1] RGB convention used by the critic.
+
+    This is the tensor equivalent of project evaluation's
+    ``(pixels.clamp(-1, 1) * 0.5 + 0.5)`` conversion.  It deliberately keeps
+    clamp and scaling in the graph for the VAE/critic audit.
+    """
+    if decoded.ndim != 4 or decoded.shape[1] != 3:
+        raise VAEPreprocessingError(f"Decoded image must be B×3×H×W, got {tuple(decoded.shape)}")
+    if not torch.isfinite(decoded).all():
+        raise VAEPreprocessingError("Qwen VAE decoded image contains NaN or Inf")
+    return decoded.clamp(-1.0, 1.0).mul(0.5).add(0.5)
+
+
+def _decode_normalized_latents(vae: _VAE, latents: torch.Tensor) -> torch.Tensor:
+    """Shared implementation for inference and gradient-preserving decode."""
     if latents.ndim != 4 or latents.shape[1] != getattr(vae.config, "z_dim", None):
         raise VAEPreprocessingError(f"Normalized image latents must be B×C×H×W, got {tuple(latents.shape)}")
     mean, std = _latent_statistics(vae, latents.device, latents.dtype)

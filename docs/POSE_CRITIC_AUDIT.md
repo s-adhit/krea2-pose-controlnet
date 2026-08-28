@@ -27,9 +27,18 @@ same affine maps sidecar COCO-17 coordinates into crop coordinates. A joint is
 eligible only when sidecar reward provenance says so and its SimCC coordinate
 lies in `[0, vector_length)`; source/final-frame OOB joints are excluded.
 
-The audit candidates are (1) softmax-expectation Huber coordinate loss and
-(2) cross entropy against the config-faithful Gaussian SimCC target. Neither
-uses argmax.
+The audit candidates are (1) beta-softmax-expectation Huber coordinate loss
+and (2) `official_simcc_kl`, which matches the configured
+`KLDiscretLoss(beta=10, label_softmax=True, label_beta=10)` semantics. The
+SimCCLabel target is the raw, non-normalized Gaussian required by
+`normalize=False`; label softmax happens inside the KL candidate. Statistics
+use beta-softmax probabilities, so confidence is the product of the x/y
+beta-softmax peak probabilities and entropy is computed from those same
+probabilities.
+
+For audit comparison only, the report also decodes raw SimCC x/y maxima and
+divides by the split ratio, matching official `use_dark=False` decoding. Those
+coordinates are detached and never enter a loss or image-gradient path.
 
 ## Required host dependency check
 
@@ -48,9 +57,12 @@ uv run python scripts/audit_pose_critic.py --sidecar /tmp/pose_targets_v3_author
 ```
 
 The script deterministically takes the first 16 eligible sidecar rows in each
-of COCO, Human-Art painting, real-human, and sculpture; reports normalized
-coordinate error, PCK-like .05/.10 rates, raw confidence/entropy, both losses,
-and one image-gradient check per source. Outputs remain under `/tmp`.
+of COCO, Human-Art painting, real-human, and sculpture. It reports separate
+soft-expectation and raw-argmax normalized error/PCK values,
+beta-softmax confidence, entropy, both differentiable candidate losses,
+image-gradient norm, and joint count. The image-gradient check uses only
+`official_simcc_kl` and asserts that every frozen critic parameter has no
+gradient. Outputs remain under `/tmp`.
 
 ## Current blocker
 
