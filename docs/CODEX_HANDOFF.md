@@ -70,6 +70,42 @@ or source data changed, and no training, commit, or push occurred.
 
 ## Exact next recommended action
 
-Review this bounded provenance/reconstruction change. No scientific blocker
-remains for this milestone; pose reward remains intentionally unimplemented
-and the broader production gates remain separate work.
+Run the Phase-2 audit-only critic gates in the verified GH200 shell. The
+provenance/reconstruction milestone is complete and must remain unchanged.
+
+## Phase 2 audit-only implementation status
+
+- Added `pose_controlnet/pose_critic.py`, which is deliberately not imported
+  by `train.py`. It freezes/evals a critic and calls its raw top-down
+  `extract_feat`/`head.forward` path directly: no detector, NMS, inferencer,
+  argmax, Keypoint R-CNN, DWPose, or control raster input.
+- Candidate provenance: official MMPose v1.3.2 RTMPose-M COCO-WholeBody
+  `rtmpose-m_8xb64-270e_coco-wholebody-256x192`; config `(W,H)=(192,256)`,
+  split ratio `2`, raw SimCC vectors `(384,512)`, Gaussian sigma `(4.9,5.66)`.
+  Only output indices 0--16 are used; renderer neck/hands/face/foot-extra are
+  excluded.
+- Fixed crop uses sidecar-v3 `bbox_training_xywh`, MMPose validation padding
+  1.25/aspect correction, differentiable bilinear `grid_sample`, and jointly
+  masks provenance-invalid plus SimCC-OOB joints. Candidate losses are
+  soft-expectation Huber and Gaussian-SimCC cross entropy.
+- Added `scripts/audit_pose_critic.py` for deterministic real RGB 16/source
+  metrics, contact sheet, raw confidence/entropy, both losses, and image
+  gradient checks. It writes only to a supplied external directory. Added CPU
+  toy tests and `docs/POSE_CRITIC_AUDIT.md`.
+
+## Current Phase 2 blockers
+
+- Sandbox facts: Python 3.10.12, torch 2.7.0/CUDA 12.8, torchvision 0.22.0,
+  diffusers 0.40.0; mmengine/mmcv/mmpose absent; no CUDA visible. This does
+  not override host-verified GH200 facts.
+- No RTMPose assets are cached. `uv add mmengine==0.10.7 mmcv-lite==2.1.0
+  mmpose==1.3.2` and direct GitHub clone both failed before mutation due DNS.
+  No SHA was obtained or fabricated. On the networked GH200 host use the
+  documented pure-Python official stack, also `mmdet==3.3.0`, stage config and
+  weight, record `sha256sum`, then run real-image gate before VAE/x0-hat.
+
+## Phase 2 commands/tests
+
+- PASS: `uv run python -m unittest tests.test_pose_critic` (5 tests).
+- PASS: `uv run python -m py_compile pose_controlnet/pose_critic.py scripts/audit_pose_critic.py`.
+- Rerun `git diff --check` and `git status --short` before review.
