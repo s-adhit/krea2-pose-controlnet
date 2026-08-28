@@ -9,7 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pose_controlnet.pose_targets import (
-    PoseTargetError, diagnostic_coverage, load_authoritative_export, source_for_stem,
+    PoseTargetError, authoritative_source_oob_report, diagnostic_coverage,
+    load_authoritative_export, source_for_stem,
 )
 
 
@@ -46,6 +47,7 @@ def main() -> None:
         diagnostic = diagnostic_coverage(diagnostic_records)
         diagnostic["danbooru_stems"] = sorted(stem for stem in diagnostic_stems if source_for_stem(stem) == "danbooru")
         diagnostic["danbooru_available"] = [stem for stem in diagnostic["danbooru_stems"] if stem in export]
+        source_oob = authoritative_source_oob_report(export, active_stems=active)
         for name, row in sources.items():
             row["pose_reward_available"] = name != "danbooru"
             row["target_provenance"] = "original_annotation" if name != "danbooru" else "unavailable"
@@ -56,9 +58,10 @@ def main() -> None:
             "sources": sources, "authoritative_export": export_metadata,
             "inactive_authoritative_records": len(set(export) - active),
             "unresolved_active_stems": missing, "unexpected_active_danbooru_records": unexpected_danbooru,
+            "source_oob_contract": source_oob,
             "diagnostic_coverage": diagnostic,
-            "blocking_available_sources": ["authoritative_export"] if missing or unexpected_danbooru or diagnostic["status"] != "PASS" or diagnostic["danbooru_available"] else [],
-            "status": "PASS" if not missing and not unexpected_danbooru and diagnostic["status"] == "PASS" and not diagnostic["danbooru_available"] else "FAIL",
+            "blocking_available_sources": ["authoritative_export"] if missing or unexpected_danbooru or diagnostic["status"] != "PASS" or diagnostic["danbooru_available"] or source_oob["status"] != "PASS" else [],
+            "status": "PASS" if not missing and not unexpected_danbooru and diagnostic["status"] == "PASS" and not diagnostic["danbooru_available"] and source_oob["status"] == "PASS" else "FAIL",
         }
         print(json.dumps(report, indent=2, sort_keys=True))
         if report["status"] != "PASS":

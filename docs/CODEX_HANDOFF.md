@@ -2,81 +2,74 @@
 
 ## Current objective and status
 
-Authoritative-v1 -> sidecar-v3 integration remains correctly blocked. A
-read-only forensic audit verified the seven invalid Human-Art keypoints and
-the apparent final-frame reconstruction failure. No training, dataset or
-manifest mutation, coordinate clipping, pose-reward implementation, commit,
-or push occurred.
+Authoritative-v1 -> sidecar-v3 provenance semantics are implemented and
+verified. The exact seven original Human-Art visible source-out-of-bounds
+joints are faithfully preserved for historical reconstruction and masked from
+future pose-reward use. No pose reward was implemented, no targets/manifests
+or source data changed, and no training, commit, or push occurred.
 
 ## Current decisions
 
-- `data/pose_targets_authoritative_v1.jsonl` is the only numerical COCO and
-  Human-Art source; no original annotation parsing, DWPose, or control-raster
-  target extraction is used.
-- Sidecar schema is now v3. Active COCO/Human-Art are available only with an
-  exact authoritative row; Danbooru remains explicit flow-only unavailable.
-- Source points use persisted shard geometry. Visible points beyond declared
-  source bounds fail closed; do not relax this validation or silently repair
-  / clamp source annotations. Exact far-edge coordinates are accepted then
-  clipped only in the final frame.
-- Reconstruction uses historical body-only unified-18 semantics: renderer-only
-  neck, OpenPose rainbow limbs, thickness 3, white radius-4 endpoints.
+- `data/pose_targets_authoritative_v1.jsonl` remains the sole numerical source
+  for active COCO/Human-Art targets. Danbooru remains explicit flow-only
+  `pose_reward_available=false`.
+- Sidecar schema remains v3. Every available joint now has raw source point,
+  visibility/confidence, source-in-bounds, unclipped training coordinate,
+  final-frame status, reward validity, and invalid reason in
+  `joint_provenance`.
+- `humanart_original_source_oob_v1` pins exactly seven known original-annotation
+  defects (stem, annotation ID, joint, raw coordinate, and source dimensions).
+  It fails the active dataset audit/build for unexpected, missing, or altered
+  visible source-OOB events. The seven are reward-masked with
+  `source_coordinate_out_of_bounds`, never clamped or repaired.
+- Reconstruction explicitly consumes `keypoints_source` in the raw source
+  frame, then applies exact persisted PIL resize/crop. Reward provenance is a
+  separate consumer. Direct fixed-stroke final-frame rerender remains
+  diagnostic only.
+- Primary reconstruction gate: threshold-10 foreground IoU >= 0.63,
+  symmetric foreground mean distance <= 2.75 px, p95 <= 3 px. These are
+  calibrated from the deterministic 16-per-available-source baseline:
+  IoU 0.6380–0.8321, mean distance 0.0917–2.6909 px, p95 1–3 px.
 
-## Verified findings
+## Verified results
 
-- Active coverage by source: COCO 3,893; Danbooru 2,255; Human-Art painting
-  6,423; real_human 3,257; sculpture 1,588; total 17,416.
-- Exact join check before coordinate validation: all 15,161 active
-  COCO/Human-Art stems exist exactly once; 79 Human-Art export rows are
-  intentionally inactive; no active Danbooru rows are exported.
-- All 21 required annotated diagnostic stems are in the export. Diagnostic
-  Danbooru stems `danbooru_anime_11903560`, `danbooru_anime_11910154`, and
-  `danbooru_anime_11917323` are absent as required.
-- Active shard and physical RGB/control dimensions exactly match the two
-  authoritative rows: painting 1024x589 and sculpture 4128x3096. This is not
-  a wrong-dimension/provenance issue.
-- `painting_humanart_2000000000804`, annotation `2000000007651`, has five
-  visible bottom overshoots: wrist 33.4527 px (5.680% height), knees 246.9159
-  / 259.2689 px (41.921% / 44.018%), ankles 606.8460 / 551.7945 px (103.030%
-  / 93.683%). These are major annotation-coordinate inconsistencies.
-- `sculpture_humanart_14000000001208`, annotation `14000000088574`, has two
-  visible bottom overshoots: ankles 81.6055 / 68.4104 px (2.636% / 2.210%
-  height). They are material annotation-edge overshoots, not rounding noise;
-  strict failure remains appropriate. Both supplied bboxes stay in canvas.
-- The requested six reconstruction samples all have source-resolution stored
-  controls. At threshold 10, direct final-frame vector re-render IoU is
-  0.235–0.665, but actual-control vs vector-source-skeleton passed through the
-  exact same PIL preprocessing is 0.674–0.769, with symmetric mean foreground
-  distance 0.177–0.303 px and p95 1–2 px. Geometry is consistent.
-- Low direct final-frame IoU is a raster-scale comparison error: historical
-  3-px source strokes/endpoints are enlarged by LANCZOS, while the vector
-  final-frame audit redraws at a fixed 3 px. Report multi-threshold IoU plus
-  symmetric distance-transform foreground distance; strict binary IoU alone
-  is inadequate after resampling.
-- `docs/POSE_TARGET_SIDECAR.md` lines 57–176 are stale legacy v2 material:
-  source specification, raw COCO `person_keypoints` JSON, Human-Art adapter
-  JSONL, and v2 commands. Do not rewrite it until explicitly asked.
+- Source audit PASS: 17,416 active samples; 15,161 available and 2,255
+  unavailable (all Danbooru). Diagnostic annotations PASS 21/21; the three
+  diagnostic Danbooru stems are all unavailable.
+- OOB policy PASS: exactly 7 visible source-OOB joints, exactly two affected
+  stems, 0 unexpected, 0 missing reviewed, 0 altered reviewed.
+  `painting_humanart_2000000000804` / `2000000007651`: left wrist, left/right
+  knee, left/right ankle. `sculpture_humanart_14000000001208` /
+  `14000000088574`: left/right ankle.
+- New sidecar PASS: `/tmp/pose_targets_v3_authoritative_20260828`, 17,416
+  records, SHA-256 `c98f76284179c781f5a14791d66e29dcf5b526168ca79922a40b70af972e444c`.
+  It contains 444,235 valid reward joints and 7 source-OOB-masked joints.
+- Full reconstruction audit PASS (64 records; 16 per available source):
+  `/tmp/pose_target_reconstruction_v3_calibrated_20260828`.
+  Mean IoU@10 / mean symmetric distance / max p95: COCO 0.70049 / 0.62002 /
+  2.82843; Human-Art painting 0.73069 / 0.33715 / 3.0; real-human 0.71121 /
+  0.30531 / 3.0; sculpture 0.75932 / 0.16807 / 2.0.
 
 ## Files changed this session
 
-- `scripts/diagnose_pose_geometry.py` — reusable read-only diagnostic; writes
-  reports/contact sheets only to an explicitly supplied new output directory.
+- `pose_controlnet/pose_targets.py`
+- `pose_controlnet/control_reconstruction.py`
+- `scripts/audit_pose_target_sources.py`
+- `scripts/audit_control_reconstruction.py`
+- `tests/test_pose_targets.py`
+- `docs/POSE_TARGET_SIDECAR.md`
 - `docs/CODEX_HANDOFF.md`
 
 ## Commands/tests
 
-- PASS: `python -m py_compile scripts/diagnose_pose_geometry.py`
-- PASS: diagnostic run for all six requested samples in five bounded output
-  runs; JSON reports and six contact sheets under `/tmp/pose_geometry_*_20260828`.
-- PASS: direct physical-image inspection confirms RGB/control dimensions for
-  both invalid stems match authoritative and shard dimensions.
-- EXPECTED FAIL: `scripts/audit_pose_target_sources.py --authoritative-jsonl`
-  rejects the first invalid visible source coordinate (painting annotation
-  `2000000007651`, joint 9), confirming strict validation remains active.
+- PASS: `uv run python -m unittest tests.test_pose_targets tests.test_reference_pose` (27 tests).
+- PASS: `python scripts/audit_pose_target_sources.py --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf --authoritative-jsonl data/pose_targets_authoritative_v1.jsonl`.
+- PASS: `python scripts/build_pose_target_sidecar.py --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents --authoritative-jsonl data/pose_targets_authoritative_v1.jsonl --output /tmp/pose_targets_v3_authoritative_20260828`.
+- PASS: `python scripts/audit_control_reconstruction.py --sidecar /tmp/pose_targets_v3_authoritative_20260828 --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf --output-dir /tmp/pose_target_reconstruction_v3_calibrated_20260828 --per-source 16`.
+- PASS: `git diff --check` before final handoff update; rerun it before review.
 
-## Exact next action
+## Exact next recommended action
 
-Correct and version the authoritative export's seven visible Human-Art
-coordinates with upstream evidence, then rerun the authoritative provenance
-audit, v3 sidecar build, and reconstruction audit using geometry-aware raster
-metrics. Do not implement or enable pose reward until they pass.
+Review this bounded provenance/reconstruction change. No scientific blocker
+remains for this milestone; pose reward remains intentionally unimplemented
+and the broader production gates remain separate work.

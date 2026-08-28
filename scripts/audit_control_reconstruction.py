@@ -9,7 +9,10 @@ from pathlib import Path
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pose_controlnet.control_reconstruction import compare_control, select_reconstruction_records, summarize_reconstruction
+from pose_controlnet.control_reconstruction import (
+    PRIMARY_RECONSTRUCTION_CRITERIA, compare_control, select_reconstruction_records,
+    summarize_reconstruction,
+)
 from pose_controlnet.dataset_index import DatasetIndex
 from pose_controlnet.pose_targets import coverage_summary, load_sidecar
 
@@ -20,8 +23,14 @@ def main() -> None:
     parser.add_argument("--dataset-root", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--per-source", type=int, default=16)
-    parser.add_argument("--min-foreground-iou", type=float, default=0.995)
-    parser.add_argument("--max-mae", type=float, default=0.25)
+    parser.add_argument("--min-foreground-iou-at-10", type=float, default=PRIMARY_RECONSTRUCTION_CRITERIA["min_foreground_iou_at_10"],
+                        help="Primary source-rerendered foreground IoU floor at RGB threshold 10.")
+    parser.add_argument("--max-symmetric-mean-distance", type=float, default=PRIMARY_RECONSTRUCTION_CRITERIA["max_symmetric_mean_distance"],
+                        help="Primary symmetric foreground distance-transform mean ceiling in final-frame pixels.")
+    parser.add_argument("--max-p95-foreground-distance", type=float, default=PRIMARY_RECONSTRUCTION_CRITERIA["max_p95_foreground_distance"],
+                        help="Primary symmetric foreground distance-transform p95 ceiling in final-frame pixels.")
+    parser.add_argument("--max-mae", type=float, default=None,
+                        help="Optional diagnostic raster MAE ceiling; not required for the geometric gate.")
     args = parser.parse_args()
     if args.per_source < 1:
         parser.error("--per-source must be positive")
@@ -35,7 +44,11 @@ def main() -> None:
             metrics["source"] = source; rows.append(metrics)
             panels.extend([expected, reconstructed, difference])
     _contact_sheet(panels, args.output_dir / "contact_sheet.png")
-    summary = summarize_reconstruction(rows, min_foreground_iou=args.min_foreground_iou, max_mae=args.max_mae)
+    summary = summarize_reconstruction(
+        rows, min_foreground_iou=args.min_foreground_iou_at_10,
+        max_symmetric_mean_distance=args.max_symmetric_mean_distance,
+        max_p95_foreground_distance=args.max_p95_foreground_distance, max_mae=args.max_mae,
+    )
     summary["coverage"] = coverage_summary(records)
     (args.output_dir / "mismatches.json").write_text(json.dumps({"samples": rows, **summary}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({"output_dir": str(args.output_dir), **summary}, indent=2, sort_keys=True))

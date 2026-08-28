@@ -7,7 +7,7 @@ from pathlib import Path
 import pose_controlnet.pose_targets as pose_targets
 from pose_controlnet.pose_targets import (
     PoseTargetError, build_authoritative_sidecar_records, build_sidecar_records,
-    common_body_mapping, coverage_summary, diagnostic_coverage, load_authoritative_export, load_sidecar,
+    authoritative_source_oob_report, common_body_mapping, coverage_summary, diagnostic_coverage, load_authoritative_export, load_sidecar,
     pose_reward_target_for_stem, transform_person, write_sidecar,
 )
 from pose_controlnet.control_reconstruction import BODY_COLORS, BODY_LIMBS, compare_control, render_record, select_reconstruction_records, summarize_reconstruction
@@ -36,6 +36,17 @@ class PoseTargetGeometryTest(unittest.TestCase):
         self.assertFalse(result["keypoints_training_in_frame"][0])
         self.assertFalse(result["reward_visible_mask"][0])
         self.assertEqual(result["bbox_training_xywh"], [0.0, 3.0, 7.0, 6.0])
+
+    def test_source_oob_joint_preserves_raw_values_and_is_reward_masked(self):
+        result = transform_person(self.person(11, 4), source_size=(10, 10), resized_size=(20, 20), crop_box=(0, 0, 20, 20), bucket=(20, 20))
+        joint = result["joint_provenance"][0]
+        self.assertEqual(result["keypoints_source"][0], [11.0, 4.0, 2.0])
+        self.assertEqual(joint["source_coordinate"], [11.0, 4.0])
+        self.assertFalse(joint["source_in_bounds"])
+        self.assertEqual(joint["training_coordinate"], [22.0, 8.0])
+        self.assertFalse(joint["final_in_frame"])
+        self.assertFalse(joint["reward_joint_valid"])
+        self.assertEqual(joint["reward_invalid_reason"], "source_coordinate_out_of_bounds")
 
     def test_multiple_people_remain_distinct(self):
         first = transform_person(self.person(3, 3), source_size=(10, 10), resized_size=(10, 10), crop_box=(0, 0, 10, 10), bucket=(10, 10))
@@ -165,8 +176,10 @@ class PoseTargetSidecarTest(unittest.TestCase):
                 load_authoritative_export(path)
             row["people"][0]["keypoints_coco17"][0] = [101, 4, 2]
             path.write_text(json.dumps(row) + "\n")
-            with self.assertRaisesRegex(PoseTargetError, "outside declared source geometry"):
-                load_authoritative_export(path)
+            loaded, _ = load_authoritative_export(path)
+            self.assertEqual(loaded["coco_12_34"][0]["keypoints_source"][0], [101.0, 4.0, 2.0])
+            with self.assertRaisesRegex(PoseTargetError, "out-of-bounds contract failed"):
+                build_authoritative_sidecar_records({"coco_12_34": {"source_size": [100, 50], "resized_size": [200, 100], "crop_box": [10, 5, 190, 95], "bucket": [180, 90]}}, authoritative_jsonl=path)
             row = self.authoritative_row()
             human = self.authoritative_row("painting_humanart_7", source="humanart", people=[
                 {"annotation_id": 7, "bbox_xywh": [1, 2, 3, 4], "num_visible_keypoints": 1, "keypoints_coco17": [[5, 4, 2]] + [[0, 0, 0] for _ in range(16)]},
@@ -181,6 +194,16 @@ class PoseTargetSidecarTest(unittest.TestCase):
             self.assertFalse(by_stem["danbooru_1"]["pose_reward_available"])
             self.assertEqual(by_stem["coco_12_34"]["people"][0]["keypoints_training"][0], [0.0, 3.0, 2.0])
             self.assertEqual([person["annotation_id"] for person in by_stem["painting_humanart_7"]["people"]], [7, 8])
+
+    def test_reviewed_source_oob_contract_rejects_unexpected_active_joint(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "export.jsonl"; row = self.authoritative_row()
+            row["people"][0]["keypoints_coco17"][0] = [101, 4, 2]
+            path.write_text(json.dumps(row) + "\n")
+            export, _ = load_authoritative_export(path)
+            report = authoritative_source_oob_report(export, active_stems=export)
+            self.assertEqual(report["unexpected_count"], 1)
+            self.assertEqual(report["status"], "FAIL")
 
     def test_annotated_diagnostic_contract(self):
         records = {stem: {"pose_reward_available": True} for stem in pose_targets.AUTHORITATIVE_DIAGNOSTIC_STEMS}

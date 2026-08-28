@@ -31,6 +31,27 @@ COMMON_BODY_17 = COCO_17
 AUTHORITATIVE_EXPORT_SCHEMA_VERSION = 1
 AUTHORITATIVE_EXPORT_FORMAT = "pose_targets_authoritative_v1_jsonl"
 
+# Versioned, reviewed exception policy for defects in the *original* Human-Art
+# numerical annotations.  This is deliberately an allow-list with exact raw
+# values, rather than a geometry tolerance or a silent repair.  The affected
+# coordinates remain authoritative reconstruction inputs, but they can never
+# become pose-reward targets.  Any addition, removal, or alteration fails the
+# active-dataset build/audit until it is reviewed and this policy is revised.
+AUTHORITATIVE_SOURCE_OOB_POLICY = {
+    "policy_version": "humanart_original_source_oob_v1",
+    "scope": "active authoritative export only",
+    "rationale": "Verified original Human-Art numerical annotation defects; raw values are retained for historical raster reconstruction.",
+    "reviewed_anomalies": (
+        ("painting_humanart_2000000000804", "2000000007651", 9, 704.8835, 622.4527, 1024, 589),
+        ("painting_humanart_2000000000804", "2000000007651", 13, 579.3224, 835.9159, 1024, 589),
+        ("painting_humanart_2000000000804", "2000000007651", 14, 465.2948, 848.2689, 1024, 589),
+        ("painting_humanart_2000000000804", "2000000007651", 15, 810.484, 1195.846, 1024, 589),
+        ("painting_humanart_2000000000804", "2000000007651", 16, 480.6118, 1140.7945, 1024, 589),
+        ("sculpture_humanart_14000000001208", "14000000088574", 15, 1982.027, 3177.6055, 4128, 3096),
+        ("sculpture_humanart_14000000001208", "14000000088574", 16, 1461.6133, 3164.4104, 4128, 3096),
+    ),
+}
+
 # This describes the actual historical PoseBridge body raster, not the reward
 # target.  In particular, the renderer-only neck is absent from COCO-17.
 POSEBRIDGE_BODY_RENDERER = {
@@ -109,10 +130,11 @@ def transform_person(
 ) -> dict[str, Any]:
     """Map points and xywh box through persisted resize/crop geometry.
 
-    `keypoints_training` is clipped to the training canvas and carries an
-    `in_frame` mask.  Its `reward_visible` mask is authoritative visibility /
-    confidence AND in-frame, so cropped-away joints cannot become targets.
-    Raw source coordinates and source visibility remain untouched.
+    `keypoints_training` remains the clipped compatibility/raster field, but
+    every joint also gets an explicit provenance object.  The latter retains
+    the raw source coordinate and its unclipped geometric training coordinate
+    so historical reconstruction and future reward code are separate,
+    auditable consumers of the same annotation.
     """
     sw, sh = _size(source_size, "source_size"); rw, rh = _size(resized_size, "resized_size")
     bw, bh = _size(bucket, "bucket"); left, top, right, bottom = _crop(crop_box)
@@ -125,18 +147,35 @@ def transform_person(
         raise PoseTargetError("crop_box dimensions must equal bucket")
     raw = _keypoints(person.get("keypoints_source"))
     sx, sy = rw / sw, rh / sh
-    training, in_frame, reward_visible = [], [], []
+    training, in_frame, reward_visible, joint_provenance = [], [], [], []
     for x, y, score in raw:
         if score < 0:
             raise PoseTargetError("Authoritative keypoint visibility/confidence must be non-negative")
         mapped_x, mapped_y = x * sx - left, y * sy - top
         present = score > 0
-        if present and not (0.0 <= x <= sw and 0.0 <= y <= sh):
-            raise PoseTargetError("Visible authoritative keypoint lies outside its source image")
-        inside = present and 0.0 <= mapped_x <= bw - 1 and 0.0 <= mapped_y <= bh - 1
+        source_in_bounds = 0.0 <= x <= sw and 0.0 <= y <= sh
+        final_in_frame = 0.0 <= mapped_x <= bw - 1 and 0.0 <= mapped_y <= bh - 1
+        if not present:
+            invalid_reason = "source_visibility_or_confidence_zero"
+        elif not source_in_bounds:
+            invalid_reason = "source_coordinate_out_of_bounds"
+        elif not final_in_frame:
+            invalid_reason = "transformed_coordinate_out_of_frame"
+        else:
+            invalid_reason = None
+        reward_valid = invalid_reason is None
         training.append([min(max(mapped_x, 0.0), bw - 1), min(max(mapped_y, 0.0), bh - 1), score])
-        in_frame.append(inside)
-        reward_visible.append(inside and present)
+        in_frame.append(final_in_frame)
+        reward_visible.append(reward_valid)
+        joint_provenance.append({
+            "source_coordinate": [x, y],
+            "source_visibility_confidence": score,
+            "source_in_bounds": source_in_bounds,
+            "training_coordinate": [mapped_x, mapped_y],
+            "final_in_frame": final_in_frame,
+            "reward_joint_valid": reward_valid,
+            "reward_invalid_reason": invalid_reason,
+        })
     bbox = person.get("bbox_xywh")
     training_box = _transform_box(bbox, sx=sx, sy=sy, left=left, top=top, width=bw, height=bh) if bbox is not None else None
     return {
@@ -144,7 +183,8 @@ def transform_person(
         "bbox_source_xywh": bbox, "keypoints_source": raw,
         "visibility_or_confidence_source": [point[2] for point in raw],
         "keypoints_training": training, "keypoints_training_in_frame": in_frame,
-        "reward_visible_mask": reward_visible, "bbox_training_xywh": training_box,
+        "reward_visible_mask": reward_visible, "joint_provenance": joint_provenance,
+        "bbox_training_xywh": training_box,
     }
 
 
@@ -235,6 +275,13 @@ def build_authoritative_sidecar_records(
     """Build v3 records from the authoritative export and persisted shard geometry."""
     export, export_metadata = load_authoritative_export(authoritative_jsonl)
     expected = Counter(source_for_stem(stem) for stem in geometry_by_stem)
+    source_oob = authoritative_source_oob_report(export, active_stems=geometry_by_stem)
+    if source_oob["status"] != "PASS":
+        raise PoseTargetError(
+            "Authoritative visible source-coordinate out-of-bounds contract failed: "
+            f"unexpected={source_oob['unexpected_count']}, missing_reviewed={source_oob['missing_reviewed_count']}, "
+            f"altered_reviewed={source_oob['altered_reviewed_count']}"
+        )
     records: list[dict[str, Any]] = []
     unresolved: list[str] = []
     for stem, geometry in sorted(geometry_by_stem.items()):
@@ -270,6 +317,18 @@ def build_authoritative_sidecar_records(
             "bbox_clip_convention": "xywh is transformed then intersected with the inclusive final pixel canvas [0,width-1] x [0,height-1]",
             "joint_schema": "coco17", "common_body_mapping": common_body_mapping("coco17"),
             "person_grouping": "original image-level people list preserved; renderer-only neck is never a target joint",
+            "consumer_semantics": {
+                "historical_reconstruction": {
+                    "keypoint_field": "keypoints_source",
+                    "coordinate_space": "raw_authoritative_source",
+                    "source_oob_behavior": "preserve raw coordinates; historical rasterization clips off-canvas geometry naturally",
+                },
+                "pose_reward": {
+                    "joint_field": "joint_provenance",
+                    "eligibility_field": "reward_joint_valid",
+                    "source_oob_behavior": "visible source-out-of-bounds joints are excluded with source_coordinate_out_of_bounds",
+                },
+            },
             "people": transformed, "renderer": dict(POSEBRIDGE_BODY_RENDERER),
             "provenance_metadata": {"authoritative_export": export_metadata, **getattr(people, "export_metadata", {})},
         })
@@ -282,6 +341,7 @@ def build_authoritative_sidecar_records(
         "expected_counts": dict(sorted(expected.items())), "records": len(records),
         "coverage": coverage_summary(records), "authoritative_export": export_metadata,
         "inactive_authoritative_records": len(set(export) - set(geometry_by_stem)),
+        "source_oob_contract": source_oob,
         "diagnostic_coverage": diagnostic,
     }
     if summary["diagnostic_coverage"]["status"] == "FAIL":
@@ -335,16 +395,6 @@ def _authoritative_export_row(row: Any, line_number: int) -> tuple[str, _Authori
         if not isinstance(annotation_id, (str, int)):
             raise PoseTargetError(f"{stem}: person {person_index} lacks original annotation_id")
         points = _keypoints(person.get("keypoints_coco17"))
-        for joint_index, (x, y, visibility) in enumerate(points):
-            # Annotation coordinates are continuous; a point exactly at the
-            # far image boundary is retained and then clipped only after the
-            # persisted resize/crop transform.  Anything beyond that is a
-            # source-coordinate/provenance mismatch, never a crop artifact.
-            if visibility > 0 and not (0.0 <= x <= source_size[0] and 0.0 <= y <= source_size[1]):
-                raise PoseTargetError(
-                    f"{stem}: person {person_index} joint {joint_index} visible keypoint "
-                    f"({x}, {y}) lies outside declared source geometry {source_size}"
-                )
         bbox = person.get("bbox_xywh")
         if bbox is not None:
             _transform_box(bbox, sx=1.0, sy=1.0, left=0, top=0, width=source_size[0], height=source_size[1])
@@ -363,6 +413,68 @@ def _authoritative_export_row(row: Any, line_number: int) -> tuple[str, _Authori
             "source_schema_version": row["schema_version"],
         },
     )
+
+
+def authoritative_source_oob_report(
+    export: Mapping[str, _AuthoritativePeople], *, active_stems: Mapping[str, Any] | Iterable[str],
+) -> dict[str, Any]:
+    """Audit visible source-OOB joints against the exact reviewed policy.
+
+    This is intentionally evaluated only for active stems.  Inactive export
+    rows are not silently certified as part of the dataset used for training.
+    """
+    active = set(active_stems)
+    events: list[dict[str, Any]] = []
+    for stem in sorted(active & set(export)):
+        people = export[stem]
+        width, height = _size(people.source_size or (), f"{stem}.source_size")
+        for person in people:
+            annotation_id = person.get("annotation_id")
+            for joint_index, (x, y, visibility) in enumerate(_keypoints(person.get("keypoints_source"))):
+                if visibility > 0 and not (0.0 <= x <= width and 0.0 <= y <= height):
+                    events.append({
+                        "stem": stem, "annotation_id": annotation_id,
+                        "joint_index": joint_index, "joint_name": COCO_17[joint_index],
+                        "raw_coordinate": [x, y], "source_size": [width, height],
+                        "overshoot": {
+                            "left": max(0.0, -x), "top": max(0.0, -y),
+                            "right": max(0.0, x - width), "bottom": max(0.0, y - height),
+                        },
+                    })
+    all_expected = {
+        (stem, annotation_id, joint_index): (x, y, width, height)
+        for stem, annotation_id, joint_index, x, y, width, height
+        in AUTHORITATIVE_SOURCE_OOB_POLICY["reviewed_anomalies"]
+    }
+    # Small fixture/partial-geometry builds remain useful in tests.  The exact
+    # reviewed-set requirement applies once the active dataset includes this
+    # versioned policy's scope; unknown OOB joints still fail in either mode.
+    contract_applicable = bool({key[0] for key in all_expected} & active)
+    expected = all_expected if contract_applicable else {}
+    actual = {(event["stem"], str(event["annotation_id"]), event["joint_index"]): event for event in events}
+    unexpected = [event for key, event in sorted(actual.items()) if key not in expected]
+    missing = [
+        {"stem": stem, "annotation_id": annotation_id, "joint_index": joint_index, "joint_name": COCO_17[joint_index]}
+        for stem, annotation_id, joint_index in sorted(set(expected) - set(actual))
+    ]
+    altered = []
+    for key in sorted(set(expected) & set(actual)):
+        event = actual[key]; x, y, width, height = expected[key]
+        if tuple(event["raw_coordinate"]) != (x, y) or tuple(event["source_size"]) != (width, height):
+            altered.append({"expected": {"raw_coordinate": [x, y], "source_size": [width, height]}, "actual": event})
+    affected_stems = sorted({event["stem"] for event in events})
+    return {
+        "policy": {key: value for key, value in AUTHORITATIVE_SOURCE_OOB_POLICY.items() if key != "reviewed_anomalies"},
+        "contract_applicable": contract_applicable,
+        "expected_visible_source_oob_joint_count": len(expected),
+        "visible_source_oob_joint_count": len(events),
+        "affected_stems": affected_stems,
+        "events": events,
+        "unexpected_events": unexpected, "unexpected_count": len(unexpected),
+        "missing_reviewed_events": missing, "missing_reviewed_count": len(missing),
+        "altered_reviewed_events": altered, "altered_reviewed_count": len(altered),
+        "status": "PASS" if not unexpected and not missing and not altered else "FAIL",
+    }
 
 
 def coverage_summary(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
@@ -602,6 +714,21 @@ def _validate_record(record: Mapping[str, Any]) -> None:
             raise PoseTargetError(f"{record.get('stem')}: malformed available pose target")
         if not isinstance(record["people"], list):
             raise PoseTargetError(f"{record.get('stem')}: available pose target lacks people list")
+        for person_index, person in enumerate(record["people"]):
+            joints = person.get("joint_provenance")
+            if not isinstance(joints, list) or len(joints) != 17:
+                raise PoseTargetError(f"{record.get('stem')}: person {person_index} lacks 17 joint provenance entries")
+            for joint_index, joint in enumerate(joints):
+                required_joint_fields = (
+                    "source_coordinate", "source_visibility_confidence", "source_in_bounds",
+                    "training_coordinate", "final_in_frame", "reward_joint_valid", "reward_invalid_reason",
+                )
+                if not isinstance(joint, Mapping) or any(field not in joint for field in required_joint_fields):
+                    raise PoseTargetError(f"{record.get('stem')}: person {person_index} joint {joint_index} has incomplete provenance")
+                if joint["reward_joint_valid"] and joint["reward_invalid_reason"] is not None:
+                    raise PoseTargetError(f"{record.get('stem')}: person {person_index} joint {joint_index} has contradictory reward provenance")
+                if not joint["reward_joint_valid"] and not isinstance(joint["reward_invalid_reason"], str):
+                    raise PoseTargetError(f"{record.get('stem')}: person {person_index} joint {joint_index} lacks reward invalid reason")
         return
     if record.get("target_provenance") != "unavailable" or record.get("people") is not None:
         raise PoseTargetError(f"{record.get('stem')}: malformed unavailable pose target")
