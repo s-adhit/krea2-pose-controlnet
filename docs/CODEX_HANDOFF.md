@@ -2,83 +2,57 @@
 
 ## Current objective and status
 
-Completed a read-only feasibility audit for a future differentiable
-ControlNet++-style pose-consistency reward. No training, generation, resume,
-checkpoint/data mutation, network download, commit, or push occurred. The
-intended parent remains exactly the clean LR-only checkpoint
-`/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt`
-(2.5 GB); the ControlInput-LR2x continuation is explicitly out of scope.
+Implemented pre-training, fail-closed authoritative pose-target sidecar and
+control-reconstruction infrastructure only. No training, generation, resume,
+checkpoint mutation, source-data mutation, network download, commit, or push
+occurred. The 1500→1800 continuation remains out of scope.
 
-## Verified current mechanics
+## Verified facts and provenance audit
 
-- `make_flow_pair` implements `x_t = t*noise + (1-t)*x0` and target
-  `v = noise-x0`; `train.py:_flow_loss` MSE-trains tokenized model velocity.
-  Therefore the correct reconstructed normalized clean latent is
-  `x0_hat = x_t - t*v_hat`, after unpatchifying model output with the same
-  `einops` layout used by `sample_eval_image`.
-- The Qwen Image VAE is `diffusers 0.40.0` `AutoencoderKLQwenImage`. Existing
-  `decode_normalized_latents` is deliberately inference-only, but the wrapped
-  VAE `decode` has no `no_grad`; a separate grad-enabled decode helper can
-  freeze VAE parameters yet pass gradients from decoded RGB to `x0_hat`.
-- The complete 17,416-sample shard audit found one schema only:
-  `stem,file_name,text,split,bucket,source_size,resized_size,crop_box,
-  image_latent,control_latent`. Geometry is present for all records, but no
-  raw keypoints, confidence/visibility, boxes, person grouping, DWPose,
-  RTMPose, OpenPose JSON, or other pose metadata exists.
-- The local HF snapshot contains exactly 17,495 JPG + 17,495 PNG and only its
-  four JSONL metadata/manifest files. Diagnostic-only
-  `data/manifests/diagnostic_reference_pose.json` has 21 annotated references
-  (4 COCO/17 Human-Art) and 3 unavailable Danbooru entries; it is not a
+- The snapshot has 17,495 physical pairs; active immutable manifests have
+  17,416: COCO 3,893; Danbooru 2,255; Human-Art painting 6,423;
+  Human-Art real_human 3,257; Human-Art sculpture 1,588. The 79 exclusions
+  are Human-Art painting samples.
+- Latent shards retain only geometry and latents, not source pose metadata.
+  The snapshot has no COCO annotation JSON, Human-Art annotation export,
+  historical DWPose JSON/config/checkpoint, or historic renderer source.
+  Diagnostic reference annotations cover only 21 examples and are not a
   training target source.
-- No DWPose, RTMPose, MMPose, MMCV, or SimCC package/config/checkpoint is
-  installed. The cached torchvision 0.22 COCO Keypoint R-CNN checkpoint is
-  available and its source exposes pre-argmax `keypoint_logits`, but its
-  current evaluator wrapper is inference-only and it is a heatmap—not
-  SimCC—fallback. CUDA is unavailable in the Codex audit shell, so its actual
-  host gradient path remains to be probed later.
+- Therefore all five source families are currently blocked for full-sidecar
+  production; the code will not use a control raster or rerun DWPose as a
+  substitute. COCO/Human-Art require `original_annotation`; only Danbooru can
+  use `dwpose_pseudolabel` with a complete historical provenance record.
+- RTMPose-M raw-SimCC is still absent/unvalidated. It remains a future frozen
+  reward model only, not target provenance. Existing Keypoint R-CNN/PCK remains
+  evaluation-only.
 
-## Feasibility / blockers
+## Completed implementation
 
-The differentiable VAE and `x0_hat` portions are feasible. The preferred
-fixed-box raw-SimCC reward is blocked before implementation by two missing
-artifacts: (1) an every-sample, geometry-aligned per-person target sidecar and
-(2) a specifically approved, locally installed top-down RTMPose/DWPose
-implementation/checkpoint exposing raw SimCC logits. Raster controls alone
-cannot safely reconstruct people, visibility, or joint coordinates.
+- `pose_controlnet/pose_targets.py`: v1 sidecar schema, atomic new-directory
+  writer/digest verifier, strict COCO and historical-DWPose readers, source
+  size checks, persisted-geometry resize/crop/clipping, per-person boxes,
+  confidence/visibility masks, and explicit 17-body-joint mappings. DWPose
+  neck is excluded.
+- `pose_controlnet/control_reconstruction.py` plus audit script: stratified
+  stored-control reconstruction, per-source IoU/MAE mismatch report and
+  contact sheet. It refuses an unverified historical renderer.
+- `docs/POSE_TARGET_SIDECAR.md` documents the source-spec contract and exact
+  build/audit commands. No training modules were changed.
 
-Do not repurpose authoritative Keypoint-RCNN/PCK evaluation into training.
-The original LR-only run's measured step-1500 telemetry was 28.49 sec/update,
-92.93e9 peak allocated bytes, and 100.47e9 reserved bytes, leaving little
-headroom for a decoded-VAE plus frozen reward graph; profile microbatch 1
-before any reward experiment.
+## Commands/tests this session
 
-## Required implementation-phase scope
-
-Add a versioned read-only pose-target sidecar/cache (do not rewrite immutable
-manifests or existing latent shards), a target builder once an authoritative
-source/model is selected, a grad-enabled VAE decode helper, a new reward
-module, and a step-1500-only training branch/audits. Likely files:
-`train.py`, `pose_controlnet/config.py`, `pose_controlnet/data.py`,
-`pose_controlnet/vae_preprocessing.py`, new `pose_controlnet/pose_reward.py`,
-new target-builder/audit scripts, and focused tests. `checkpointing.py` need
-not change if the reward/cache identity is stored in `TrainConfig`, which is
-already checkpointed.
-
-## Commands run this session
-
-- PASS (read-only): full shard field audit: 16,503 train + 889 val + 24
-  diagnostic; all exactly the schema above.
-- PASS (read-only): local package/asset inspection; no RTMPose/DWPose/SimCC,
-  cached Keypoint R-CNN weights found.
-- BLOCKED AS EXPECTED: synthetic CUDA-only fixed-box Keypoint-RCNN autograd
-  probe; Codex sandbox has no CUDA. This does not invalidate host GH200.
-- PASS (read-only): flow, VAE decode, preprocessing, dataset, evaluator,
-  checkpoint/resume, metadata, and telemetry inspection.
+- PASS: `python -m py_compile ...` for all new modules/scripts.
+- PASS: `python -m unittest tests.test_pose_targets -v` (8 tests): resize,
+  aspect ratio, crop translation/clipping, partial/multi-person behavior,
+  mappings, readonly integrity, fail-closed sources, reconstruction gate.
+- PASS (read-only): `python scripts/audit_pose_target_sources.py --dataset-root
+  /lambda/nfs/adhit/krea2-pose/posebridge_hf` reports the above exact counts
+  and `BLOCKED_MISSING_AUTHORITATIVE_ARTIFACTS`.
 
 ## Exact next action
 
-Obtain/approve an authoritative all-sample pose-target provenance and a
-specific top-down raw-SimCC pose checkpoint, then implement only the target
-cache plus a host-only `x0_hat`/VAE/reward gradient audit from the exact
-LR-only step-1500 parent. Do not train until that audit is green and lambda is
-calibrated from measured separate flow/reward gradients.
+Recover the immutable COCO and Human-Art annotation files plus their exact
+stem/image-ID joins, and the historical Danbooru DWPose export/config/model
+hashes/renderer source. Put their verified paths and metadata in the documented
+source spec, run the source audit, then build and reconstruction-audit v1. Do
+not add reward/training code or start training until all sources pass.
