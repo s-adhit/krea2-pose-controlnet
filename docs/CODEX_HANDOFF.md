@@ -118,79 +118,79 @@ tests.test_control_diagnostics` — 29 tests.
 Before handing off, run `git diff --check` and `git status --short`. Do not
 run either GH200 diagnostic or production training without explicit approval.
 
-## Prepared ControlInputLayer-LR continuation (not launched)
+## Completed ControlInputLayer-LR2x continuation and prepared Turbo evaluation
 
-The completed control-scale sweep kept inference scale `1.0` as the best
-balanced result; stronger inference scaling did not improve the main pose
-metrics. The completed projection audit found control input RMS about `0.764`,
-image input RMS about `0.656`, control-only projection RMS about `0.147`,
-image-only RMS about `0.419`, and aggregate projected control/image RMS about
-`0.35`. This supports exactly one new training variable: a modestly higher LR
-for the learned ControlInputLayer. No inference scaling, timestep, dropout,
-data, loss, model, or other optimizer setting changed.
-
-Exact source (no fallback):
-
-```text
-/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt
-adhit-420/Krea-2-PoseControl-LoRA-checkpoints
-pose-learning-900-lr5e5-to1500/full/
-```
-
-New run/HF namespace:
+The overnight branch is complete. It resumed from the exact LR-only step-1500
+state and uses LoRA LR `5e-5`, `ControlInputLayer` LR `1e-4` (multiplier
+`2.0`), original timestep sampler, control dropout `0.0`, caption dropout
+`0.1`, and all other settings unchanged. The exact branch is:
 
 ```text
 pose-learning-1500-controlinput-lr2x-to2800
 /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-controlinput-lr2x-to2800
+adhit-420/Krea-2-PoseControl-LoRA-checkpoints
 pose-learning-1500-controlinput-lr2x-to2800/full/
 ```
 
-The new selector uses two explicit AdamW groups: all 448 LoRA tensors at
-`5e-5`; only `first.weight`/`first.bias` at `1e-4` (exact `2.0x`). Betas
-`(0.9, 0.99)`, eps `1e-8`, weight decay `0`, scheduler/warmup progress,
-RNG/data/flow-generator state, and original timestep sampler remain unchanged.
-Lowmid20 is rejected. Legacy one-group AdamW state is mapped by verified stable
-trainable name/order: every exp_avg, exp_avg_sq, and step counter transfers to
-the matching new-group parameter and is checked. Recovery accepts only this
-run/configuration and source contract.
+This session prepared but did not run
+`scripts/turbo_controlinput_lr2x_benchmark.py`. It exposes only `preflight`,
+`generate`, `score`, and `report`; it has no optimizer, backward, resume, or
+training path. It accepts exactly the sparse first-pass checkpoints `1800`,
+`2200`, `2600`, and `2800`, each only as its local exact-step file after its
+matching HF completion marker, SHA-256, full checkpoint schema, and embedded
+`global_step` validate. There is no nearest/latest, remote-payload, original,
+LR-only, or timestep-branch fallback. HF marker-cache writes are contained in
+the new evaluation root rather than any checkpoint directory.
 
-Checkpoints are saved/mirrored every 100 steps and the following local files
-are protected from pruning: `1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300,
-2400, 2500, 2600, 2700, 2800`. A fresh launch refuses to overwrite destination
-`step_*.pt` files.
+The immutable Turbo contract is unchanged: Krea-2 Turbo, 8 steps, CFG `0.0`,
+`mu=1.15`, `mu_resolution_dependent=false`, official schedule, control scale
+`1.0`, and the same 24 diagnostics/prompts/controls/per-stem seeds/buckets/
+paired geometry/VAE-decode path. It reuses the existing LR-only step-1500
+machine-readable result from `turbo-8step-cfg0-lr5e5` as a fixed baseline; it
+never regenerates step 1500. Authoritative PCK remains confidence `.5` with the
+existing deterministic Hungarian matching and Danbooru exclusion; CLIP is the
+same shared implementation.
 
-GH200 commands (run preflight successfully before the launch):
+Output is pinned to this isolated, protected namespace:
+
+```text
+/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0-controlinput-lr2x
+```
+
+It rejects all existing Turbo trees, including `turbo-8step-cfg0`,
+`turbo-8step-cfg0-lr5e5`, `turbo-8step-cfg0-timestep-lowmid20`, and
+`turbo-control-scale-step1500`. Expected outputs are `turbo_spec.json`,
+`checkpoint_preflight.json`, normal per-stem output/metadata,
+`generation_results.json`, `pck_clip_results.json`, `evaluation_summary.json`,
+`turbo_controlinput_lr2x_checkpoint_selection_grid.png`, and
+`turbo_controlinput_lr2x_full_contact_sheet.png`. The summary compares the
+reused step-1500 baseline against all four selected checkpoints, includes all
+requested aggregate and subgroup metrics, and computes aggregate deltas versus
+step 1500; it does not declare a production winner.
+
+Run on the GH200 host only when authorized:
 
 ```bash
 cd /home/ubuntu/Krea-2-Pose-ControlNet
 export UV_CACHE_DIR=/tmp/krea_uv_cache
-uv run python scripts/preflight_controlinput_lr2x.py preflight
-tmux new-session -d -s pose-controlinput-lr2x 'cd /home/ubuntu/Krea-2-Pose-ControlNet && export UV_CACHE_DIR=/tmp/krea_uv_cache && uv run python train.py --controlinput-lr2x-1500-to2800'
-uv run python train.py --recover-controlinput-lr2x-1500-to2800
-tmux capture-pane -pt pose-controlinput-lr2x -S -200
-tail -f /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-controlinput-lr2x-to2800/metrics.jsonl
+uv run python scripts/turbo_controlinput_lr2x_benchmark.py preflight
+uv run python scripts/turbo_controlinput_lr2x_benchmark.py generate
+uv run python scripts/turbo_controlinput_lr2x_benchmark.py score
+uv run python scripts/turbo_controlinput_lr2x_benchmark.py report
 ```
 
-Stop a user-run job for NaN/Inf, checkpoint validation/state-mapping failure,
-scheduler restart, wrong sampler/LR groups/namespaces, repeated loss explosion,
-CUDA/OOM loop, corrupt HF marker, missing milestone, or milestone pruning
-before validated HF mirroring. Do not add a loss-only automatic early stop.
+Evaluate neighboring 100-step checkpoints only if this sparse trajectory
+clearly identifies a later peak. No preflight, generation, score, report,
+training, resume, checkpoint mutation, commit, or push was run in this
+session.
 
-PASS locally: source SHA-256
-`6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0`;
-full schema deserialized with global_step `1500`, 450 optimizer states
-(448 LoRA + 2 ControlInput), scheduler `1500`, original sampler, control
-dropout `0.0`, caption dropout `0.1`.
+Files changed this session: `pose_controlnet/turbo_evaluation.py`,
+`scripts/turbo_controlinput_lr2x_benchmark.py`,
+`tests/test_turbo_controlinput_lr2x_evaluation.py`, and this handoff.
 
-FAIL CLOSED only at live HF validation in the Codex sandbox: Hub DNS returned
-`ConnectError: [Errno -3] Temporary failure in name resolution`, so the exact
-completion-marker/SHA check could not finish. No fallback, write, training,
-resume, evaluation, HF upload, commit, or push occurred. Rerun preflight from
-the GH200 host.
-
-PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile train.py
-pose_controlnet/config.py pose_controlnet/checkpointing.py
-scripts/preflight_controlinput_lr2x.py tests/test_controlinput_lr2x_continuation.py`
+PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m py_compile
+pose_controlnet/turbo_evaluation.py scripts/turbo_controlinput_lr2x_benchmark.py
+tests/test_turbo_controlinput_lr2x_evaluation.py`
 
 PASS: `UV_CACHE_DIR=/tmp/krea_uv_cache uv run python -m unittest
-tests.test_controlinput_lr2x_continuation tests.test_train_mechanics` — 48 tests.
+tests.test_turbo_controlinput_lr2x_evaluation` — 9 tests.

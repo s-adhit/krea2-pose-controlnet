@@ -48,6 +48,15 @@ TIMESTEP_HF_REPO_ID = "adhit-420/Krea-2-PoseControl-LoRA-checkpoints"
 TIMESTEP_TURBO_CHECKPOINT_STEPS = (1600, 1700, 1800)
 CONTROL_SCALE_TURBO_EVALUATION_ROOT = Path("/lambda/nfs/adhit/krea2-pose/evaluation/turbo-control-scale-step1500")
 CONTROL_SCALE_VALUES = (0.75, 1.0, 1.25, 1.5, 2.0)
+CONTROLINPUT_LR2X_TURBO_EVALUATION_ROOT = Path(
+    "/lambda/nfs/adhit/krea2-pose/evaluation/turbo-8step-cfg0-controlinput-lr2x"
+)
+CONTROLINPUT_LR2X_CHECKPOINT_ROOT = Path(
+    "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-1500-controlinput-lr2x-to2800"
+)
+CONTROLINPUT_LR2X_HF_RUN_NAME = "pose-learning-1500-controlinput-lr2x-to2800"
+CONTROLINPUT_LR2X_HF_REPO_ID = "adhit-420/Krea-2-PoseControl-LoRA-checkpoints"
+CONTROLINPUT_LR2X_TURBO_CHECKPOINT_STEPS = (1800, 2200, 2600, 2800)
 
 
 def turbo_schedule(*, image_sequence_length: int, steps: int = TURBO_STEPS,
@@ -164,6 +173,19 @@ def assert_control_scale_turbo_output_isolated(output_dir: str | Path) -> Path:
     timestep = TIMESTEP_TURBO_EVALUATION_ROOT.resolve()
     if output == timestep or timestep in output.parents:
         raise ValueError(f"Control-scale Turbo output must not collide with timestep Turbo results: {timestep}")
+    return output
+
+
+def assert_controlinput_lr2x_turbo_output_isolated(output_dir: str | Path) -> Path:
+    """Require the dedicated read-only ControlInput-LR2x evaluation tree.
+
+    The exact namespace is intentionally pinned so this evaluator cannot write
+    into any established Turbo tree, including the control-scale diagnostic.
+    """
+    output = assert_control_scale_turbo_output_isolated(output_dir)
+    expected = CONTROLINPUT_LR2X_TURBO_EVALUATION_ROOT.resolve()
+    if output != expected:
+        raise ValueError(f"ControlInput-LR2x Turbo evaluation must use isolated output root: {expected}")
     return output
 
 
@@ -286,6 +308,55 @@ def exact_timestep_turbo_checkpoints(*, checkpoint_dir: str | Path, hf_repo_id: 
         state = load_training_state(checkpoint)
         if state["global_step"] != step:
             raise ValueError(f"Timestep checkpoint filename/embedded step mismatch: {checkpoint} has {state['global_step']}")
+        resolved.append((step, checkpoint))
+    return resolved
+
+
+def exact_controlinput_lr2x_turbo_checkpoints(*, checkpoint_dir: str | Path, hf_repo_id: str,
+                                               marker_download_dir: str | Path,
+                                               steps: Iterable[int] = CONTROLINPUT_LR2X_TURBO_CHECKPOINT_STEPS) -> list[tuple[int, Path]]:
+    """Return only local ControlInput-LR2x checkpoints with exact HF proof.
+
+    There is deliberately no remote payload, nearest-step, latest-step, or
+    cross-run fallback.  Each local full checkpoint must match the exact
+    completion marker/SHA-256 and deserialize as the requested global step.
+    """
+    requested = tuple(steps)
+    if requested != CONTROLINPUT_LR2X_TURBO_CHECKPOINT_STEPS:
+        raise ValueError(
+            "ControlInput-LR2x Turbo evaluation requires exactly "
+            f"{CONTROLINPUT_LR2X_TURBO_CHECKPOINT_STEPS}, got {requested}"
+        )
+    if Path(checkpoint_dir).resolve() != CONTROLINPUT_LR2X_CHECKPOINT_ROOT.resolve():
+        raise ValueError(
+            "ControlInput-LR2x Turbo evaluation requires checkpoint root "
+            f"{CONTROLINPUT_LR2X_CHECKPOINT_ROOT}"
+        )
+    if hf_repo_id != CONTROLINPUT_LR2X_HF_REPO_ID:
+        raise ValueError(
+            "ControlInput-LR2x Turbo evaluation requires HF repo "
+            f"{CONTROLINPUT_LR2X_HF_REPO_ID}"
+        )
+    resolved: list[tuple[int, Path]] = []
+    for step in requested:
+        checkpoint = validated_local_checkpoint_for_hf_step(
+            checkpoint=CONTROLINPUT_LR2X_CHECKPOINT_ROOT / f"step_{step:06d}.pt",
+            repo_id=CONTROLINPUT_LR2X_HF_REPO_ID,
+            run_name=CONTROLINPUT_LR2X_HF_RUN_NAME,
+            step=step,
+            marker_download_dir=Path(marker_download_dir),
+        )
+        if checkpoint is None:
+            remote = f"{CONTROLINPUT_LR2X_HF_RUN_NAME}/full/step_{step:06d}.pt"
+            raise FileNotFoundError(
+                "Required exact completion-marked ControlInput-LR2x checkpoint is unavailable or invalid: "
+                f"{remote}"
+            )
+        state = load_training_state(checkpoint)
+        if state["global_step"] != step:
+            raise ValueError(
+                f"ControlInput-LR2x checkpoint filename/embedded step mismatch: {checkpoint} has {state['global_step']}"
+            )
         resolved.append((step, checkpoint))
     return resolved
 
