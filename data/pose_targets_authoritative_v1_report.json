@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "output": "data\\pose_targets_authoritative_v1.jsonl",
+  "final_metadata_stems": 15240,
+  "exported": 15240,
+  "source_counts": {
+    "coco": 3893,
+    "humanart": 11347
+  },
+  "skipped_danbooru": 0,
+  "unsupported": 0,
+  "failures": [],
+  "diagnostic_expected_annotated": 21,
+  "diagnostic_resolved": 21,
+  "diagnostic_missing": []
+}
