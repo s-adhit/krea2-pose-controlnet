@@ -218,6 +218,24 @@ def normalized_coordinate_huber(
     )
 
 
+def normalized_coordinate_distances(
+    predicted: Tensor, target: Tensor, boxes_xyxy: Tensor, reward_joint_valid: Tensor,
+    *, eps: float | None = None,
+) -> Tensor:
+    """Return per-joint normalized Euclidean errors for a fixed ROI critic.
+
+    Callers must apply ``reward_joint_valid`` when reducing this tensor.  The
+    mask is accepted here deliberately so its shape and provenance are
+    validated alongside the exact coordinate normalization used by the reward.
+    """
+    _validate_coordinate_inputs(predicted, target, reward_joint_valid)
+    _validate_boxes(boxes_xyxy, expected=predicted.shape[0])
+    difference = normalize_coordinates_to_boxes(predicted, boxes_xyxy, eps=eps) - normalize_coordinates_to_boxes(
+        target.to(predicted), boxes_xyxy, eps=eps,
+    )
+    return torch.linalg.vector_norm(difference, dim=-1)
+
+
 def gaussian_heatmap_target(
     target_coordinates: Tensor, boxes_xyxy: Tensor, heatmap_size: tuple[int, int], sigma: float = 1.5,
 ) -> Tensor:

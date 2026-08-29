@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import sys
 from pathlib import Path
@@ -17,6 +18,7 @@ from typing import Any, Iterable
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import torch
+import numpy as np
 from PIL import Image
 from transformers import CLIPModel, CLIPProcessor
 
@@ -27,6 +29,13 @@ from pose_controlnet.evaluation import _sample_by_stem, make_contact_sheet, make
 from pose_controlnet.model import build_turbo_pose_model, load_trainable_state_dict
 from pose_controlnet.post1500_evaluation import score_authoritative_pck
 from pose_controlnet.post500_evaluation import KeypointRCNNEstimator, aggregate, clip_feature_tensor, cosine_from_embeddings, prepare_clip_scoring_inputs
+from pose_controlnet.keypoint_critic import (
+    FixedBoxKeypointRCNNCritic,
+    normalized_coordinate_distances,
+    normalized_coordinate_huber,
+    soft_coordinates,
+)
+from pose_controlnet.pose_targets import load_sidecar
 from pose_controlnet.turbo_evaluation import (
     TurboExperiment,
     assert_turbo_diagnostic_contract,
@@ -633,6 +642,318 @@ def report(args) -> None:
     print(output / "evaluation_summary.json")
 
 
+def _alignment_rows(path: Path, *, expected_stems: tuple[str, ...], expected_steps: tuple[int, ...],
+                    experiment_name: str | None, require_exact_steps: bool = True) -> dict[int, dict[str, Any]]:
+    """Read a completed score file without re-running any external metric."""
+    payload = _read_json(path / "pck_clip_results.json")
+    if payload.get("metadata") != turbo_metadata() or payload.get("control_scale", 1.0) != 1.0:
+        raise ValueError(f"Critic alignment requires matching Turbo provenance: {path / 'pck_clip_results.json'}")
+    if experiment_name is not None and payload.get("experiment_name") not in (None, experiment_name):
+        raise ValueError(f"Critic alignment score provenance names another experiment: {path / 'pck_clip_results.json'}")
+    rows = payload.get("checkpoints")
+    if not isinstance(rows, list):
+        raise ValueError(f"Critic alignment score file has no checkpoint list: {path / 'pck_clip_results.json'}")
+    result: dict[int, dict[str, Any]] = {}
+    for row in rows:
+        step = row.get("checkpoint_step") if isinstance(row, dict) else None
+        if not isinstance(step, int) or step in result:
+            raise ValueError(f"Critic alignment score file has malformed or duplicate checkpoint steps: {path}")
+        result[step] = row
+    if (tuple(sorted(result)) != expected_steps if require_exact_steps else not set(expected_steps) <= set(result)):
+        raise ValueError(f"Critic alignment requested checkpoints differ from scored checkpoints at {path}")
+    generation = _read_json(path / "generation_results.json")
+    if generation.get("metadata") != turbo_metadata() or generation.get("control_scale", 1.0) != 1.0:
+        raise ValueError(f"Critic alignment requires matching generated-image provenance: {path / 'generation_results.json'}")
+    if generation.get("stems") != list(expected_stems):
+        raise ValueError(f"Critic alignment generated-image stems differ from the Turbo spec at {path}")
+    generated_steps = generation.get("checkpoints")
+    if not isinstance(generated_steps, list) or (tuple(sorted(generated_steps)) != expected_steps if require_exact_steps else not set(expected_steps) <= set(generated_steps)):
+        raise ValueError(f"Critic alignment requested checkpoints differ from generated checkpoints at {path}")
+    spec = _read_json(path / "turbo_spec.json")
+    if spec.get("kind") != "turbo_fixed_pose" or spec.get("turbo") != turbo_metadata() or tuple(spec.get("stems", ())) != expected_stems:
+        raise ValueError(f"Critic alignment Turbo spec provenance is inconsistent: {path / 'turbo_spec.json'}")
+    for step in expected_steps:
+        if _generation_status(path, expected_stems, step) != "complete":
+            raise ValueError(f"Critic alignment requires a complete generated image set for step {step}")
+    return result
+
+
+def _critic_alignment_contract(spec: dict[str, Any]) -> dict[str, Any]:
+    """Prove the persisted branch metadata selects the exact critic contract."""
+    resolved = spec.get("resolved_experiment")
+    training = resolved.get("training_metadata") if isinstance(resolved, dict) else None
+    if not isinstance(training, dict):
+        raise ValueError("Critic alignment cannot prove the training pose-reward configuration from turbo_spec.json")
+    if training.get("pose_loss") != "normalized_coordinate_huber":
+        raise ValueError("Critic alignment requires normalized_coordinate_huber training provenance")
+    if training.get("pose_loss_temperature") != 1.0:
+        raise ValueError("Critic alignment requires pose_loss_temperature=1.0 provenance")
+    return {
+        "critic_identifier": FixedBoxKeypointRCNNCritic.identifier,
+        "pose_loss": "normalized_coordinate_huber",
+        "heatmap_input": "raw_logits_spatial_softmax",
+        "temperature": 1.0,
+        "coordinate_mapping": "authoritative_fixed_roi_cell_center",
+        "coordinate_normalization": "both_prediction_and_target_inside_same_roi",
+        "huber_delta": 1.0,
+        "valid_mask": "reward_joint_valid_only",
+        "phase1_unavailable": "excluded",
+    }
+
+
+def _alignment_target_tensors(record: dict[str, Any], device: torch.device) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor] | None:
+    """Build fixed ROI tensors from the immutable training sidecar only."""
+    if record.get("pose_reward_available") is not True:
+        return None
+    boxes, targets, valid = [], [], []
+    people = record.get("people")
+    if not isinstance(people, list):
+        raise ValueError(f"{record.get('stem')}: available pose sidecar has no people list")
+    for person in people:
+        xywh, joints = person.get("bbox_training_xywh"), person.get("joint_provenance")
+        if not isinstance(xywh, list) or len(xywh) != 4 or not isinstance(joints, list) or len(joints) != 17:
+            raise ValueError(f"{record.get('stem')}: incomplete fixed ROI sidecar geometry")
+        x, y, width, height = map(float, xywh)
+        if not all(math.isfinite(value) for value in (x, y, width, height)) or width <= 0 or height <= 0:
+            continue
+        try:
+            coordinates = [joint["training_coordinate"] for joint in joints]
+            joint_valid = [bool(joint["reward_joint_valid"]) for joint in joints]
+        except (KeyError, TypeError) as exc:
+            raise ValueError(f"{record.get('stem')}: reward_joint_valid provenance is unavailable") from exc
+        boxes.append((x, y, x + width, y + height)); targets.append(coordinates); valid.append(joint_valid)
+    if not boxes or not any(any(row) for row in valid):
+        return None
+    return (
+        torch.tensor(boxes, device=device, dtype=torch.float32),
+        torch.tensor(targets, device=device, dtype=torch.float32),
+        torch.tensor(valid, device=device, dtype=torch.bool),
+    )
+
+
+def _alignment_rgb(path: Path, expected_bucket: Any, device: torch.device) -> torch.Tensor:
+    if not isinstance(expected_bucket, list) or len(expected_bucket) != 2 or not all(isinstance(value, int) and value > 0 for value in expected_bucket):
+        raise ValueError(f"Critic alignment cannot validate sidecar bucket geometry for {path}")
+    try:
+        with Image.open(path) as opened:
+            opened.verify()
+        with Image.open(path) as opened:
+            image = opened.convert("RGB")
+            if image.size != tuple(expected_bucket):
+                raise ValueError(f"Critic alignment image geometry disagrees with sidecar bucket: {path}")
+            pixels = np.asarray(image, dtype=np.float32)
+    except OSError as exc:
+        raise ValueError(f"Critic alignment generated image is unreadable: {path}") from exc
+    return torch.from_numpy(pixels).permute(2, 0, 1).contiguous().div_(255.0).to(device)
+
+
+def _alignment_sample_metrics(critic: FixedBoxKeypointRCNNCritic, rgb: torch.Tensor, boxes: torch.Tensor,
+                              targets: torch.Tensor, valid: torch.Tensor) -> tuple[float, float, int]:
+    """Evaluate the same raw-logit fixed-box normalized-Huber objective as training."""
+    with torch.inference_mode():
+        heatmaps = critic(rgb, [boxes])
+        coordinates = soft_coordinates(heatmaps.logits, heatmaps.boxes_training, temperature=1.0)
+        loss = normalized_coordinate_huber(coordinates, targets, heatmaps.boxes_training, valid, delta=1.0)
+        distances = normalized_coordinate_distances(coordinates, targets, heatmaps.boxes_training, valid)
+        count = int(valid.sum().item())
+        if count < 1 or not torch.isfinite(loss) or not torch.isfinite(distances[valid]).all():
+            raise ValueError("Critic alignment encountered an invalid normalized-coordinate metric")
+        error = distances[valid].mean()
+    return float(loss.item()), float(error.item()), count
+
+
+def _alignment_statistics(values: list[float]) -> dict[str, float | None]:
+    if not values:
+        return {"mean": None, "median": None}
+    ordered = sorted(values); middle = len(ordered) // 2
+    median = ordered[middle] if len(ordered) % 2 else (ordered[middle - 1] + ordered[middle]) / 2
+    return {"mean": sum(values) / len(values), "median": median}
+
+
+def _alignment_delta(value: float | int | None, baseline: float | int | None) -> dict[str, float | None]:
+    if value is None or baseline is None:
+        return {"absolute": None, "percent": None}
+    absolute = float(value) - float(baseline)
+    return {"absolute": absolute, "percent": None if float(baseline) == 0 else 100.0 * absolute / float(baseline)}
+
+
+def _alignment_aggregate(step: int, label: str, samples: list[dict[str, Any]], external: dict[str, Any]) -> dict[str, Any]:
+    losses, errors = [float(row["critic_loss"]) for row in samples], [float(row["normalized_coordinate_error"]) for row in samples]
+    pose, clip = external.get("pose"), external.get("clip")
+    if not isinstance(pose, dict) or not isinstance(clip, dict):
+        raise ValueError(f"Critic alignment external score row is incomplete for step {step}")
+    return {
+        "checkpoint_step": step, "checkpoint_label": label,
+        "eligible_sample_count": len(samples), "total_valid_joints": sum(int(row["valid_joint_count"]) for row in samples),
+        "critic_loss": _alignment_statistics(losses), "normalized_coordinate_error": _alignment_statistics(errors),
+        "pck_005": pose.get("pck_005"), "pck_010": pose.get("pck_010"), "pck_020": pose.get("pck_020"),
+        "clip_mean_cosine_similarity": clip.get("mean_cosine_similarity"),
+        "detection_coverage": pose.get("detection_coverage"), "joint_coverage": pose.get("joint_evaluation_coverage"),
+    }
+
+
+def _alignment_pearson(first: list[float], second: list[float]) -> float | None:
+    if len(first) != len(second) or len(first) < 2:
+        return None
+    first_mean, second_mean = sum(first) / len(first), sum(second) / len(second)
+    first_delta, second_delta = [value - first_mean for value in first], [value - second_mean for value in second]
+    denominator = math.sqrt(sum(value * value for value in first_delta) * sum(value * value for value in second_delta))
+    return None if denominator == 0 else sum(left * right for left, right in zip(first_delta, second_delta)) / denominator
+
+
+def _alignment_ranks(values: list[float]) -> list[float]:
+    order = sorted(range(len(values)), key=lambda index: values[index]); ranks = [0.0] * len(values); index = 0
+    while index < len(order):
+        end = index + 1
+        while end < len(order) and values[order[end]] == values[order[index]]:
+            end += 1
+        rank = (index + 1 + end) / 2
+        for member in order[index:end]: ranks[member] = rank
+        index = end
+    return ranks
+
+
+def _alignment_correlations(aggregates: list[dict[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {"observation_count": len(aggregates), "status": "diagnostic_descriptive_not_statistically_conclusive",
+                              "expected_direction": "negative: lower internal critic error is better while higher external PCK is better"}
+    for metric, value_key in (("critic_loss", "critic_loss"), ("normalized_coordinate_error", "normalized_coordinate_error")):
+        errors = [float(row[value_key]["mean"]) for row in aggregates]
+        result[metric] = {}
+        for pck in ("pck_005", "pck_010", "pck_020"):
+            values = [row[pck] for row in aggregates]
+            if any(not isinstance(value, (float, int)) for value in values):
+                result[metric][pck] = {"pearson": None, "spearman": None}
+                continue
+            pck_values = [float(value) for value in values]
+            result[metric][pck] = {"pearson": _alignment_pearson(errors, pck_values),
+                                   "spearman": _alignment_pearson(_alignment_ranks(errors), _alignment_ranks(pck_values))}
+    return result
+
+
+def _alignment_external_by_stem(row: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    pose = row.get("pose", {})
+    entries = pose.get("per_image") if isinstance(pose, dict) else None
+    if not isinstance(entries, list):
+        return {}
+    result: dict[str, dict[str, Any]] = {}
+    for item in entries:
+        if isinstance(item, dict) and isinstance(item.get("stem"), str):
+            if item["stem"] in result:
+                raise ValueError(f"Critic alignment external per-image metrics duplicate {item['stem']}")
+            result[item["stem"]] = item
+    return result
+
+
+def _alignment_report(summary: dict[str, Any]) -> str:
+    rows = summary["checkpoints"]
+    lines = ["# Critic-alignment diagnostic", "", "Internal metrics are lower-is-better; external PCK is higher-is-better.",
+             "Correlations are descriptive only (five checkpoint observations), not statistically conclusive.", "",
+             "| checkpoint | critic loss mean | normalized coordinate error mean | PCK@.05 | PCK@.10 | PCK@.20 |", "|---|---:|---:|---:|---:|---:|"]
+    for row in rows:
+        lines.append(f"| {row['checkpoint_label']} ({row['checkpoint_step']}) | {row['critic_loss']['mean']:.7f} | {row['normalized_coordinate_error']['mean']:.7f} | {row['pck_005']:.6f} | {row['pck_010']:.6f} | {row['pck_020']:.6f} |")
+    lines.extend(["", "## Descriptive correlations", ""])
+    correlations = summary["correlations"]
+    for metric in ("critic_loss", "normalized_coordinate_error"):
+        for pck in ("pck_005", "pck_010", "pck_020"):
+            values = correlations[metric][pck]
+            pearson, spearman = values["pearson"], values["spearman"]
+            lines.append(f"- {metric} vs {pck}: Pearson={pearson!r}; Spearman={spearman!r}.")
+    lines.extend(["", "Interpretation criteria:", "", "- A. Internal critic improves and PCK improves: aligned / promising.", "- B. Internal critic improves and PCK worsens: reward misalignment.", "- C. Internal critic does not improve: auxiliary optimization/gradient effectiveness problem.", "", "A well-aligned critic generally has negative internal-error vs PCK correlation."])
+    return "\n".join(lines) + "\n"
+
+
+def critic_alignment(args) -> None:
+    """Read existing Turbo images and score only the frozen fixed-box critic."""
+    root = Path(args.output_root)
+    spec = _read_json(root / "turbo_spec.json")
+    if spec.get("kind") != "turbo_fixed_pose" or spec.get("turbo") != turbo_metadata() or spec.get("control_scale", 1.0) != 1.0:
+        raise ValueError("Critic alignment requires a matching turbo_fixed_pose evaluation provenance")
+    experiment_name = spec.get("experiment_name")
+    if not isinstance(experiment_name, str) or not experiment_name:
+        raise ValueError("Critic alignment requires an experiment_name in turbo_spec.json")
+    if args.experiment_name is not None and args.experiment_name != experiment_name:
+        raise ValueError("Critic alignment --experiment-name disagrees with turbo_spec.json")
+    stems = tuple(spec.get("stems", ()))
+    if not stems or len(set(stems)) != len(stems) or not all(isinstance(stem, str) and stem for stem in stems):
+        raise ValueError("Critic alignment Turbo spec has an invalid diagnostic stem list")
+    resolved = spec.get("resolved_experiment")
+    configured_steps = resolved.get("steps") if isinstance(resolved, dict) else None
+    if not isinstance(configured_steps, list):
+        raise ValueError("Critic alignment cannot derive branch checkpoint steps from turbo_spec.json")
+    expected_steps = normalize_turbo_steps(args.steps if args.steps is not None else configured_steps)
+    if tuple(configured_steps) != expected_steps:
+        raise ValueError("Critic alignment requested checkpoint set disagrees with resolved experiment provenance")
+    contract = _critic_alignment_contract(spec)
+    branch_rows = _alignment_rows(root, expected_stems=stems, expected_steps=expected_steps, experiment_name=experiment_name)
+    baseline = resolved.get("baseline") if isinstance(resolved, dict) else None
+    if not isinstance(baseline, dict):
+        raise ValueError("Critic alignment requires baseline provenance in turbo_spec.json")
+    baseline_root = Path(args.baseline_output_root) if args.baseline_output_root else Path(baseline.get("output_root", ""))
+    baseline_step = args.baseline_step if args.baseline_step is not None else baseline.get("checkpoint_step")
+    if not isinstance(baseline_step, int) or not str(baseline_root):
+        raise ValueError("Critic alignment baseline provenance is incomplete")
+    baseline_spec = _read_json(baseline_root / "turbo_spec.json")
+    assert_turbo_diagnostic_contract(spec, baseline_spec, branch_name="critic-alignment baseline")
+    baseline_rows = _alignment_rows(baseline_root, expected_stems=stems, expected_steps=(baseline_step,), experiment_name=None,
+                                    require_exact_steps=False)
+    sidecar_metadata, sidecar_records = load_sidecar(args.sidecar)
+    if args.expected_sidecar_records_sha256 and sidecar_metadata.get("records_sha256") != args.expected_sidecar_records_sha256:
+        raise ValueError("Critic alignment sidecar records SHA-256 mismatch")
+    by_stem = {record.get("stem"): record for record in sidecar_records}
+    missing_targets = [stem for stem in stems if stem not in by_stem]
+    if missing_targets:
+        raise ValueError(f"Critic alignment sidecar is missing diagnostic stems: {missing_targets[:3]}")
+    # Every artifact and sidecar invariant is checked before model weights are constructed.
+    device = torch.device(args.device)
+    targets = {stem: _alignment_target_tensors(by_stem[stem], device) for stem in stems}
+    eligible_stems = tuple(stem for stem in stems if targets[stem] is not None)
+    if not eligible_stems:
+        raise ValueError("Critic alignment has no Phase-1 eligible pose targets")
+    all_roots = (("baseline", baseline_root, baseline_step), *(("branch", root, step) for step in expected_steps))
+    for _, artifact_root, step in all_roots:
+        for stem in stems:
+            image = artifact_root / "fixed_pose" / stem / f"step_{step:06d}.png"
+            if not image.is_file():
+                raise FileNotFoundError(f"Critic alignment requires existing generated image: {image}")
+            if targets[stem] is not None:
+                _alignment_rgb(image, by_stem[stem].get("bucket"), device=torch.device("cpu"))
+    critic = FixedBoxKeypointRCNNCritic().to(device).eval()
+    checkpoint_items = [(baseline_step, str(baseline.get("label", f"baseline {baseline_step}")), baseline_root, baseline_rows[baseline_step])]
+    checkpoint_items.extend((step, str(resolved.get("labels", {}).get("checkpoint_template", "checkpoint {step}")).format(step=step), root, branch_rows[step]) for step in expected_steps)
+    samples: list[dict[str, Any]] = []; aggregates: list[dict[str, Any]] = []
+    for step, label, artifact_root, external in checkpoint_items:
+        external_by_stem = _alignment_external_by_stem(external)
+        checkpoint_samples = []
+        for stem in eligible_stems:
+            target = targets[stem]
+            assert target is not None
+            boxes, coordinates, valid = target
+            image = artifact_root / "fixed_pose" / stem / f"step_{step:06d}.png"
+            loss, error, count = _alignment_sample_metrics(critic, _alignment_rgb(image, by_stem[stem]["bucket"], device), boxes, coordinates, valid)
+            item = {"checkpoint_step": step, "checkpoint_label": label, "stem": stem, "source": by_stem[stem].get("source"),
+                    "critic_loss": loss, "normalized_coordinate_error": error, "valid_joint_count": count}
+            if stem in external_by_stem:
+                item["external"] = external_by_stem[stem]
+            checkpoint_samples.append(item); samples.append(item)
+        aggregates.append(_alignment_aggregate(step, label, checkpoint_samples, external))
+    baseline_aggregate = aggregates[0]
+    delta_keys = ("critic_loss", "normalized_coordinate_error", "total_valid_joints", "pck_005", "pck_010", "pck_020", "clip_mean_cosine_similarity", "detection_coverage", "joint_coverage")
+    deltas = {str(row["checkpoint_step"]): {
+        key: _alignment_delta(row[key]["mean"] if key in ("critic_loss", "normalized_coordinate_error") else row[key],
+                              baseline_aggregate[key]["mean"] if key in ("critic_loss", "normalized_coordinate_error") else baseline_aggregate[key])
+        for key in delta_keys
+    } for row in aggregates[1:]}
+    summary = {"format_version": 1, "experiment_name": experiment_name, "read_only": True, "critic_contract": contract,
+               "sidecar": {"path": str(args.sidecar), "records_sha256": sidecar_metadata.get("records_sha256")},
+               "baseline": {"checkpoint_step": baseline_step, "checkpoint_label": baseline_aggregate["checkpoint_label"], "output_root": str(baseline_root)},
+               "phase1_excluded_stems": [stem for stem in stems if stem not in eligible_stems], "checkpoints": aggregates,
+               "deltas_vs_baseline": deltas, "correlations": _alignment_correlations(aggregates)}
+    _write(root / "critic_alignment_samples.json", {"format_version": 1, "experiment_name": experiment_name, "samples": samples})
+    _write(root / "critic_alignment_summary.json", summary)
+    report_path = root / "critic_alignment_report.md"; report_path.write_text(_alignment_report(summary), encoding="utf-8")
+    print(root / "critic_alignment_summary.json")
+
+
 def parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--spec", required=True, help="JSON Turbo experiment specification")
@@ -666,6 +987,16 @@ def parser() -> argparse.ArgumentParser:
     experiment.add_argument("--skip-existing", action="store_true", help="reuse only complete validated artifacts (the default behavior)")
     experiment.set_defaults(function=lambda args: (preflight(args), generate(args), score(args), report(args)), dynamic_experiment=True,
                             spec=None, hf_namespace=None, all_checkpoints=False)
+    alignment = sub.add_parser("critic-alignment", help="score existing Turbo images with the frozen normalized-coordinate critic")
+    alignment.add_argument("--output-root", required=True, type=Path, help="completed branch evaluation directory")
+    alignment.add_argument("--sidecar", required=True, type=Path, help="immutable training pose-target sidecar directory")
+    alignment.add_argument("--steps", type=int, nargs="+", help="must exactly equal the branch generated/scored checkpoint set")
+    alignment.add_argument("--baseline-output-root", type=Path, help="override baseline output root recorded in turbo_spec.json")
+    alignment.add_argument("--baseline-step", type=int, help="override baseline checkpoint step recorded in turbo_spec.json")
+    alignment.add_argument("--experiment-name", help="optional exact provenance assertion")
+    alignment.add_argument("--expected-sidecar-records-sha256", help="optional exact immutable sidecar digest assertion")
+    alignment.add_argument("--device", default="cuda", help="critic device; CPU is supported for focused diagnostics")
+    alignment.set_defaults(function=critic_alignment)
     return parser
 
 
