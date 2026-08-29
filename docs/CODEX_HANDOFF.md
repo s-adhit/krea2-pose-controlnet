@@ -2,73 +2,65 @@
 
 ## Current objective and decisions
 
-This pass re-baselines the abandoned RTMPose/MMPose critic experiment. It was
-abandoned before reward training: no RTMPose-based reward branch was trained.
-The reason is integration/dependency complexity and the decision to standardize
-the next Phase-2 direction on DWPose only. No DWPose critic is implemented in
-this repository yet.
+The DWPose-only suitability audit is complete.  No critic exists and none was
+implemented.  The decision is **not to use DWPose as a differentiable critic**:
+the only official native PyTorch route recreates the MMEngine/MMCV/MMDetection/
+MMPose dependency family that led to the abandoned RTMPose path.  The official
+ONNX pair may be considered only for a separately approved non-gradient
+preprocessing/evaluation use case.
 
-Phase-1 provenance remains authoritative and unchanged. In particular,
-`data/pose_targets_authoritative_v1.jsonl` remains the source for active
-COCO/Human-Art targets; sidecar v3 retains source-coordinate keypoints,
-`reward_joint_valid` masks, and the exact seven Human-Art visible source-OOB
-anomalies, which are masked rather than repaired. Danbooru remains explicitly
-flow-only (`pose_reward_available=false`). Control reconstruction, paired
-preprocessing, dataset indexing, and external Keypoint R-CNN PCK evaluation
-remain unchanged.
+The production training objective remains flow-matching MSE only.  Phase-1
+provenance remains unchanged: `data/pose_targets_authoritative_v1.jsonl` and
+sidecar v3 are authoritative; `reward_joint_valid` masks (including the seven
+visible Human-Art source-OOB masks) remain intact.  Danbooru remains flow-only.
+No target semantics, control reconstruction, paired preprocessing, or external
+Keypoint R-CNN PCK evaluation changed.
 
-## Verified Phase-1 state
+## Verified findings
 
-- Source audit: 17,416 active samples; 15,161 pose-reward available and 2,255
-  unavailable (all Danbooru). Diagnostic annotations passed 21/21.
-- OOB contract: exactly 7 visible source-OOB joints in two Human-Art stems;
-  no unexpected, missing, or altered reviewed events.
-- Sidecar build: 17,416 records, SHA-256
-  `c98f76284179c781f5a14791d66e29dcf5b526168ca79922a40b70af972e444c`, with
-  444,235 valid reward joints and 7 source-OOB-masked joints.
-- Reconstruction audit (64 records): all calibrated gates passed.
+- Environment: Python 3.10.12, aarch64, host-owned PyTorch 2.7.0/CUDA 12.8;
+  `mmcv`, `mmengine`, `mmdet`, `mmpose`, and `onnxruntime` are absent.
+- Official ControlNet DWPose is `yolox_l.onnx` plus
+  `dw-ll_ucoco_384.onnx`.  It obtains raw SimCC values but uses ONNX Runtime,
+  NumPy/OpenCV, and `np.argmax`; it cannot backpropagate to this training
+  graph.  Detector and pose routines are separable, so it is usable top-down
+  with supplied boxes only outside a gradient path.
+- The official native checkpoint `dw-ll_ucoco_384.pth` exists in the author's
+  model repository, but loads through the DWPose MMPose fork, not a standalone
+  PyTorch module.  Its 384 model is a top-down CSPNeXt-L / RTMCCHead / SimCC
+  whole-body estimator with 133 joints.  The raw head forward exposes
+  `pred_x` and `pred_y`; expected 384-model shapes are `[B,133,576]` and
+  `[B,133,768]`, so input gradients are technically possible if the native
+  stack loads.
+- This is not a clean path: its config imports CSPNeXt from MMDetection, and
+  its exact pins are `mmcv>=2.0.0,<2.1.0`, `mmdet>=3.0.0,<3.2.0`, and
+  `mmengine>=0.4.0,<1.0.0`.  Compatibility with ARM64 PyTorch 2.7/CUDA 12.8
+  is unverified and requires the prohibited dependency experiment.
+- DWPose channels 0--16 match Phase-1 COCO-17 exactly (nose through right
+  ankle); the rendered OpenPose neck is synthetic and not a target.
 
-## DWPose baseline
+See `docs/DWPOSE_AUDIT.md` for sources, candidate table, architecture, and
+reward-graph boundary analysis.
 
-No tracked DWPose runtime, preprocessing utility, model wrapper, or dependency
-exists. The only tracked DWPose mention is a Phase-1 test asserting that the
-obsolete `historical_dwpose_jsonl` pseudo-label fallback is absent. Therefore
-the current repository exposes no DWPose raw heatmaps/logits and has no
-established input-gradient path; differentiability, raw-output availability,
-and detector/NMS/argmax boundaries must be audited before it can be used as a
-training reward.
+## Files changed this session
 
-`.venv/` and the harmless historical `.venv-rtmpose/` remain ignored.
-
-## Files changed in this cleanup pass
-
-- Deleted: `pose_controlnet/pose_critic.py`, `scripts/audit_pose_critic.py`,
-  `scripts/audit_pose_critic_vae.py`, `tests/test_pose_critic.py`, and
-  `docs/POSE_CRITIC_AUDIT.md`.
+- Added: `docs/DWPOSE_AUDIT.md`.
 - Modified: `docs/CODEX_HANDOFF.md`.
+- No Python, config, data, manifest, dependency, model, or training files
+  changed; no model files were downloaded and no GPU inference was run.
 
-## Validation and blockers
+## Checks and blockers
 
-- PASS: `PYTHONPATH=. python -m unittest tests.test_pose_targets
-  tests.test_reference_pose tests.test_post500_evaluation
-  tests.test_post1500_evaluation` (45 tests).
-- PASS: `git diff --check`.
-- No Python file was modified in this cleanup pass (the only Python changes are
-  deletions), so `py_compile` is not applicable. No GPU job was run.
-- Remaining tracked RTMPose/MMPose search hits are intentional historical
-  mentions in this handoff and `.venv-rtmpose/` in `.gitignore`; the latter is
-  retained as a harmless historical ignore. A binary evaluation contact sheet
-  produces an incidental byte-level `git grep` match but contains no tracked
-  implementation or dependency reference.
-- Blocker: DWPose suitability has not been audited. Do not add dependencies or
-  implement a critic until the audit establishes an approved backend, direct
-  raw-output access, and an end-to-end gradient path from the frozen pose model
-  to its RGB input without detector/NMS/argmax boundaries in the reward path.
+- PASS: targeted repository/dependency inventory and Python environment probe.
+- PASS: `git diff --check` after the documentation update.
+- Blocker/decision: a differentiable DWPose critic is rejected because the
+  official native route has the same dependency risk as RTMPose.  Do not
+  install MM* packages, ONNX Runtime, or download DWPose checkpoints for this
+  critic.
 
 ## Exact next recommended action
 
-Perform a DWPose-only, no-training audit: inventory the approved DWPose model
-and backend, trace preprocessing and person detection/postprocessing, then run
-a minimal frozen-model RGB-input autograd probe that records raw tensor names,
-shapes, and finite nonzero input-gradient norm. Preserve Phase-1 sidecar and
-external Keypoint R-CNN PCK behavior unchanged.
+Keep DWPose out of the training graph and retain flow-only training.  If an
+offline pose-evaluation utility is later requested, perform a new, isolated
+ONNX-only artifact/hash/preprocessing-parity audit; do not connect it to loss
+or backpropagation.
