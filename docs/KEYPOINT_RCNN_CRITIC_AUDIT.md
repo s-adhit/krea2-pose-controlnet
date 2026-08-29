@@ -1,9 +1,9 @@
 # Fixed-box torchvision Keypoint R-CNN critic audit
 
 Status: **Gate A (real-RGB critic feasibility) PASS; Gate A.5 loss-gradient
-comparison is implemented but not yet run on GH200.** This is an audit-only
-module. It does not modify `train.py`, the Phase-1 flow-matching objective, VAE
-decoding, timestep logic, provenance, or the external Keypoint R-CNN PCK
+comparison PASS; Gate B and Gate C are implemented but not yet run on GH200.**
+This is an audit-only module. It does not modify `train.py`, the Phase-1
+flow-matching objective, provenance, or the external Keypoint R-CNN PCK
 evaluator.
 
 ## Pinned estimator and torchvision 0.22 path
@@ -126,7 +126,7 @@ Gate A establishes critic feasibility. It also shows that raw pixel-coordinate
 Huber produces strongly domain-dependent RGB gradient scales; it does not
 choose a loss or authorize VAE/x0/training integration.
 
-## Gate A.5: bounded loss-gradient comparison
+## Gate A.5: bounded loss-gradient comparison — PASS
 
 The audit now evaluates all three losses for **eight deterministic images per
 source by default**. Each candidate/image pair uses a separate critic forward
@@ -144,7 +144,22 @@ remain detached. `--temperature-sweep` is optional and diagnostic-only: it
 reports just soft PCK and normalized coordinate error at 0.5, 1.0, and 2.0;
 temperature remains fixed and unlearned.
 
-Run on the actual GH200 shell (not the Codex sandbox):
+The GH200 run retained temperature **1.0** and measured these mean RGB gradient
+norms over the deterministic eight-sample/source panel:
+
+| candidate | COCO | Human-Art painting | Human-Art real | Human-Art sculpture |
+| --- | ---: | ---: | ---: | ---: |
+| Gaussian heatmap KL | 2.3343 | 9.6581 | 7.2826 | 7.1236 |
+| Normalized-coordinate Huber | .002822 | .101544 | .054005 | .020164 |
+
+Gaussian heatmap KL is the primary audit candidate for the next gates.
+Normalized-coordinate Huber remains the fallback/diagnostic candidate. Raw
+pixel-coordinate Huber is rejected for training consideration because its
+gradient scale is strongly domain-dependent. This is not an authorization to
+add any pose objective to production training: production remains
+flow-matching MSE only.
+
+The reproducible A.5 command was:
 
 ```bash
 PYTHONPATH=. python scripts/audit_keypoint_critic.py \
@@ -157,8 +172,93 @@ PYTHONPATH=. python scripts/audit_keypoint_critic.py \
 ```
 
 Use the actual immutable sidecar path if it differs from the illustrative
-`pose_targets_v3` path above. Do not use its result to select a training loss
-without separate authorization.
+`pose_targets_v3` path above.
+
+## Gate B: exact VAE round-trip audit — IMPLEMENTED, GH200 RUN REQUIRED
+
+`scripts/audit_keypoint_critic_vae.py` selects eight deterministic usable
+records/source from `coco`, `humanart_painting`, `humanart_real_human`, and
+`humanart_sculpture`; Danbooru remains excluded. It validates the sidecar
+geometry through the existing paired preprocessing path, then uses the exact
+project VAE helpers:
+
+- `Qwen/Qwen-Image`, subfolder `vae`, class `AutoencoderKLQwenImage`;
+- BF16 VAE execution;
+- posterior sampling with a deterministic stem-derived generator;
+- normalized latent `(raw - latents_mean) / latents_std`;
+- inverse normalization before decode; and
+- VAE `[-1, 1]` output converted in-graph to critic `[0, 1]` RGB.
+
+For original RGB and decoded `z0`, it reports Gaussian KL,
+normalized-coordinate Huber, normalized soft-coordinate error, soft PCK@.05,
+soft PCK@.10, entropy, peak probability, and signed round-trip deltas. It also
+reports detached RGB L1/MSE reconstruction error. Separate graphs measure
+finite nonzero `z0` gradient norms for Gaussian KL and normalized Huber; the
+JSON contains per-sample values and mean/median/std/min/max per source/loss.
+It asserts that fixed boxes, COCO17 targets, and `reward_joint_valid` do not
+change, and that frozen VAE/critic parameters receive no gradients.
+
+Run Gate B first on the GH200 host shell:
+
+```bash
+PYTHONPATH=. python scripts/audit_keypoint_critic_vae.py \
+  --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
+  --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
+  --samples-per-source 8 \
+  --device cuda \
+  --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_gate_b_vae.json
+```
+
+Gate B is not PASS until this output has been inspected for finite metrics,
+finite nonzero latent gradients for both candidates, valid geometry, and clean
+frozen-boundary checks.
+
+## Gate C: step-1500 x0_hat timestep audit — IMPLEMENTED, HOLD FOR GATE B
+
+`scripts/audit_keypoint_critic_timestep.py` is a separate read-only audit. It
+uses existing prepared latent shards plus cached text conditioning (rather than
+an alternative inference path), the existing control channel-concatenation
+forward, and the exact project flow helper:
+
+```text
+x_t = t * noise + (1 - t) * x0
+v   = noise - x0
+x0_hat = x_t - t * v_hat
+```
+
+The default timestep sweep is `.02 .05 .10 .20 .30 .40`; deterministic noise
+is SHA256-derived from seed 42 and stem. It validates the exact default parent
+checkpoint path and SHA256
+`6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0`,
+requires embedded step 1500, and loads it with the project model and
+trainable-state loader. For each source/timestep it reports primary Gaussian
+KL, fallback normalized Huber, all detached pose diagnostics, and deltas from
+the VAE-round-trip baseline. Independent graphs report both `dL/dv_hat` and
+`dL/dx0_hat` norms for both losses, without parameter gradients or optimizer
+updates.
+
+The quality and gradient reports must be read together: since
+`d x0_hat / d v_hat = -t`, low timesteps naturally attenuate the gradient to
+`v_hat` even when decoded pose quality is high. Gate C must not select a
+timestep based on PCK alone.
+
+Only after Gate B is acceptable, run Gate C on the GH200 host shell:
+
+```bash
+PYTHONPATH=. python scripts/audit_keypoint_critic_timestep.py \
+  --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
+  --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
+  --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
+  --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
+  --split train \
+  --samples-per-source 4 \
+  --device cuda \
+  --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_gate_c_timestep.json
+```
+
+Gate C is not PASS until the real GH200 output has been reviewed after an
+acceptable Gate B result. It does not choose a final `t_max`, change a training
+loss, or implement Gate D.
 
 ## PASS/HOLD criteria
 
@@ -167,11 +267,9 @@ masking, Gaussian normalization/KL finiteness, synthetic heatmap gradients,
 detached diagnostics, and mocked frozen-boundary checks pass. It does not
 establish real-image suitability.
 
-Gate A.5 may be marked complete only after it reports finite independent losses
-and finite nonzero RGB gradients for all three candidates across all four
-sources, with no critic parameter gradients. It is an empirical comparison:
-there is no arbitrary PCK, gradient, or loss threshold and it does not choose a
-training objective. Hold it if official COCO_V1 loading fails, fixed
-boxes/sidecar geometry fail validation, a value is non-finite, an RGB gradient
-is absent/zero, or a critic parameter receives a gradient. No training-loss or
-VAE/timestep integration is authorized by this document.
+Gate A.5 completed with finite independent losses and nonzero RGB gradients
+across the four sources. Gates B/C have no arbitrary quality threshold, but
+must fail loudly on a non-finite value, absent/zero required latent/output
+gradient, broken frozen boundary, changed Phase-1 geometry, checkpoint identity
+mismatch, or unavailable required artifact. No training-loss integration is
+authorized by this document.

@@ -2,78 +2,92 @@
 
 ## Current objective and decisions
 
-The bounded milestone is Gate A.5: an audit-only loss/gradient comparison for
-the fixed-box differentiable torchvision Keypoint R-CNN critic. Gate A real-RGB
-feasibility completed on GH200; Gate A.5 implementation and CPU tests are
-complete but the GH200 comparison has not run. Production training remains
-flow-matching MSE only. `train.py`, VAE decoding, x0/timestep logic,
-dependencies, Phase-1 provenance, and the external Keypoint R-CNN PCK
-evaluator remain unchanged. Do not train or integrate any critic loss.
+The bounded milestone is complete: Gate B and Gate C Keypoint R-CNN audit
+tooling is implemented, but neither gate has run on GH200. This remains strictly
+audit-only. `train.py` is unchanged; production remains flow-matching MSE only.
+No `lambda_pose`, dependency, Phase-1 provenance, VAE/training implementation,
+or external Keypoint R-CNN PCK evaluator was altered. Do not train or implement
+Gate D in this milestone.
 
-Phase-1 remains authoritative. The current canonical sidecar record SHA is
-`dfc32293f1bdb76de58e34a02f95a14e515b0080b7c2f60ddd4a28c6f9fb2d8f`; a
-deterministic current-code rebuild matched it byte-for-byte: 17,416 records,
-15,161 reward available, 2,255 unavailable, 444,235 valid reward joints,
-seven reviewed source-OOB masked joints, and 21/21 diagnostic coverage. The
-older `c98f...` SHA is historical, not canonical.
+Phase-1 remains authoritative. Canonical sidecar SHA:
+`dfc32293f1bdb76de58e34a02f95a14e515b0080b7c2f60ddd4a28c6f9fb2d8f`.
+The deterministic rebuild remains byte-identical (17,416 records, 15,161
+reward available, 2,255 unavailable, 444,235 valid reward joints, seven
+reviewed source-OOB masks, 21/21 diagnostic coverage).
 
-## Completed and verified
+Gate A and Gate A.5 are complete. A.5 retained temperature 1.0, selected
+Gaussian heatmap KL as the primary audit candidate, retains normalized
+coordinate Huber as fallback/diagnostic, and rejects raw pixel-coordinate
+Huber for training consideration. Mean RGB gradient norms: Gaussian KL — COCO
+2.3343, painting 9.6581, real 7.2826, sculpture 7.1236; normalized Huber —
+COCO .002822, painting .101544, real .054005, sculpture .020164.
 
-- Gate A GH200 real-RGB critic feasibility PASS. Metrics are recorded in
-  `docs/KEYPOINT_RCNN_CRITIC_AUDIT.md`: COCO soft PCK .05/.10 .9070/.9728 and
-  RGB raw-Huber gradient 4.95; Human-Art painting .3842/.5979 and 631.18;
-  real .6023/.7000 and 225.50; sculpture .6963/.8494 and 58.15. Raw
-  pixel-coordinate Huber has strongly domain-dependent RGB gradient scale.
-- `normalized_coordinate_huber` now normalizes both soft prediction and target
-  by the same authoritative fixed person ROI, then averages Huber over valid
-  person/joint observations. Raw Huber and Gaussian KL already use the same
-  valid-observation mean.
-- `scripts/audit_keypoint_critic.py` now defaults to eight deterministic
-  samples per source and runs separate forward/autograd graphs for raw Huber,
-  normalized Huber, and Gaussian KL. JSON contains each sample's three losses
-  and gradient norms plus source mean/median/std/min/max gradient statistics.
-  `--temperature-sweep` optionally reports detached 0.5/1.0/2.0 soft PCK and
-  normalized-error diagnostics only.
-- The frozen COCO_V1 fixed-box path and detector bypass remain as documented
-  in `docs/KEYPOINT_RCNN_CRITIC_AUDIT.md`; critic parameters remain frozen.
+## Completed implementation
 
-## Files changed this session
+- Added `pose_controlnet/keypoint_critic_audit.py`: dependency-free helpers
+  for deterministic noise/seed policy, timestep validation, exact
+  `x0_hat = x_t - t*v_hat` reconstruction, metric deltas/aggregation, and
+  frozen/Phase-1-geometry contracts.
+- Added `scripts/audit_keypoint_critic_vae.py` (Gate B). It uses the exact
+  project Qwen/Krea VAE helpers: BF16 `AutoencoderKLQwenImage`, posterior
+  sampling, per-channel latent normalization/inverse normalization, and
+  in-graph decoded `[-1,1]` to critic `[0,1]` RGB conversion. It audits eight
+  deterministic samples/source by default, outputs original/round-trip
+  metrics/deltas plus detached RGB L1/MSE, and independently measures finite
+  nonzero latent gradients for Gaussian KL and normalized Huber.
+- Added `scripts/audit_keypoint_critic_timestep.py` (Gate C). It uses existing
+  prepared latent shards and cached text conditioning, project
+  channel-concat/model loading, exact `make_flow_pair`, and the exact pinned
+  step-1500 parent checkpoint. It verifies SHA
+  `6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0`,
+  sweeps `.02 .05 .10 .20 .30 .40` by default, reports original/VAE/x0_hat
+  metrics and VAE-baseline deltas, and independently measures `dL/dv_hat` and
+  `dL/dx0_hat` for both retained candidates. It never accumulates parameter
+  gradients or steps an optimizer.
+- Added `tests/test_keypoint_critic_audit.py`; updated
+  `docs/KEYPOINT_RCNN_CRITIC_AUDIT.md` with the final A.5 result, Gate B/C
+  status, contracts, and GH200 commands.
 
-- `pose_controlnet/keypoint_critic.py`
-- `scripts/audit_keypoint_critic.py`
-- `tests/test_keypoint_critic.py`
-- `docs/KEYPOINT_RCNN_CRITIC_AUDIT.md`
-- `docs/CODEX_HANDOFF.md`
+## Tests/checks
 
-## Tests/checks and blockers
-
-- PASS: `PYTHONPATH=. python -m unittest tests.test_keypoint_critic` — 15 CPU
-  tests: existing critic contracts plus normalized ROI mapping, scale
-  invariance, normalized gradients, valid person/joint averaging, and isolated
-  three-candidate RGB gradient graphs.
-- PASS: `python -m py_compile pose_controlnet/keypoint_critic.py
-  scripts/audit_keypoint_critic.py tests/test_keypoint_critic.py`.
-- PASS: `PYTHONPATH=. python scripts/audit_keypoint_critic.py --help`.
+- PASS: `PYTHONPATH=. python -m unittest tests.test_keypoint_critic
+  tests.test_keypoint_critic_audit` — 22 CPU tests.
+- PASS: `python -m py_compile pose_controlnet/keypoint_critic_audit.py
+  scripts/audit_keypoint_critic_vae.py scripts/audit_keypoint_critic_timestep.py
+  tests/test_keypoint_critic.py tests/test_keypoint_critic_audit.py`.
+- PASS: `PYTHONPATH=. python scripts/audit_keypoint_critic_vae.py --help` and
+  `PYTHONPATH=. python scripts/audit_keypoint_critic_timestep.py --help`.
 - PASS: `git diff --check`.
-- BLOCKER/HOLD: run Gate A.5 on the actual GH200 only. The Codex sandbox is
-  not evidence for GPU checkpoint loading or real-image gradient behavior.
 
-## Exact next recommended action
+## Current blockers and exact next action
 
-On the GH200 shell, run:
+The only blocker is the required real GH200 execution; the Codex sandbox does
+not establish real VAE/critic/checkpoint behavior. Run in this exact order:
 
-```bash
-PYTHONPATH=. python scripts/audit_keypoint_critic.py \
-  --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
-  --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
-  --samples-per-source 8 \
-  --temperature-sweep \
-  --device cuda \
-  --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_gate_a5.json
-```
+1. Gate B:
 
-Use the actual immutable sidecar path if it differs. Inspect all four sources
-for finite losses, finite nonzero per-sample RGB gradients for all three
-candidates, no critic parameter gradients, and the reported distribution of
-gradient scales. Do not make a loss-selection or integration decision in this
-milestone.
+   ```bash
+   PYTHONPATH=. python scripts/audit_keypoint_critic_vae.py \
+     --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
+     --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
+     --samples-per-source 8 --device cuda \
+     --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_gate_b_vae.json
+   ```
+
+2. Inspect Gate B: finite metrics, finite nonzero `z0` gradients for both
+   candidates, stable geometry, and frozen VAE/critic checks.
+3. Only if Gate B is acceptable, Gate C:
+
+   ```bash
+   PYTHONPATH=. python scripts/audit_keypoint_critic_timestep.py \
+     --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
+     --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
+     --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
+     --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
+     --split train --samples-per-source 4 --device cuda \
+     --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_gate_c_timestep.json
+   ```
+
+4. Inspect Gate C quality and gradient exposure together; low `t` naturally
+   attenuates `dL/dv_hat` because `d x0_hat / d v_hat = -t`. Gate D is the
+   subsequent milestone, not part of this task.
