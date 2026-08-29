@@ -1,7 +1,9 @@
 # Fixed-box torchvision Keypoint R-CNN critic audit
 
 Status: **Gate A (real-RGB critic feasibility) PASS; Gate A.5 loss-gradient
-comparison PASS; Gate B and Gate C are implemented but not yet run on GH200.**
+comparison PASS; Gate B PASS; Gate C PASS. Gate D gradient-calibration tooling
+is implemented but requires a real GH200 run. Gate E smoke tooling is
+implemented but blocked on Gate-D review and an explicit operator policy.**
 This is an audit-only module. It does not modify `train.py`, the Phase-1
 flow-matching objective, provenance, or the external Keypoint R-CNN PCK
 evaluator.
@@ -174,7 +176,7 @@ PYTHONPATH=. python scripts/audit_keypoint_critic.py \
 Use the actual immutable sidecar path if it differs from the illustrative
 `pose_targets_v3` path above.
 
-## Gate B: exact VAE round-trip audit — IMPLEMENTED, GH200 RUN REQUIRED
+## Gate B: exact VAE round-trip audit — PASS
 
 `scripts/audit_keypoint_critic_vae.py` selects eight deterministic usable
 records/source from `coco`, `humanart_painting`, `humanart_real_human`, and
@@ -209,11 +211,11 @@ PYTHONPATH=. python scripts/audit_keypoint_critic_vae.py \
   --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_gate_b_vae.json
 ```
 
-Gate B is not PASS until this output has been inspected for finite metrics,
-finite nonzero latent gradients for both candidates, valid geometry, and clean
-frozen-boundary checks.
+Gate B passed on GH200: the exact VAE path retained valid geometry, finite
+metrics, finite nonzero latent gradients for the retained candidates, and a
+clean frozen VAE/critic boundary.
 
-## Gate C: step-1500 x0_hat timestep audit — IMPLEMENTED, HOLD FOR GATE B
+## Gate C: step-1500 x0_hat timestep audit — PASS
 
 `scripts/audit_keypoint_critic_timestep.py` is a separate read-only audit. It
 uses existing prepared latent shards plus cached text conditioning (rather than
@@ -256,9 +258,69 @@ PYTHONPATH=. python scripts/audit_keypoint_critic_timestep.py \
   --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_gate_c_timestep.json
 ```
 
-Gate C is not PASS until the real GH200 output has been reviewed after an
-acceptable Gate B result. It does not choose a final `t_max`, change a training
-loss, or implement Gate D.
+Gate C passed on GH200. The resulting interpretation is deliberately bounded:
+primary pose timestep `.20`; secondary `.10`; stress/upper-bound diagnostic
+`.30`; and `.40` is held because of strong gradient escalation/outliers.
+Timesteps `.02`/`.05` are not primary pose candidates because the exact
+`d x0_hat / d v_hat = -t` path heavily attenuates exposure. This does not
+change production flow sampling or the flow-only production objective.
+
+## Gate D: actual LoRA/control gradient calibration — IMPLEMENTED, GH200 RUN REQUIRED
+
+`scripts/audit_pose_gradient_balance.py` is read-only. It loads the exact
+rank-64/alpha-64 step-1500 trainable state, confirms the production trainable
+boundary, and uses deterministic source samples/noise with independent flow and
+Gaussian-KL autograd graphs. It reports per sample/source/timestep flow and
+pose norms, ratio, dot product, cosine, candidate 1/5/10/20% lambdas,
+combined-gradient diagnostics, and meaningful LoRA/ControlInput groups. It
+does not build an optimizer or update a parameter.
+
+Run it on the GH200 host shell:
+
+```bash
+PYTHONPATH=. python scripts/audit_pose_gradient_balance.py \
+  --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
+  --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
+  --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
+  --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
+  --split train --samples-per-source 4 --timesteps .10 .20 .30 --device cuda \
+  --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_gate_d_gradient_balance.json
+```
+
+Gate D is not PASS until this output, including sculpture outliers, has been
+reviewed and an operator explicitly chooses `lambda_pose` and a pose-timestep
+window.
+
+## Gate E: isolated pose-reward smoke tooling — IMPLEMENTED, BLOCKED ON GATE-D REVIEW
+
+`scripts/train_pose_reward_smoke.py` is a separate bounded continuation tool;
+it does not alter `train.py`. It requires an isolated output run name,
+`lambda_pose`, and an explicit inclusive pose-timestep window. It restores the
+exact step-1500 parent, preserves production flow-timestep sampling and flow
+MSE, and applies Gaussian heatmap KL only to Phase-1
+`pose_reward_available=true` samples inside that supplied window. Danbooru
+therefore remains flow-only. VAE, critic, and base weights stay frozen while
+their differentiable path remains intact for active samples. Checkpoints use
+the existing full trainable-state schema and default to frequent configurable
+saves.
+
+Do not launch this until Gate D has been reviewed. Template GH200 command:
+
+```bash
+PYTHONPATH=. python scripts/train_pose_reward_smoke.py \
+  --parent-checkpoint /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt \
+  --expected-parent-sha256 6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0 \
+  --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors \
+  --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
+  --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
+  --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
+  --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints \
+  --run-name <isolated_gate_e_run_name> --lambda-pose <reviewed_lambda_pose> \
+  --pose-timestep-min <reviewed_min> --pose-timestep-max <reviewed_max> \
+  --max-steps 200 --save-every 50 \
+  --microbatch-size <profiled_microbatch> --gradient-accumulation-steps <accumulation> \
+  --device cuda
+```
 
 ## PASS/HOLD criteria
 

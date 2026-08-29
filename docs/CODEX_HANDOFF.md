@@ -1,93 +1,106 @@
 # Project handoff
 
-## Current objective and decisions
+## Current objective and enforced decisions
 
-The bounded milestone is complete: Gate B and Gate C Keypoint R-CNN audit
-tooling is implemented, but neither gate has run on GH200. This remains strictly
-audit-only. `train.py` is unchanged; production remains flow-matching MSE only.
-No `lambda_pose`, dependency, Phase-1 provenance, VAE/training implementation,
-or external Keypoint R-CNN PCK evaluator was altered. Do not train or implement
-Gate D in this milestone.
+The completed bounded milestone implements tooling only: Gate D is a
+read-only actual-trainable gradient calibration, and Gate E is a separately
+invoked, bounded pose-reward smoke continuation. `train.py` remains unchanged
+and normal production training remains flow-matching MSE only. No default
+`lambda_pose` or pose-timestep policy was selected or added. Do not launch
+either tool from the Codex sandbox.
 
-Phase-1 remains authoritative. Canonical sidecar SHA:
+Phase-1 provenance remains authoritative and unchanged. Canonical sidecar SHA:
 `dfc32293f1bdb76de58e34a02f95a14e515b0080b7c2f60ddd4a28c6f9fb2d8f`.
-The deterministic rebuild remains byte-identical (17,416 records, 15,161
-reward available, 2,255 unavailable, 444,235 valid reward joints, seven
-reviewed source-OOB masks, 21/21 diagnostic coverage).
+The exact required parent is
+`/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt`
+with SHA256 `6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0`.
 
-Gate A and Gate A.5 are complete. A.5 retained temperature 1.0, selected
-Gaussian heatmap KL as the primary audit candidate, retains normalized
-coordinate Huber as fallback/diagnostic, and rejects raw pixel-coordinate
-Huber for training consideration. Mean RGB gradient norms: Gaussian KL — COCO
-2.3343, painting 9.6581, real 7.2826, sculpture 7.1236; normalized Huber —
-COCO .002822, painting .101544, real .054005, sculpture .020164.
+## Verified gates and decisions
 
-## Completed implementation
+- Gate A and A.5: PASS. Temperature 1.0; primary critic loss is Gaussian
+  heatmap KL; normalized-coordinate Huber is diagnostic/fallback only; raw
+  pixel-coordinate Huber is rejected.
+- Gate B: PASS. Exact VAE decode, geometry, gradients, and frozen-boundary
+  audit completed on GH200.
+- Gate C: PASS. Exact convention is `x_t=t*noise+(1-t)*x0`,
+  `v_target=noise-x0`, `x0_hat=x_t-t*v_hat`. Primary pose timestep `.20`,
+  secondary `.10`, stress/upper-bound diagnostic `.30`; `.40` is held for
+  strong gradient escalation/outliers. `.02`/`.05` are not primary candidates
+  because `d x0_hat / d v_hat = -t` attenuates exposure.
+- Gate D: IMPLEMENTED, GH200 RUN REQUIRED. It remains audit-only: no optimizer
+  construction or update. It validates exact rank-64/alpha-64 LoRA plus
+  ControlInput trainables, independent equal-state flow/Gaussian-KL graphs,
+  norms/dot/cosine, candidate lambda panel, combined gradients, and
+  source/timestep statistics.
+- Gate E: TOOLING IMPLEMENTED BUT BLOCKED ON GATE-D REVIEW. Its separate tool
+  requires explicit `lambda_pose`, an explicit inclusive timestep window, and
+  an isolated output run. It retains production flow sampling/MSE and only
+  decodes/runs the critic for `pose_reward_available=true` active samples.
 
-- Added `pose_controlnet/keypoint_critic_audit.py`: dependency-free helpers
-  for deterministic noise/seed policy, timestep validation, exact
-  `x0_hat = x_t - t*v_hat` reconstruction, metric deltas/aggregation, and
-  frozen/Phase-1-geometry contracts.
-- Added `scripts/audit_keypoint_critic_vae.py` (Gate B). It uses the exact
-  project Qwen/Krea VAE helpers: BF16 `AutoencoderKLQwenImage`, posterior
-  sampling, per-channel latent normalization/inverse normalization, and
-  in-graph decoded `[-1,1]` to critic `[0,1]` RGB conversion. It audits eight
-  deterministic samples/source by default, outputs original/round-trip
-  metrics/deltas plus detached RGB L1/MSE, and independently measures finite
-  nonzero latent gradients for Gaussian KL and normalized Huber.
-- Added `scripts/audit_keypoint_critic_timestep.py` (Gate C). It uses existing
-  prepared latent shards and cached text conditioning, project
-  channel-concat/model loading, exact `make_flow_pair`, and the exact pinned
-  step-1500 parent checkpoint. It verifies SHA
-  `6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0`,
-  sweeps `.02 .05 .10 .20 .30 .40` by default, reports original/VAE/x0_hat
-  metrics and VAE-baseline deltas, and independently measures `dL/dv_hat` and
-  `dL/dx0_hat` for both retained candidates. It never accumulates parameter
-  gradients or steps an optimizer.
-- Added `tests/test_keypoint_critic_audit.py`; updated
-  `docs/KEYPOINT_RCNN_CRITIC_AUDIT.md` with the final A.5 result, Gate B/C
-  status, contracts, and GH200 commands.
+## Files changed this session
+
+- `pose_controlnet/pose_reward_tools.py`
+- `scripts/audit_pose_gradient_balance.py`
+- `scripts/train_pose_reward_smoke.py`
+- `tests/test_pose_reward_tools.py`
+- `docs/KEYPOINT_RCNN_CRITIC_AUDIT.md`
+- `docs/CODEX_HANDOFF.md`
+
+Existing untracked Gate B/C audit files were preserved; do not overwrite them.
 
 ## Tests/checks
 
 - PASS: `PYTHONPATH=. python -m unittest tests.test_keypoint_critic
-  tests.test_keypoint_critic_audit` — 22 CPU tests.
-- PASS: `python -m py_compile pose_controlnet/keypoint_critic_audit.py
-  scripts/audit_keypoint_critic_vae.py scripts/audit_keypoint_critic_timestep.py
-  tests/test_keypoint_critic.py tests/test_keypoint_critic_audit.py`.
-- PASS: `PYTHONPATH=. python scripts/audit_keypoint_critic_vae.py --help` and
-  `PYTHONPATH=. python scripts/audit_keypoint_critic_timestep.py --help`.
+  tests.test_keypoint_critic_audit tests.test_pose_reward_tools` — 31 CPU
+  tests. Coverage includes incremental norm/dot/cosine, zero safety, lambda
+  formula, combined gradients, trainable/frozen selection, deterministic
+  state, active/availability masks, inactive pose-graph skipping, invalid-joint
+  masking, inactive/active total loss, required lambda/output isolation, no
+  Gate-D optimizer step, and existing-loader checkpoint schema.
+- PASS: `python -m py_compile pose_controlnet/pose_reward_tools.py
+  scripts/audit_pose_gradient_balance.py scripts/train_pose_reward_smoke.py
+  tests/test_pose_reward_tools.py`.
+- PASS: `PYTHONPATH=. python scripts/audit_pose_gradient_balance.py --help`;
+  `PYTHONPATH=. python scripts/train_pose_reward_smoke.py --help`.
 - PASS: `git diff --check`.
 
-## Current blockers and exact next action
+## Blockers and exact GH200 run order
 
-The only blocker is the required real GH200 execution; the Codex sandbox does
-not establish real VAE/critic/checkpoint behavior. Run in this exact order:
+The only blocker is the required Gate-D real GH200 output and its human review.
+Do not mark Gate D PASS or launch Gate E automatically.
 
-1. Gate B:
-
-   ```bash
-   PYTHONPATH=. python scripts/audit_keypoint_critic_vae.py \
-     --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
-     --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
-     --samples-per-source 8 --device cuda \
-     --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_gate_b_vae.json
-   ```
-
-2. Inspect Gate B: finite metrics, finite nonzero `z0` gradients for both
-   candidates, stable geometry, and frozen VAE/critic checks.
-3. Only if Gate B is acceptable, Gate C:
+1. Run Gate D:
 
    ```bash
-   PYTHONPATH=. python scripts/audit_keypoint_critic_timestep.py \
+   PYTHONPATH=. python scripts/audit_pose_gradient_balance.py \
      --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
      --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
      --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
      --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
-     --split train --samples-per-source 4 --device cuda \
-     --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_gate_c_timestep.json
+     --split train --samples-per-source 4 --timesteps .10 .20 .30 --device cuda \
+     --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_gate_d_gradient_balance.json
    ```
 
-4. Inspect Gate C quality and gradient exposure together; low `t` naturally
-   attenuates `dL/dv_hat` because `d x0_hat / d v_hat = -t`. Gate D is the
-   subsequent milestone, not part of this task.
+2. Inspect Gate D, especially per-source/timestep ratio/cosine and sculpture
+   outliers.
+3. Explicitly select `lambda_pose` and a pose timestep policy/window.
+4. Only then launch Gate E (normally an initial 200 steps), e.g.:
+
+   ```bash
+   PYTHONPATH=. python scripts/train_pose_reward_smoke.py \
+     --parent-checkpoint /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt \
+     --expected-parent-sha256 6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0 \
+     --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors \
+     --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
+     --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
+     --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
+     --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints \
+     --run-name <isolated_gate_e_run_name> --lambda-pose <reviewed_lambda_pose> \
+     --pose-timestep-min <reviewed_min> --pose-timestep-max <reviewed_max> \
+     --max-steps 200 --save-every 50 \
+     --microbatch-size <profiled_microbatch> --gradient-accumulation-steps <accumulation> \
+     --device cuda
+   ```
+
+5. Inspect the first 50/100/200-step checkpoints and local metrics before any
+   longer branch.
