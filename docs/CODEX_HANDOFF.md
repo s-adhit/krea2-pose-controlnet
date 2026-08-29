@@ -2,79 +2,78 @@
 
 ## Current objective and decisions
 
-The current bounded milestone is the audit-only fixed-box differentiable
-torchvision Keypoint R-CNN pose critic. It is implemented but **the real-image
-GH200 domain audit has not run**, so the critic is HOLD for any future
-experiment. Production training remains flow-matching MSE only: `train.py`,
-the training objective, VAE decoding, x0/timestep logic, dependency stack,
-Phase-1 provenance, and the existing external Keypoint R-CNN PCK evaluator
-were not changed.
+The bounded milestone is Gate A.5: an audit-only loss/gradient comparison for
+the fixed-box differentiable torchvision Keypoint R-CNN critic. Gate A real-RGB
+feasibility completed on GH200; Gate A.5 implementation and CPU tests are
+complete but the GH200 comparison has not run. Production training remains
+flow-matching MSE only. `train.py`, VAE decoding, x0/timestep logic,
+dependencies, Phase-1 provenance, and the external Keypoint R-CNN PCK
+evaluator remain unchanged. Do not train or integrate any critic loss.
 
-Phase-1 remains authoritative. The immutable v3 sidecar's COCO17 training
-coordinates, fixed boxes, and `reward_joint_valid` mask are the sole target
-inputs. The seven reviewed Human-Art source-OOB joints stay masked; Danbooru
-stays `pose_reward_available=false` and is excluded. RTMPose and DWPose remain
-rejected as differentiable critics because they require the unsupported MM*
-dependency family; no MM*/ONNX dependencies were installed.
+Phase-1 remains authoritative. The current canonical sidecar record SHA is
+`dfc32293f1bdb76de58e34a02f95a14e515b0080b7c2f60ddd4a28c6f9fb2d8f`; a
+deterministic current-code rebuild matched it byte-for-byte: 17,416 records,
+15,161 reward available, 2,255 unavailable, 444,235 valid reward joints,
+seven reviewed source-OOB masked joints, and 21/21 diagnostic coverage. The
+older `c98f...` SHA is historical, not canonical.
 
-## Verified critic design
+## Completed and verified
 
-- `pose_controlnet/keypoint_critic.py` loads the exact model used by the
-  external evaluator: `keypointrcnn_resnet50_fpn` with official COCO_V1
-  weights (`DEFAULT` resolves to COCO_V1), freezes every parameter, and forces
-  evaluation mode.
-- From torchvision 0.22 source, its differentiable tensor path is
-  `GeneralizedRCNNTransform -> backbone -> keypoint_roi_pool -> keypoint_head
-  -> keypoint_predictor`. The default keypoint ROI pool is 14×14 and the
-  predictor is 14→28 transpose-convolution then 28→56 bilinear upsample, so
-  raw logits are `[total_fixed_people, 17, 56, 56]` in Phase-1 COCO17 order.
-- Fixed authoritative `xyxy` boxes are passed through only torchvision's
-  transform resize and then directly to the keypoint ROI branch. The wrapper
-  bypasses `model.rpn`, all ROI box classification/regression operations,
-  detector scores/thresholds, NMS, torchvision keypoint decoding, and every
-  other detector decision.
-- The module provides spatial-softmax ROI coordinates, masked coordinate Huber,
-  normalized Gaussian heatmap targets / masked KL, and detached-only soft/
-  argmax PCK, error, entropy, and peak-probability diagnostics. It does not
-  attach any loss to training.
+- Gate A GH200 real-RGB critic feasibility PASS. Metrics are recorded in
+  `docs/KEYPOINT_RCNN_CRITIC_AUDIT.md`: COCO soft PCK .05/.10 .9070/.9728 and
+  RGB raw-Huber gradient 4.95; Human-Art painting .3842/.5979 and 631.18;
+  real .6023/.7000 and 225.50; sculpture .6963/.8494 and 58.15. Raw
+  pixel-coordinate Huber has strongly domain-dependent RGB gradient scale.
+- `normalized_coordinate_huber` now normalizes both soft prediction and target
+  by the same authoritative fixed person ROI, then averages Huber over valid
+  person/joint observations. Raw Huber and Gaussian KL already use the same
+  valid-observation mean.
+- `scripts/audit_keypoint_critic.py` now defaults to eight deterministic
+  samples per source and runs separate forward/autograd graphs for raw Huber,
+  normalized Huber, and Gaussian KL. JSON contains each sample's three losses
+  and gradient norms plus source mean/median/std/min/max gradient statistics.
+  `--temperature-sweep` optionally reports detached 0.5/1.0/2.0 soft PCK and
+  normalized-error diagnostics only.
+- The frozen COCO_V1 fixed-box path and detector bypass remain as documented
+  in `docs/KEYPOINT_RCNN_CRITIC_AUDIT.md`; critic parameters remain frozen.
 
 ## Files changed this session
 
-- Added `pose_controlnet/keypoint_critic.py`.
-- Added `scripts/audit_keypoint_critic.py`.
-- Added `tests/test_keypoint_critic.py`.
-- Added `docs/KEYPOINT_RCNN_CRITIC_AUDIT.md`.
-- Rewrote this handoff. No existing source-code file was modified.
+- `pose_controlnet/keypoint_critic.py`
+- `scripts/audit_keypoint_critic.py`
+- `tests/test_keypoint_critic.py`
+- `docs/KEYPOINT_RCNN_CRITIC_AUDIT.md`
+- `docs/CODEX_HANDOFF.md`
 
-## Checks and blockers
+## Tests/checks and blockers
 
-- PASS: `PYTHONPATH=. python -m unittest tests.test_keypoint_critic` — 10 CPU
-  tests passed: spatial and ROI mapping, masks including invalid-zero KL,
-  Gaussian normalization/KL finiteness, synthetic heatmap autograd, detached
-  diagnostics, and mocked frozen-model contract.
+- PASS: `PYTHONPATH=. python -m unittest tests.test_keypoint_critic` — 15 CPU
+  tests: existing critic contracts plus normalized ROI mapping, scale
+  invariance, normalized gradients, valid person/joint averaging, and isolated
+  three-candidate RGB gradient graphs.
 - PASS: `python -m py_compile pose_controlnet/keypoint_critic.py
   scripts/audit_keypoint_critic.py tests/test_keypoint_critic.py`.
 - PASS: `PYTHONPATH=. python scripts/audit_keypoint_critic.py --help`.
-- PASS: `git diff --check` after tracked-file changes; no unrelated worktree
-  changes were present at session start.
-- HOLD: no official COCO_V1 checkpoint load or real-image/GH200 forward was
-  run in this Codex sandbox. Therefore no domain-quality assertion, PCK claim,
-  or training integration is justified.
+- PASS: `git diff --check`.
+- BLOCKER/HOLD: run Gate A.5 on the actual GH200 only. The Codex sandbox is
+  not evidence for GPU checkpoint loading or real-image gradient behavior.
 
-## Exact next action
+## Exact next recommended action
 
-On the actual GH200 shell, run the real-image audit before making any decision
-about future pose-loss work:
+On the GH200 shell, run:
 
 ```bash
 PYTHONPATH=. python scripts/audit_keypoint_critic.py \
   --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
   --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
+  --samples-per-source 8 \
+  --temperature-sweep \
   --device cuda \
-  --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_audit.json
+  --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_gate_a5.json
 ```
 
-Use the actual immutable v3 sidecar location if it differs. Confirm finite
-metrics, nonzero finite RGB gradient for each source's first sample, and no
-critic parameter gradient. Do not modify `train.py`, decode VAE outputs, or
-introduce a pose loss unless separately authorized after that audit.
+Use the actual immutable sidecar path if it differs. Inspect all four sources
+for finite losses, finite nonzero per-sample RGB gradients for all three
+candidates, no critic parameter gradients, and the reported distribution of
+gradient scales. Do not make a loss-selection or integration decision in this
+milestone.

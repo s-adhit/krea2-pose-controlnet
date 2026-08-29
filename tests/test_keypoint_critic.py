@@ -8,14 +8,18 @@ from torch import nn
 
 from pose_controlnet.keypoint_critic import (
     COCO17_JOINT_COUNT,
+    FixedBoxHeatmaps,
     FixedBoxKeypointRCNNCritic,
     detached_pose_diagnostics,
     gaussian_heatmap_kl,
     gaussian_heatmap_target,
     map_heatmap_coordinates_to_boxes,
     masked_coordinate_huber,
+    normalize_coordinates_to_boxes,
+    normalized_coordinate_huber,
     soft_coordinates,
 )
+from scripts.audit_keypoint_critic import _loss_and_rgb_gradient
 
 
 def _boxes() -> torch.Tensor:
@@ -41,6 +45,21 @@ class _ToyKeypointModel(nn.Module):
         self.backbone = nn.Identity()
         self.roi_heads = _ToyROIHeads()
         self.parameter = nn.Parameter(torch.ones(()))
+
+
+class _GradientToyCritic(nn.Module):
+    """Tiny frozen-boundary critic that makes each candidate depend on RGB."""
+    def forward(self, rgb: torch.Tensor, boxes: list[torch.Tensor]) -> FixedBoxHeatmaps:
+        logits = rgb.mean(dim=1, keepdim=True).expand(-1, COCO17_JOINT_COUNT, -1, -1)
+        fixed_boxes = boxes[0]
+        return FixedBoxHeatmaps(
+            logits=logits,
+            boxes_training=fixed_boxes,
+            boxes_model=fixed_boxes,
+            box_image_indices=torch.zeros((len(fixed_boxes),), dtype=torch.int64),
+            training_image_sizes=((int(rgb.shape[-2]), int(rgb.shape[-1])),),
+            model_image_sizes=((int(rgb.shape[-2]), int(rgb.shape[-1])),),
+        )
 
 
 class KeypointCriticTests(unittest.TestCase):
@@ -79,6 +98,44 @@ class KeypointCriticTests(unittest.TestCase):
         loss.backward()
         self.assertTrue(torch.equal(predicted.grad, torch.zeros_like(predicted)))
 
+    def test_normalized_roi_coordinate_mapping(self) -> None:
+        coordinates = torch.tensor([[[60.0, 120.0]] * COCO17_JOINT_COUNT])
+        normalized = normalize_coordinates_to_boxes(coordinates, _boxes())
+        self.assertTrue(torch.allclose(normalized, torch.tensor([[[0.5, 0.5]] * COCO17_JOINT_COUNT])))
+
+    def test_normalized_coordinate_huber_is_box_scale_invariant(self) -> None:
+        boxes = torch.tensor([[0.0, 0.0, 100.0, 200.0], [10.0, 20.0, 210.0, 420.0]])
+        target = torch.tensor([[[50.0, 100.0]] * 17, [[110.0, 220.0]] * 17])
+        prediction = torch.tensor([[[60.0, 120.0]] * 17, [[130.0, 260.0]] * 17])
+        valid = torch.ones((2, 17), dtype=torch.bool)
+        combined = normalized_coordinate_huber(prediction, target, boxes, valid)
+        first = normalized_coordinate_huber(prediction[:1], target[:1], boxes[:1], valid[:1])
+        second = normalized_coordinate_huber(prediction[1:], target[1:], boxes[1:], valid[1:])
+        self.assertTrue(torch.allclose(first, second))
+        self.assertTrue(torch.allclose(combined, first))
+
+    def test_normalized_coordinate_huber_has_finite_nonzero_gradients(self) -> None:
+        prediction = _coordinates(65.0, 125.0).requires_grad_()
+        loss = normalized_coordinate_huber(prediction, _coordinates(), _boxes(), torch.ones((1, 17), dtype=torch.bool))
+        loss.backward()
+        self.assertTrue(torch.isfinite(prediction.grad).all())
+        self.assertGreater(prediction.grad.norm().item(), 0.0)
+
+    def test_coordinate_losses_average_only_valid_person_joint_observations(self) -> None:
+        boxes = torch.tensor([[0.0, 0.0, 10.0, 10.0], [0.0, 0.0, 20.0, 20.0]])
+        target = torch.zeros((2, 17, 2))
+        prediction = target.clone()
+        prediction[0, 0, 0] = 4.0
+        prediction[1, 0, 0] = 2.0
+        valid = torch.zeros((2, 17), dtype=torch.bool)
+        valid[:, 0] = True
+        # Huber(4) = 3.5 and Huber(2) = 1.5 per x coordinate; the y terms
+        # are zero and each joint reduces across x/y, so the valid-joint mean is 1.25.
+        self.assertAlmostEqual(masked_coordinate_huber(prediction, target, valid).item(), 1.25)
+        normalized = normalized_coordinate_huber(prediction, target, boxes, valid)
+        # The normalized errors are .4 and .1, both in the quadratic branch.
+        self.assertAlmostEqual(normalized.item(), (0.5 * .4 ** 2 / 2 + 0.5 * .1 ** 2 / 2) / 2, places=7)
+
     def test_gaussian_target_is_normalized(self) -> None:
         target = gaussian_heatmap_target(_coordinates(), _boxes(), (7, 9), sigma=1.5)
         self.assertEqual(tuple(target.shape), (1, 17, 7, 9))
@@ -108,6 +165,23 @@ class KeypointCriticTests(unittest.TestCase):
         self.assertIsNotNone(logits.grad)
         self.assertTrue(torch.isfinite(logits.grad).all())
         self.assertGreater(logits.grad.norm().item(), 0.0)
+
+    def test_three_candidate_losses_use_independent_rgb_gradient_graphs(self) -> None:
+        critic = _GradientToyCritic()
+        rgb = torch.tensor([[[[0.1, 0.5], [0.9, 0.2]], [[0.3, 0.7], [0.4, 0.8]], [[0.9, 0.2], [0.6, 0.1]]]])
+        boxes = torch.tensor([[0.0, 0.0, 2.0, 2.0]])
+        targets = torch.tensor([[[0.1, 0.2]] * COCO17_JOINT_COUNT])
+        valid = torch.ones((1, COCO17_JOINT_COUNT), dtype=torch.bool)
+        results = [
+            _loss_and_rgb_gradient(critic, rgb, boxes, targets, valid, name, temperature=1.0, gaussian_sigma=1.5)
+            for name in ("coordinate_huber_pixels", "coordinate_huber_normalized", "gaussian_heatmap_kl")
+        ]
+        for loss, gradient_norm in results:
+            self.assertGreater(loss, 0.0)
+            self.assertGreater(gradient_norm, 0.0)
+            self.assertTrue(torch.isfinite(torch.tensor((loss, gradient_norm))).all())
+        self.assertFalse(rgb.requires_grad)
+        self.assertIsNone(rgb.grad)
 
     def test_argmax_and_pck_diagnostics_are_detached(self) -> None:
         logits = torch.randn((1, 17, 6, 8), requires_grad=True)

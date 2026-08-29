@@ -18,6 +18,7 @@ from pose_controlnet.keypoint_critic import (
     gaussian_heatmap_kl,
     gaussian_heatmap_target,
     masked_coordinate_huber,
+    normalized_coordinate_huber,
     soft_coordinates,
 )
 from pose_controlnet.paired_preprocessing import preprocess_pair
@@ -25,6 +26,11 @@ from pose_controlnet.pose_targets import load_sidecar
 
 
 AUDIT_SOURCES = ("coco", "humanart_painting", "humanart_real_human", "humanart_sculpture")
+GRADIENT_METRIC_NAMES = {
+    "coordinate_huber_pixels": "rgb_grad_norm_coordinate_pixels",
+    "coordinate_huber_normalized": "rgb_grad_norm_coordinate_normalized",
+    "gaussian_heatmap_kl": "rgb_grad_norm_heatmap_kl",
+}
 
 
 def _rgb_tensor(image) -> torch.Tensor:
@@ -85,15 +91,72 @@ def _weighted_add(total: dict[str, float], metrics: dict[str, float | int | None
             total[key] += float(value) * weight
 
 
+def _candidate_loss(
+    name: str, logits: torch.Tensor, boxes: torch.Tensor, targets: torch.Tensor, valid: torch.Tensor,
+    *, temperature: float, gaussian_sigma: float,
+) -> torch.Tensor:
+    """Return one valid-person/joint-mean candidate loss for the audit."""
+    if name == "coordinate_huber_pixels":
+        return masked_coordinate_huber(soft_coordinates(logits, boxes, temperature), targets, valid)
+    if name == "coordinate_huber_normalized":
+        return normalized_coordinate_huber(soft_coordinates(logits, boxes, temperature), targets, boxes, valid)
+    if name == "gaussian_heatmap_kl":
+        return gaussian_heatmap_kl(
+            logits, targets, boxes, valid, sigma=gaussian_sigma, temperature=temperature,
+        )
+    raise ValueError(f"Unknown candidate loss: {name}")
+
+
+def _loss_and_rgb_gradient(
+    critic: FixedBoxKeypointRCNNCritic, rgb: torch.Tensor, boxes: torch.Tensor,
+    targets: torch.Tensor, valid: torch.Tensor, name: str, *, temperature: float,
+    gaussian_sigma: float,
+) -> tuple[float, float]:
+    """Run one isolated forward/autograd graph for one candidate loss.
+
+    Every candidate rebuilds the critic graph from the same RGB values.  This
+    prevents accidental graph reuse or accumulated RGB gradients from making a
+    candidate's input-gradient norm depend on audit ordering.
+    """
+    rgb_leaf = rgb.detach().clone().requires_grad_(True)
+    critic.zero_grad(set_to_none=True)
+    heatmaps = critic(rgb_leaf, [boxes])
+    loss = _candidate_loss(
+        name, heatmaps.logits, heatmaps.boxes_training, targets, valid,
+        temperature=temperature, gaussian_sigma=gaussian_sigma,
+    )
+    gradient, = torch.autograd.grad(loss, rgb_leaf)
+    if not torch.isfinite(loss) or not torch.isfinite(gradient).all():
+        raise RuntimeError(f"{name}: non-finite loss or RGB gradient")
+    gradient_norm = float(gradient.norm().item())
+    if gradient_norm <= 0:
+        raise RuntimeError(f"{name}: RGB gradient norm is zero")
+    if any(parameter.grad is not None for parameter in critic.parameters()):
+        raise RuntimeError("Frozen critic parameter unexpectedly received a gradient")
+    return float(loss.item()), gradient_norm
+
+
+def _gradient_statistics(values: list[float]) -> dict[str, float]:
+    if not values:
+        raise ValueError("gradient statistics require at least one value")
+    array = np.asarray(values, dtype=np.float64)
+    return {
+        "mean": float(array.mean()), "median": float(np.median(array)),
+        "std": float(array.std()), "min": float(array.min()), "max": float(array.max()),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sidecar", type=Path, required=True, help="Immutable authoritative v3 sidecar directory.")
     parser.add_argument("--dataset-root", type=Path, required=True, help="Read-only PoseBridge HF snapshot root.")
-    parser.add_argument("--samples-per-source", type=int, default=16)
+    parser.add_argument("--samples-per-source", type=int, default=8)
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--gaussian-sigma", type=float, default=1.5)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--output-json", type=Path, default=None)
+    parser.add_argument("--temperature-sweep", action="store_true",
+                        help="Also report detached soft PCK/error at temperatures 0.5, 1.0, and 2.0.")
     args = parser.parse_args()
     if args.samples_per_source < 1 or args.temperature <= 0 or args.gaussian_sigma <= 0:
         parser.error("samples-per-source, temperature, and gaussian-sigma must be positive")
@@ -114,33 +177,25 @@ def main() -> None:
               "samples_per_source": args.samples_per_source, "sources": {}}
     for source in AUDIT_SOURCES:
         weighted: dict[str, float] = defaultdict(float)
-        joint_count, grad_norm = 0, None
+        joint_count = 0
+        gradient_values: dict[str, list[float]] = defaultdict(list)
         samples = []
-        for sample_index, record in enumerate(selected[source]):
+        for record in selected[source]:
             rgb = _rgb_tensor(_preprocessed_rgb(record, index)).to(device)
             boxes, targets, valid = _person_tensors(record, device)
-            if sample_index == 0:
-                rgb.requires_grad_(True)
-                critic.zero_grad(set_to_none=True)
-                heatmaps = critic(rgb, [boxes])
-                predicted = soft_coordinates(heatmaps.logits, heatmaps.boxes_training, args.temperature)
-                coordinate_loss = masked_coordinate_huber(predicted, targets, valid)
-                coordinate_loss.backward()
-                if rgb.grad is None or not torch.isfinite(rgb.grad).all() or rgb.grad.norm().item() <= 0:
-                    raise RuntimeError(f"{source}/{record['stem']}: coordinate loss did not produce finite nonzero RGB gradient")
-                if any(parameter.grad is not None for parameter in critic.parameters()):
-                    raise RuntimeError("Frozen critic parameter unexpectedly received a gradient")
-                grad_norm = float(rgb.grad.norm().item())
-                logits = heatmaps.logits.detach()
-            else:
-                with torch.inference_mode():
-                    logits = critic(rgb, [boxes]).logits
-            with torch.no_grad():
-                predicted = soft_coordinates(logits, boxes, args.temperature)
-                coordinate_loss = masked_coordinate_huber(predicted, targets, valid)
-                heatmap_loss = gaussian_heatmap_kl(
-                    logits, targets, boxes, valid, sigma=args.gaussian_sigma, temperature=args.temperature,
+            sample: dict[str, object] = {"stem": record["stem"]}
+            for loss_name in ("coordinate_huber_pixels", "coordinate_huber_normalized", "gaussian_heatmap_kl"):
+                loss_value, gradient_norm = _loss_and_rgb_gradient(
+                    critic, rgb, boxes, targets, valid, loss_name,
+                    temperature=args.temperature, gaussian_sigma=args.gaussian_sigma,
                 )
+                weighted[loss_name] += loss_value * int(valid.sum().item())
+                gradient_values[loss_name].append(gradient_norm)
+                sample[loss_name] = loss_value
+                sample[GRADIENT_METRIC_NAMES[loss_name]] = gradient_norm
+            with torch.inference_mode():
+                logits = critic(rgb, [boxes]).logits
+            with torch.no_grad():
                 diagnostics = detached_pose_diagnostics(logits, boxes, targets, valid, temperature=args.temperature)
                 # Construct this independently so target normalization is also audited.
                 target_distribution = gaussian_heatmap_target(targets, boxes, tuple(logits.shape[-2:]), args.gaussian_sigma)
@@ -149,17 +204,39 @@ def main() -> None:
             count = int(diagnostics["joint_count"])
             joint_count += count
             _weighted_add(weighted, diagnostics, count)
-            weighted["coordinate_huber"] += float(coordinate_loss.item()) * count
-            weighted["gaussian_heatmap_kl"] += float(heatmap_loss.item()) * count
-            samples.append({"stem": record["stem"], "joint_count": count})
-        if joint_count == 0 or grad_norm is None:
+            sample["joint_count"] = count
+            samples.append(sample)
+        if joint_count == 0:
             raise RuntimeError(f"{source}: no valid joints were audited")
+        sweep = None
+        if args.temperature_sweep:
+            sweep = {}
+            for temperature in (0.5, 1.0, 2.0):
+                temperature_weighted: dict[str, float] = defaultdict(float)
+                for record in selected[source]:
+                    rgb = _rgb_tensor(_preprocessed_rgb(record, index)).to(device)
+                    boxes, targets, valid = _person_tensors(record, device)
+                    with torch.inference_mode():
+                        logits = critic(rgb, [boxes]).logits
+                    metrics = detached_pose_diagnostics(
+                        logits, boxes, targets, valid, temperature=temperature, include_argmax=False,
+                    )
+                    _weighted_add(temperature_weighted, metrics, int(metrics["joint_count"]))
+                sweep[str(temperature)] = {
+                    key: temperature_weighted[key] / joint_count
+                    for key in ("soft_coordinate_error_normalized", "soft_pck_005", "soft_pck_010")
+                }
         report["sources"][source] = {
             "sample_count": len(samples), "joint_count": joint_count,
             **{name: value / joint_count for name, value in sorted(weighted.items())},
-            "rgb_input_gradient_norm_first_sample": grad_norm,
+            "rgb_gradient_statistics": {
+                GRADIENT_METRIC_NAMES[name]: _gradient_statistics(values)
+                for name, values in sorted(gradient_values.items())
+            },
             "samples": samples,
         }
+        if sweep is not None:
+            report["sources"][source]["temperature_sweep"] = sweep
     rendered = json.dumps(report, indent=2, sort_keys=True)
     print(rendered)
     if args.output_json is not None:

@@ -174,6 +174,49 @@ def masked_coordinate_huber(predicted: Tensor, target: Tensor, reward_joint_vali
 coordinate_huber = masked_coordinate_huber
 
 
+def normalize_coordinates_to_boxes(coordinates: Tensor, boxes_xyxy: Tensor, *, eps: float | None = None) -> Tensor:
+    """Express COCO17 coordinates in their authoritative fixed ROI frame.
+
+    The input coordinates remain untouched.  This is solely the shared
+    ``(x - x0) / width, (y - y0) / height`` transform used by the normalized
+    coordinate audit loss.  Width and height are clamped defensively so the
+    function remains numerically safe at the public API boundary.
+    """
+    if coordinates.ndim != 3 or coordinates.shape[1:] != (COCO17_JOINT_COUNT, 2):
+        raise ValueError("coordinates must have shape [people, 17, 2]")
+    if not coordinates.is_floating_point() or not torch.isfinite(coordinates).all():
+        raise ValueError("coordinates must be finite floating-point values")
+    _validate_boxes(boxes_xyxy, expected=coordinates.shape[0])
+    if eps is None:
+        eps = torch.finfo(coordinates.dtype).eps
+    if not isinstance(eps, (float, int)) or eps <= 0:
+        raise ValueError("eps must be positive")
+    boxes = boxes_xyxy.to(dtype=coordinates.dtype, device=coordinates.device)
+    origin = boxes[:, None, :2]
+    scale = (boxes[:, 2:] - boxes[:, :2]).clamp_min(float(eps))[:, None]
+    return (coordinates - origin) / scale
+
+
+def normalized_coordinate_huber(
+    predicted: Tensor, target: Tensor, boxes_xyxy: Tensor, reward_joint_valid: Tensor,
+    delta: float = 1.0, *, eps: float | None = None,
+) -> Tensor:
+    """Mean Huber loss over valid joints after person-box normalization.
+
+    Both the soft prediction and the authoritative target are normalized in
+    exactly the same fixed ROI coordinate system.  The final reduction is the
+    same valid-person/joint mean as :func:`masked_coordinate_huber`.
+    """
+    _validate_coordinate_inputs(predicted, target, reward_joint_valid)
+    _validate_boxes(boxes_xyxy, expected=predicted.shape[0])
+    return masked_coordinate_huber(
+        normalize_coordinates_to_boxes(predicted, boxes_xyxy, eps=eps),
+        normalize_coordinates_to_boxes(target.to(predicted), boxes_xyxy, eps=eps),
+        reward_joint_valid,
+        delta,
+    )
+
+
 def gaussian_heatmap_target(
     target_coordinates: Tensor, boxes_xyxy: Tensor, heatmap_size: tuple[int, int], sigma: float = 1.5,
 ) -> Tensor:

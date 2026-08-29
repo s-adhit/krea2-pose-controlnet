@@ -1,9 +1,10 @@
 # Fixed-box torchvision Keypoint R-CNN critic audit
 
-Status: **implementation and CPU contract checks complete; real-image GH200
-domain audit is HOLD/not run.** This is an audit-only module. It does not
-modify `train.py`, the Phase-1 flow-matching objective, VAE decoding, timestep
-logic, provenance, or the external Keypoint R-CNN PCK evaluator.
+Status: **Gate A (real-RGB critic feasibility) PASS; Gate A.5 loss-gradient
+comparison is implemented but not yet run on GH200.** This is an audit-only
+module. It does not modify `train.py`, the Phase-1 flow-matching objective, VAE
+decoding, timestep logic, provenance, or the external Keypoint R-CNN PCK
+evaluator.
 
 ## Pinned estimator and torchvision 0.22 path
 
@@ -72,10 +73,14 @@ The default temperature is 1.0. No checkpoint-specific calibration was found
 in the pretrained head, so this default is deliberately not tuned by
 assumption.
 
-Two independent audit candidates are exposed:
+Three independent audit candidates are exposed:
 
-- `masked_coordinate_huber` / `coordinate_huber`: per-coordinate Huber,
-  averaged only over valid person/joint pairs.
+- `masked_coordinate_huber` / `coordinate_huber`: raw training-pixel
+  per-coordinate Huber, averaged only over valid person/joint pairs.
+- `normalized_coordinate_huber`: applies `(x - x0) / max(x1 - x0, eps)` and
+  `(y - y0) / max(y1 - y0, eps)` independently to both the soft prediction
+  and the authoritative target, then applies the same validity-masked Huber
+  reduction. The authoritative target coordinates are not modified.
 - `gaussian_heatmap_target` plus `masked_gaussian_heatmap_kl` /
   `gaussian_heatmap_kl`: a normalized Gaussian in raw heatmap coordinates and
   target-KL-predicted distribution loss, also averaged only over valid pairs.
@@ -89,16 +94,55 @@ its sidecar records have `pose_reward_available=false`.
 PCK@0.05/@0.10, optional argmax PCK@0.05/@0.10, entropy, and peak probability
 under `torch.no_grad()`. None is a backward loss.
 
-## Real-image GH200 audit
+## Phase-1 provenance
 
-The script selects the first 16 usable records in deterministic stem order
+The current canonical immutable sidecar record SHA is
+`dfc32293f1bdb76de58e34a02f95a14e515b0080b7c2f60ddd4a28c6f9fb2d8f`.
+A deterministic current-code rebuild using this sidecar reproduced it
+byte-for-byte with 17,416 records, 15,161 reward available, 2,255 unavailable,
+444,235 valid reward joints, seven reviewed source-OOB masked joints, and
+21/21 diagnostic coverage. The older `c98f...` value is historical only and
+must not be treated as the current canonical sidecar fingerprint.
+
+## Gate A: real-image GH200 feasibility audit
+
+The completed Gate-A script selected usable records in deterministic stem order
 from each available source: `coco`, `humanart_painting`,
 `humanart_real_human`, and `humanart_sculpture`. It rebuilds the final RGB
 through `preprocess_pair` and fails if its source resize/crop/bucket geometry
 does not equal the immutable sidecar record. It uses all authoritative people
-in each selected image as fixed boxes. For the first sample of each source it
-backpropagates coordinate Huber to RGB and asserts finite nonzero RGB gradient
-and absent critic parameter gradients.
+in each selected image as fixed boxes. Gate A backpropagated raw pixel
+coordinate Huber for the first sample of each source and confirmed finite,
+nonzero RGB gradients with no critic parameter gradients.
+
+| source | soft PCK .05/.10 | argmax PCK .05/.10 | normalized soft error | coordinate Huber | Gaussian KL | RGB Huber gradient norm |
+| --- | --- | --- | ---: | ---: | ---: | ---: |
+| COCO | .9070 / .9728 | .9048 / .9728 | .02293 | 5.876 | 2.399 | 4.95 |
+| Human-Art painting | .3842 / .5979 | .3931 / .5471 | .10508 | 46.478 | 4.366 | 631.18 |
+| Human-Art real | .6023 / .7000 | .6591 / .7341 | .08409 | 32.096 | 4.157 | 225.50 |
+| Human-Art sculpture | .6963 / .8494 | .7185 / .8395 | .05058 | 20.967 | 3.471 | 58.15 |
+
+Gate A establishes critic feasibility. It also shows that raw pixel-coordinate
+Huber produces strongly domain-dependent RGB gradient scales; it does not
+choose a loss or authorize VAE/x0/training integration.
+
+## Gate A.5: bounded loss-gradient comparison
+
+The audit now evaluates all three losses for **eight deterministic images per
+source by default**. Each candidate/image pair uses a separate critic forward
+and `torch.autograd.grad` graph from identical RGB values, so RGB gradient
+norms cannot be accumulated or reused. Every source JSON result includes the
+valid-joint-weighted loss aggregate, every sample's three losses and
+`rgb_grad_norm_coordinate_pixels`, `rgb_grad_norm_coordinate_normalized`, and
+`rgb_grad_norm_heatmap_kl`, plus mean, median, population std, min, and max of
+each gradient-norm series.
+
+All candidates are means over valid person/joint observations. Source
+aggregation weights each image mean by its valid-joint count, so crowded images
+do not gain a larger per-observation weight. PCK, argmax, and other diagnostics
+remain detached. `--temperature-sweep` is optional and diagnostic-only: it
+reports just soft PCK and normalized coordinate error at 0.5, 1.0, and 2.0;
+temperature remains fixed and unlearned.
 
 Run on the actual GH200 shell (not the Codex sandbox):
 
@@ -106,14 +150,15 @@ Run on the actual GH200 shell (not the Codex sandbox):
 PYTHONPATH=. python scripts/audit_keypoint_critic.py \
   --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
   --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
+  --samples-per-source 8 \
+  --temperature-sweep \
   --device cuda \
-  --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_audit.json
+  --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_gate_a5.json
 ```
 
 Use the actual immutable sidecar path if it differs from the illustrative
-`pose_targets_v3` path above. The script reports joint count, both candidate
-losses, normalized soft error, soft and detached-argmax PCK, entropy, peak
-probability, and first-sample RGB input-gradient norm for every source.
+`pose_targets_v3` path above. Do not use its result to select a training loss
+without separate authorization.
 
 ## PASS/HOLD criteria
 
@@ -122,11 +167,11 @@ masking, Gaussian normalization/KL finiteness, synthetic heatmap gradients,
 detached diagnostics, and mocked frozen-boundary checks pass. It does not
 establish real-image suitability.
 
-The GH200 audit may be marked PASS only after it completes for all four sources
-with finite reported values, finite nonzero first-sample RGB gradients, and no
-critic parameter gradients. It is an empirical domain audit: there is no
-near-zero error or arbitrary PCK threshold. Hold the candidate if loading the
-official COCO_V1 weights fails, fixed boxes/sidecar geometry fail validation,
-values are non-finite, RGB gradients are absent/zero, or a critic parameter
-receives a gradient. Even a PASS remains audit evidence only; no training-loss
-or VAE/timestep integration is authorized by this document.
+Gate A.5 may be marked complete only after it reports finite independent losses
+and finite nonzero RGB gradients for all three candidates across all four
+sources, with no critic parameter gradients. It is an empirical comparison:
+there is no arbitrary PCK, gradient, or loss threshold and it does not choose a
+training objective. Hold it if official COCO_V1 loading fails, fixed
+boxes/sidecar geometry fail validation, a value is non-finite, an RGB gradient
+is absent/zero, or a critic parameter receives a gradient. No training-loss or
+VAE/timestep integration is authorized by this document.
