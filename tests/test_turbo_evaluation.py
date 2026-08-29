@@ -134,6 +134,44 @@ class TurboEvaluationTest(unittest.TestCase):
             self.assertEqual([row[0] for row in calls[1][0]], ["second", "first"])
             self.assertEqual(calls[1][1], ("control", "candidate 1600", "candidate 2200"))
 
+    def test_report_keeps_numerical_baseline_when_its_sample_images_are_missing(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            spec_path = make_spec(root)
+            baseline_root = root / "baseline"
+            spec_payload = json.loads(spec_path.read_text())
+            spec_payload["baseline"] = {"output_root": str(baseline_root), "checkpoint_step": 1500, "label": "baseline 1500"}
+            spec_path.write_text(json.dumps(spec_payload))
+            config = load_turbo_experiment_spec(spec_path)
+            output = config.output_root; output.mkdir()
+            stems = ("first", "second")
+            spec = {"kind": "turbo_fixed_pose", "seed": 420200, "stems": list(stems), "per_stem_seeds": {}, "sample_identities": {}, "turbo": turbo_metadata(), "experiment_name": config.experiment_name}
+            baseline_root.mkdir()
+            (baseline_root / "turbo_spec.json").write_text(json.dumps(spec))
+            (baseline_root / "pck_clip_results.json").write_text(json.dumps({"checkpoints": [score_row(1500)]}))
+            (output / "turbo_spec.json").write_text(json.dumps(spec))
+            (output / "generation_results.json").write_text(json.dumps({"metadata": turbo_metadata(), "control_scale": 1.0, "stems": list(stems), "generated_steps": {stem: [1550] for stem in stems}}))
+            for stem in stems:
+                directory = output / "fixed_pose" / stem; directory.mkdir(parents=True)
+                Image.new("RGB", (1, 1)).save(directory / "control.png")
+                Image.new("RGB", (1, 1)).save(directory / "step_001550.png")
+                (directory / "metadata.json").write_text(json.dumps({"stem": stem, "control_scale": 1.0, **turbo_metadata()}))
+            (output / "pck_clip_results.json").write_text(json.dumps({"metadata": turbo_metadata(), "control_scale": 1.0, "experiment_name": config.experiment_name, "checkpoints": [score_row(1550)]}))
+            args = SimpleNamespace(spec=str(spec_path), checkpoint_root=None, hf_repo_id=None, hf_namespace=None, output_root=None, diagnostic_manifest=None, latent_root=None, text_conditioning_root=None, turbo_ckpt=None, dataset_root=None, reference_sidecar=None, clip_model_id=None)
+            calls = []
+            with patch.object(turbo_benchmark, "_dataset_and_spec", return_value=(object(), stems, spec)), patch.object(turbo_benchmark, "make_contact_sheet", side_effect=lambda rows, *rest, **kw: calls.append((rows, kw["column_labels"]))):
+                turbo_benchmark.report(args)
+            summary = json.loads((output / "evaluation_summary.json").read_text())
+            self.assertEqual(summary["baseline"]["result"], score_row(1500))
+            self.assertEqual(summary["deltas_vs_baseline"]["1550"], turbo_benchmark._deltas(score_row(1550), score_row(1500), config))
+            self.assertFalse(summary["baseline_visual_artifacts_available"])
+            self.assertEqual(summary["baseline_visual_artifacts_missing_count"], 2)
+            self.assertEqual(calls[1][1], ("control", "candidate 1550"))
+            (output / "fixed_pose" / "second" / "step_001550.png").unlink()
+            with patch.object(turbo_benchmark, "_dataset_and_spec", return_value=(object(), stems, spec)):
+                with self.assertRaisesRegex(ValueError, "incomplete"):
+                    turbo_benchmark.report(args)
+
     def test_metrics_are_shared_and_no_train_backward_optimizer_or_resume_path_exists(self):
         self.assertIs(turbo_benchmark.score_authoritative_pck, score_authoritative_pck)
         source = Path(turbo_benchmark.__file__).read_text().lower()

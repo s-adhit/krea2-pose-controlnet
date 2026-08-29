@@ -467,11 +467,19 @@ def report(args) -> None:
     score_payload = _read_json(score_path)
     score_payload["checkpoints"] = completed
     _write(score_path, score_payload)
+    baseline_visual_missing = []
+    if baseline is not None:
+        baseline_visual_missing = [
+            baseline_root / "fixed_pose" / stem / f"step_{baseline['checkpoint_step']:06d}.png"
+            for stem in stems
+            if not (baseline_root / "fixed_pose" / stem / f"step_{baseline['checkpoint_step']:06d}.png").is_file()
+        ]
+    include_baseline_visuals = baseline is not None and not baseline_visual_missing
     labels = ["control"]
     include_reference = config.diagnostics.get("reference_images") is not None
     if include_reference:
         labels.append(str(config.labels.get("reference", "reference")))
-    if baseline is not None:
+    if include_baseline_visuals:
         labels.append(str(config.baseline.get("label", f"baseline {baseline['checkpoint_step']}")))
     labels.extend(str(config.labels.get("checkpoint_template", "checkpoint {step}")).format(step=row["checkpoint_step"]) for row in completed)
     grid_rows = []
@@ -482,10 +490,8 @@ def report(args) -> None:
             if reference is None or not reference.is_file():
                 raise FileNotFoundError(f"Configured reference artifact is missing: {reference}")
             paths.append(reference)
-        if baseline is not None:
+        if include_baseline_visuals:
             baseline_image = baseline_root / "fixed_pose" / stem / f"step_{baseline['checkpoint_step']:06d}.png"
-            if not baseline_image.is_file():
-                raise FileNotFoundError(f"Configured baseline artifact is missing: {baseline_image}")
             paths.append(baseline_image)
         paths.extend(output / "fixed_pose" / stem / f"step_{row['checkpoint_step']:06d}.png" for row in completed)
         if not all(path.is_file() for path in paths):
@@ -501,6 +507,8 @@ def report(args) -> None:
     _write(output / "evaluation_summary.json", {"experiment_name": config.experiment_name, "metadata": turbo_metadata(), "control_scale": 1.0,
            "training_metadata": config.training_metadata,
            "baseline": None if baseline is None else {"checkpoint_step": baseline["checkpoint_step"], "source": str(baseline_root / "pck_clip_results.json"), "regenerated": False, "result": baseline},
+           "baseline_visual_artifacts_available": include_baseline_visuals,
+           "baseline_visual_artifacts_missing_count": len(baseline_visual_missing),
            "comparison": comparison, "checkpoints": completed,
            "deltas_vs_baseline": {} if baseline is None else {str(row["checkpoint_step"]): _deltas(row, baseline, config) for row in completed},
            "spec_sha256": hashlib.sha256((output / "turbo_spec.json").read_bytes()).hexdigest(),

@@ -16,12 +16,37 @@ steps `1550`, `1600`, `1650`, and `1700`. The supplied SHA-256 for
 Measured resumed exposure was `20 / 2504 = 0.7987%` active/eligible samples;
 `18 / 90` optimizer steps had at least one active sample.
 
+## Gate-E Turbo runtime state
+
+Gate-E preflight, generation, and scoring completed successfully in the
+isolated `docs/evaluation/gate-e-kl-l2e5-t010-020/` output. It has generated
+and scored all four configured current-branch checkpoints: `1550`, `1600`,
+`1650`, and `1700`. Do not regenerate step 1500, alter historical artifacts,
+or rerun expensive stages.
+
+The report stage failed only because the generic visual contact-sheet code
+required historical per-sample baseline PNGs at
+`docs/evaluation/turbo-8step-cfg0-lr5e5/fixed_pose/*/step_001500.png`. Those
+PNGs are absent, while the required historical numerical artifacts remain:
+`turbo_spec.json`, `pck_clip_results.json` (including exact step 1500), and
+`evaluation_summary.json`.
+
+The generic report now keeps the established step-1500 numerical baseline and
+all existing delta math untouched. It scans only the optional historical PNG
+column: if every configured sample PNG exists, contact sheets retain that
+column; otherwise the whole baseline visual column is omitted so every grid row
+has equal columns. Current-branch control/1550/1600/1650/1700 files remain
+required and fail closed. The resulting `evaluation_summary.json` records
+`baseline_visual_artifacts_available` and
+`baseline_visual_artifacts_missing_count`; it does not substitute any image or
+checkpoint for the numerical baseline.
+
 ## Verified gates and decisions
 
 - Gates A, A.5, B, and C: PASS as previously documented. Gate D remains
   IMPLEMENTED / GH200 RUN REQUIRED.
-- Gate E training continuation is complete; its Turbo evaluation has not yet
-  been run. Gate E is not PASS until that evaluation/inspection is complete.
+- Gate E is not PASS until the report-only command below completes and its
+  generated summary/contact sheets are inspected.
 - Gate-E checkpoints store top-level `gate_e` metadata: pose loss/window,
   critical model/training config, and trainable state names. Resume validation
   remains fail-closed.
@@ -39,43 +64,32 @@ Measured resumed exposure was `20 / 2504 = 0.7987%` active/eligible samples;
 
 ## Files changed this session
 
-- `pose_controlnet/turbo_evaluation.py`
 - `scripts/turbo_benchmark.py`
-- `configs/evaluation/gate_e_kl_l2e5_t010_020_turbo.json`
 - `tests/test_turbo_evaluation.py`
 - `docs/CODEX_HANDOFF.md`
 
 Existing untracked Gate-B/C/D/E audit files remain user-owned and were not
-overwritten. No training or historical evaluation artifacts were changed.
+overwritten. Gate-E evaluation artifacts were not overwritten.
 
 ## Tests and checks
 
-- PASS: `PYTHONPATH=. UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest
-  tests.test_turbo_evaluation tests.test_turbo_lr5e5_evaluation
-  tests.test_turbo_timestep_evaluation tests.test_post1500_evaluation` — 30
-  CPU tests. Covers Gate-E spec/metadata, direct exact-local selection and SHA
-  mismatch failure, unchanged shared Turbo/PCK/CLIP contracts, and post-1500
-  PCK behavior.
-- PASS: `PYTHONPATH=. UV_CACHE_DIR=/tmp/uv-cache uv run python -m py_compile
-  pose_controlnet/turbo_evaluation.py scripts/turbo_benchmark.py
+- PASS: `PYTHONPATH=. python -m unittest tests.test_turbo_evaluation
+  tests.test_turbo_lr5e5_evaluation tests.test_turbo_timestep_evaluation
+  tests.test_post1500_evaluation` — 31 CPU tests. Includes the regression:
+  a valid step-1500 numerical baseline plus missing baseline PNGs reports
+  successfully with unchanged deltas and explicit availability metadata;
+  deleting a current-branch image still fails closed.
+- PASS: `PYTHONPATH=. python -m py_compile scripts/turbo_benchmark.py
   tests/test_turbo_evaluation.py`.
-- PASS: `PYTHONPATH=. UV_CACHE_DIR=/tmp/uv-cache uv run python
-  scripts/turbo_benchmark.py preflight --help`.
-- PASS: Gate-E experiment-spec load check.
 - PASS: `git diff --check`.
 
-## Exact next GH200 action (do not run from Codex)
-
-Run the complete staged Gate-E Turbo evaluation from the repository root:
+## Exact next GH200 action (report only)
 
 ```bash
-PYTHONPATH=. python scripts/turbo_benchmark.py preflight --spec configs/evaluation/gate_e_kl_l2e5_t010_020_turbo.json && \
-PYTHONPATH=. python scripts/turbo_benchmark.py generate --spec configs/evaluation/gate_e_kl_l2e5_t010_020_turbo.json && \
-PYTHONPATH=. python scripts/turbo_benchmark.py score --spec configs/evaluation/gate_e_kl_l2e5_t010_020_turbo.json && \
 PYTHONPATH=. python scripts/turbo_benchmark.py report --spec configs/evaluation/gate_e_kl_l2e5_t010_020_turbo.json
 ```
 
 Inspect `docs/evaluation/gate-e-kl-l2e5-t010-020/evaluation_summary.json` and
-the contact sheets. It contains CLIP, overall/subset PCK, coverage and people
-counts, plus deltas for all reported PCK variants and aggregate metrics versus
-step 1500.
+the contact sheets. Confirm the baseline numerical identity/deltas and that
+`baseline_visual_artifacts_available` is `false` with the expected missing
+count before declaring Gate E evaluated.
