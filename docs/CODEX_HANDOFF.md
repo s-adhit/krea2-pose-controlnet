@@ -2,65 +2,79 @@
 
 ## Current objective and decisions
 
-The DWPose-only suitability audit is complete.  No critic exists and none was
-implemented.  The decision is **not to use DWPose as a differentiable critic**:
-the only official native PyTorch route recreates the MMEngine/MMCV/MMDetection/
-MMPose dependency family that led to the abandoned RTMPose path.  The official
-ONNX pair may be considered only for a separately approved non-gradient
-preprocessing/evaluation use case.
+The current bounded milestone is the audit-only fixed-box differentiable
+torchvision Keypoint R-CNN pose critic. It is implemented but **the real-image
+GH200 domain audit has not run**, so the critic is HOLD for any future
+experiment. Production training remains flow-matching MSE only: `train.py`,
+the training objective, VAE decoding, x0/timestep logic, dependency stack,
+Phase-1 provenance, and the existing external Keypoint R-CNN PCK evaluator
+were not changed.
 
-The production training objective remains flow-matching MSE only.  Phase-1
-provenance remains unchanged: `data/pose_targets_authoritative_v1.jsonl` and
-sidecar v3 are authoritative; `reward_joint_valid` masks (including the seven
-visible Human-Art source-OOB masks) remain intact.  Danbooru remains flow-only.
-No target semantics, control reconstruction, paired preprocessing, or external
-Keypoint R-CNN PCK evaluation changed.
+Phase-1 remains authoritative. The immutable v3 sidecar's COCO17 training
+coordinates, fixed boxes, and `reward_joint_valid` mask are the sole target
+inputs. The seven reviewed Human-Art source-OOB joints stay masked; Danbooru
+stays `pose_reward_available=false` and is excluded. RTMPose and DWPose remain
+rejected as differentiable critics because they require the unsupported MM*
+dependency family; no MM*/ONNX dependencies were installed.
 
-## Verified findings
+## Verified critic design
 
-- Environment: Python 3.10.12, aarch64, host-owned PyTorch 2.7.0/CUDA 12.8;
-  `mmcv`, `mmengine`, `mmdet`, `mmpose`, and `onnxruntime` are absent.
-- Official ControlNet DWPose is `yolox_l.onnx` plus
-  `dw-ll_ucoco_384.onnx`.  It obtains raw SimCC values but uses ONNX Runtime,
-  NumPy/OpenCV, and `np.argmax`; it cannot backpropagate to this training
-  graph.  Detector and pose routines are separable, so it is usable top-down
-  with supplied boxes only outside a gradient path.
-- The official native checkpoint `dw-ll_ucoco_384.pth` exists in the author's
-  model repository, but loads through the DWPose MMPose fork, not a standalone
-  PyTorch module.  Its 384 model is a top-down CSPNeXt-L / RTMCCHead / SimCC
-  whole-body estimator with 133 joints.  The raw head forward exposes
-  `pred_x` and `pred_y`; expected 384-model shapes are `[B,133,576]` and
-  `[B,133,768]`, so input gradients are technically possible if the native
-  stack loads.
-- This is not a clean path: its config imports CSPNeXt from MMDetection, and
-  its exact pins are `mmcv>=2.0.0,<2.1.0`, `mmdet>=3.0.0,<3.2.0`, and
-  `mmengine>=0.4.0,<1.0.0`.  Compatibility with ARM64 PyTorch 2.7/CUDA 12.8
-  is unverified and requires the prohibited dependency experiment.
-- DWPose channels 0--16 match Phase-1 COCO-17 exactly (nose through right
-  ankle); the rendered OpenPose neck is synthetic and not a target.
-
-See `docs/DWPOSE_AUDIT.md` for sources, candidate table, architecture, and
-reward-graph boundary analysis.
+- `pose_controlnet/keypoint_critic.py` loads the exact model used by the
+  external evaluator: `keypointrcnn_resnet50_fpn` with official COCO_V1
+  weights (`DEFAULT` resolves to COCO_V1), freezes every parameter, and forces
+  evaluation mode.
+- From torchvision 0.22 source, its differentiable tensor path is
+  `GeneralizedRCNNTransform -> backbone -> keypoint_roi_pool -> keypoint_head
+  -> keypoint_predictor`. The default keypoint ROI pool is 14×14 and the
+  predictor is 14→28 transpose-convolution then 28→56 bilinear upsample, so
+  raw logits are `[total_fixed_people, 17, 56, 56]` in Phase-1 COCO17 order.
+- Fixed authoritative `xyxy` boxes are passed through only torchvision's
+  transform resize and then directly to the keypoint ROI branch. The wrapper
+  bypasses `model.rpn`, all ROI box classification/regression operations,
+  detector scores/thresholds, NMS, torchvision keypoint decoding, and every
+  other detector decision.
+- The module provides spatial-softmax ROI coordinates, masked coordinate Huber,
+  normalized Gaussian heatmap targets / masked KL, and detached-only soft/
+  argmax PCK, error, entropy, and peak-probability diagnostics. It does not
+  attach any loss to training.
 
 ## Files changed this session
 
-- Added: `docs/DWPOSE_AUDIT.md`.
-- Modified: `docs/CODEX_HANDOFF.md`.
-- No Python, config, data, manifest, dependency, model, or training files
-  changed; no model files were downloaded and no GPU inference was run.
+- Added `pose_controlnet/keypoint_critic.py`.
+- Added `scripts/audit_keypoint_critic.py`.
+- Added `tests/test_keypoint_critic.py`.
+- Added `docs/KEYPOINT_RCNN_CRITIC_AUDIT.md`.
+- Rewrote this handoff. No existing source-code file was modified.
 
 ## Checks and blockers
 
-- PASS: targeted repository/dependency inventory and Python environment probe.
-- PASS: `git diff --check` after the documentation update.
-- Blocker/decision: a differentiable DWPose critic is rejected because the
-  official native route has the same dependency risk as RTMPose.  Do not
-  install MM* packages, ONNX Runtime, or download DWPose checkpoints for this
-  critic.
+- PASS: `PYTHONPATH=. python -m unittest tests.test_keypoint_critic` — 10 CPU
+  tests passed: spatial and ROI mapping, masks including invalid-zero KL,
+  Gaussian normalization/KL finiteness, synthetic heatmap autograd, detached
+  diagnostics, and mocked frozen-model contract.
+- PASS: `python -m py_compile pose_controlnet/keypoint_critic.py
+  scripts/audit_keypoint_critic.py tests/test_keypoint_critic.py`.
+- PASS: `PYTHONPATH=. python scripts/audit_keypoint_critic.py --help`.
+- PASS: `git diff --check` after tracked-file changes; no unrelated worktree
+  changes were present at session start.
+- HOLD: no official COCO_V1 checkpoint load or real-image/GH200 forward was
+  run in this Codex sandbox. Therefore no domain-quality assertion, PCK claim,
+  or training integration is justified.
 
-## Exact next recommended action
+## Exact next action
 
-Keep DWPose out of the training graph and retain flow-only training.  If an
-offline pose-evaluation utility is later requested, perform a new, isolated
-ONNX-only artifact/hash/preprocessing-parity audit; do not connect it to loss
-or backpropagation.
+On the actual GH200 shell, run the real-image audit before making any decision
+about future pose-loss work:
+
+```bash
+PYTHONPATH=. python scripts/audit_keypoint_critic.py \
+  --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
+  --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
+  --device cuda \
+  --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_audit.json
+```
+
+Use the actual immutable v3 sidecar location if it differs. Confirm finite
+metrics, nonzero finite RGB gradient for each source's first sample, and no
+critic parameter gradient. Do not modify `train.py`, decode VAE outputs, or
+introduce a pose loss unless separately authorized after that audit.
