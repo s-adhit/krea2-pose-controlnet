@@ -8,6 +8,7 @@ constant shift is passed explicitly rather than inferred from resolution.
 from __future__ import annotations
 
 import math
+import hashlib
 import json
 import re
 from dataclasses import dataclass
@@ -63,6 +64,7 @@ class TurboExperiment:
     hf_namespace: str
     output_root: Path
     steps: tuple[int, ...] | None
+    checkpoint_validation: Mapping[str, Any]
     baseline: Mapping[str, Any] | None
     labels: Mapping[str, Any]
     training_metadata: Mapping[str, Any]
@@ -125,6 +127,21 @@ def load_turbo_experiment_spec(path: str | Path, *, overrides: Mapping[str, Any]
     if raw_steps is not None and (not isinstance(raw_steps, list) or any(isinstance(step, bool) or not isinstance(step, int) for step in raw_steps)):
         raise ValueError("Turbo experiment spec steps must be a list of integer exact checkpoints")
     spec_steps = normalize_turbo_steps(raw_steps) if raw_steps is not None else None
+    validation = merged.get("checkpoint_validation", {"mode": "hf_completion_marker"})
+    if not isinstance(validation, dict):
+        raise ValueError("Turbo experiment checkpoint_validation must be an object")
+    mode = validation.get("mode", "hf_completion_marker")
+    if mode not in {"hf_completion_marker", "direct_local"}:
+        raise ValueError("Turbo experiment checkpoint_validation.mode must be 'hf_completion_marker' or 'direct_local'")
+    expected_sha256 = validation.get("expected_sha256", {})
+    if not isinstance(expected_sha256, dict) or any(
+        not isinstance(step, str) or not step.isdigit() or not isinstance(digest, str)
+        or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+        for step, digest in expected_sha256.items()
+    ):
+        raise ValueError("Turbo experiment checkpoint_validation.expected_sha256 must map decimal steps to lowercase SHA-256 digests")
+    if spec_steps is not None and any(int(step) not in spec_steps for step in expected_sha256):
+        raise ValueError("Turbo experiment checkpoint_validation.expected_sha256 contains a step outside the configured steps")
     if "baseline" in merged and merged["baseline"] is not None and not isinstance(merged["baseline"], dict):
         raise ValueError("Turbo experiment baseline must be an object when configured")
     return TurboExperiment(
@@ -134,6 +151,7 @@ def load_turbo_experiment_spec(path: str | Path, *, overrides: Mapping[str, Any]
         hf_namespace=namespace,
         output_root=output_root,
         steps=spec_steps,
+        checkpoint_validation=validation,
         baseline=merged.get("baseline") if isinstance(merged.get("baseline"), dict) else None,
         labels=merged.get("labels", {}) if isinstance(merged.get("labels", {}), dict) else {},
         training_metadata=merged.get("training_metadata", {}) if isinstance(merged.get("training_metadata", {}), dict) else {},
@@ -202,6 +220,41 @@ def exact_local_turbo_checkpoints(*, checkpoint_root: str | Path, hf_repo_id: st
         if state["global_step"] != step:
             raise ValueError(f"Checkpoint filename/embedded step mismatch: {validated} has {state['global_step']}")
         resolved.append((step, validated))
+    return resolved
+
+
+def exact_direct_local_turbo_checkpoints(*, checkpoint_root: str | Path,
+                                         steps: Iterable[int],
+                                         expected_sha256: Mapping[str, str] | None = None) -> list[tuple[int, Path]]:
+    """Resolve exact local checkpoint files without an HF-marker fallback.
+
+    This is for bounded local smoke branches whose checkpoints were never
+    mirrored.  It still rejects absent files, filename/embedded-step mismatch,
+    and verifies every SHA-256 explicitly supplied by the experiment spec.
+    """
+    root = Path(checkpoint_root)
+    requested = normalize_turbo_steps(steps)
+    if not root.is_dir():
+        raise FileNotFoundError(f"Configured checkpoint root is missing: {root}")
+    expected = dict(expected_sha256 or {})
+    resolved: list[tuple[int, Path]] = []
+    for step in requested:
+        checkpoint = root / f"step_{step:06d}.pt"
+        if not checkpoint.is_file():
+            raise FileNotFoundError(f"Required exact local checkpoint is missing: {checkpoint}")
+        digest = expected.get(str(step))
+        if digest is not None:
+            hasher = hashlib.sha256()
+            with checkpoint.open("rb") as handle:
+                for block in iter(lambda: handle.read(1024 * 1024), b""):
+                    hasher.update(block)
+            actual = hasher.hexdigest()
+            if actual != digest:
+                raise ValueError(f"Required exact local checkpoint SHA-256 mismatch: {checkpoint}")
+        state = load_training_state(checkpoint)
+        if state["global_step"] != step:
+            raise ValueError(f"Checkpoint filename/embedded step mismatch: {checkpoint} has {state['global_step']}")
+        resolved.append((step, checkpoint))
     return resolved
 
 

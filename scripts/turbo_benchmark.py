@@ -32,6 +32,7 @@ from pose_controlnet.turbo_evaluation import (
     assert_turbo_diagnostic_contract,
     assert_exact_diagnostic_stems,
     discover_turbo_checkpoint_steps,
+    exact_direct_local_turbo_checkpoints,
     exact_local_turbo_checkpoints,
     load_turbo_experiment_spec,
     normalize_turbo_steps,
@@ -106,6 +107,11 @@ def _checkpoints(args, config: TurboExperiment, output: Path, *, required: bool)
     steps = _steps(args, config, required=required)
     if not steps:
         return []
+    if config.checkpoint_validation["mode"] == "direct_local":
+        return exact_direct_local_turbo_checkpoints(
+            checkpoint_root=config.checkpoint_root, steps=steps,
+            expected_sha256=config.checkpoint_validation.get("expected_sha256"),
+        )
     return exact_local_turbo_checkpoints(
         checkpoint_root=config.checkpoint_root,
         hf_repo_id=config.hf_repo_id,
@@ -294,16 +300,24 @@ def preflight(args) -> None:
     baseline, baseline_root = _baseline_row(config, spec)
     checkpoints = _checkpoints(args, config, output, required=True)
     _write_spec_once(output, spec, config)
+    checkpoint_entries = []
+    for step, path in checkpoints:
+        entry = {"checkpoint_step": step, "local_checkpoint": str(path)}
+        if config.checkpoint_validation["mode"] == "hf_completion_marker":
+            entry.update({"remote_checkpoint": f"{config.hf_namespace}step_{step:06d}.pt",
+                          "remote_completion_marker": f"{config.hf_namespace}step_{step:06d}.pt.complete.json"})
+        elif str(step) in config.checkpoint_validation.get("expected_sha256", {}):
+            entry["expected_sha256"] = config.checkpoint_validation["expected_sha256"][str(step)]
+        checkpoint_entries.append(entry)
     _write(output / "checkpoint_preflight.json", {
         "experiment_name": config.experiment_name, "metadata": turbo_metadata(), "control_scale": 1.0,
         "diagnostic_sample_count": len(dataset), "stems": list(stems),
         "local_checkpoint_root": str(config.checkpoint_root), "hf_repo_id": config.hf_repo_id,
         "hf_namespace": config.hf_namespace,
+        "checkpoint_validation": config.checkpoint_validation,
+        "training_metadata": config.training_metadata,
         "reused_baseline": None if baseline is None else {"checkpoint_step": baseline["checkpoint_step"], "source": str(baseline_root / "pck_clip_results.json"), "regenerated": False},
-        "checkpoints": [{"checkpoint_step": step, "local_checkpoint": str(path),
-                         "remote_checkpoint": f"{config.hf_namespace}step_{step:06d}.pt",
-                         "remote_completion_marker": f"{config.hf_namespace}step_{step:06d}.pt.complete.json"}
-                        for step, path in checkpoints],
+        "checkpoints": checkpoint_entries,
     })
     print(output / "checkpoint_preflight.json")
 
@@ -403,9 +417,11 @@ def score(args) -> None:
     print(output / "pck_clip_results.json")
 
 
-def _summary_row(row: dict[str, Any], config: TurboExperiment, *, label: str) -> dict[str, Any]:
+def _summary_row(row: dict[str, Any], config: TurboExperiment, *, label: str,
+                 training_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     pose, clip = row["pose"], row["clip"]
-    return {"label": label, "checkpoint_step": row["checkpoint_step"], **config.training_metadata,
+    metadata = config.training_metadata if training_metadata is None else training_metadata
+    return {"label": label, "checkpoint_step": row["checkpoint_step"], **metadata,
             "control_scale": 1.0, **turbo_metadata(), "clip_mean_cosine_similarity": clip["mean_cosine_similarity"],
             "detection_coverage": pose["detection_coverage"], "joint_coverage": pose["joint_evaluation_coverage"],
             "pck_005": pose["pck_005"], "pck_010": pose["pck_010"], "pck_020": pose["pck_020"],
@@ -421,7 +437,11 @@ def _deltas(row: dict[str, Any], baseline: dict[str, Any], config: TurboExperime
     candidate = _summary_row(row, config, label="candidate")
     reference = _summary_row(baseline, config, label="baseline")
     keys = ("clip_mean_cosine_similarity", "detection_coverage", "joint_coverage", "pck_005", "pck_010", "pck_020", "matched_people", "unmatched_reference_people", "predicted_people", "unmatched_predicted_people")
-    return {key: candidate[key] - reference[key] for key in keys}
+    deltas = {key: candidate[key] - reference[key] for key in keys}
+    for group in ("coco_pck", "human_art_pck", "single_person_pck", "multi_person_pck"):
+        for threshold in ("pck_005", "pck_010", "pck_020"):
+            deltas[f"{group}_{threshold}"] = candidate[group][threshold] - reference[group][threshold]
+    return deltas
 
 
 def _reference_image(config: TurboExperiment, stem: str) -> Path | None:
@@ -473,9 +493,13 @@ def report(args) -> None:
         grid_rows.append((stem, paths))
     make_contact_sheet(grid_rows[:min(4, len(grid_rows))], output / "turbo_checkpoint_selection_grid.png", thumbnail_width=180, thumbnail_height=180, column_labels=tuple(labels))
     make_contact_sheet(grid_rows, output / "turbo_full_contact_sheet.png", thumbnail_width=320, thumbnail_height=320, column_labels=tuple(labels))
-    comparison = ([] if baseline is None else [_summary_row(baseline, config, label=str(config.baseline.get("label", f"baseline {baseline['checkpoint_step']}")))])
+    comparison = ([] if baseline is None else [_summary_row(
+        baseline, config, label=str(config.baseline.get("label", f"baseline {baseline['checkpoint_step']}")),
+        training_metadata={},
+    )])
     comparison.extend(_summary_row(row, config, label=str(config.labels.get("checkpoint_template", "checkpoint {step}")).format(step=row["checkpoint_step"])) for row in completed)
     _write(output / "evaluation_summary.json", {"experiment_name": config.experiment_name, "metadata": turbo_metadata(), "control_scale": 1.0,
+           "training_metadata": config.training_metadata,
            "baseline": None if baseline is None else {"checkpoint_step": baseline["checkpoint_step"], "source": str(baseline_root / "pck_clip_results.json"), "regenerated": False, "result": baseline},
            "comparison": comparison, "checkpoints": completed,
            "deltas_vs_baseline": {} if baseline is None else {str(row["checkpoint_step"]): _deltas(row, baseline, config) for row in completed},

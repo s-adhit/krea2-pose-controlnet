@@ -3,98 +3,79 @@
 ## Current objective and enforced decisions
 
 `train.py` remains unchanged and production training remains flow-matching MSE
-only. Gate D is read-only tooling. Gate E is the separately invoked, bounded
-Gaussian-heatmap-KL smoke continuation only: `lambda_pose=2e-5`, inclusive
-pose timestep window `[0.10, 0.20]`, microbatch size `1`, gradient
-accumulation `32`, and target effective batch `32`. Do not launch either tool
-from the Codex sandbox.
+only. Gate E is the separately invoked bounded Gaussian-heatmap-KL smoke
+continuation: `lambda_pose=2e-5`, inclusive pose timestep window `[0.10,
+0.20]`, microbatch `1`, gradient accumulation `32`, and target effective batch
+`32`. Do not launch production training from the Codex sandbox.
 
-The immutable Gate-E source parent remains
-`/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt`
-with SHA256
-`6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0`.
-The graceful Gate-E checkpoint at
-`/lambda/nfs/adhit/krea2-pose/checkpoints/gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32/step_001610.pt`
-is the current continuation parent. Desired final global step: `1700`.
+Gate-E training is complete at global step `1700`. Its checkpoints are local
+under `/lambda/nfs/adhit/krea2-pose/checkpoints/gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32/`:
+steps `1550`, `1600`, `1650`, and `1700`. The supplied SHA-256 for
+`step_001700.pt` is
+`b454cfff01e6c2608415abc54d910682be9705d1ea337b342511fe1586828415`.
+Measured resumed exposure was `20 / 2504 = 0.7987%` active/eligible samples;
+`18 / 90` optimizer steps had at least one active sample.
 
 ## Verified gates and decisions
 
-- Gate A, A.5, B, and C: PASS as previously documented. Gate D remains
+- Gates A, A.5, B, and C: PASS as previously documented. Gate D remains
   IMPLEMENTED / GH200 RUN REQUIRED.
-- Gate E: tooling supports safe dynamic continuation, but it is **not PASS**.
-  The real GH200 continuation to step 1700 and its evaluation/inspection are
-  still required.
-- Gate-E checkpoints now store top-level `gate_e` metadata: pose loss/window,
-  critical model/training config, and trainable state names. A later checkpoint
-  must match it before it can resume. The already-written legacy step 1610 is
-  accepted only after its `metrics.jsonl` proves a single consistent
-  `lambda_pose` and timestep window, while its stored full config proves the
-  remaining critical config.
-- Canonical step 1500 always verifies its pinned SHA (an explicitly supplied
-  SHA is an additional check). A later Gate-E checkpoint does not require the
-  canonical SHA, but an explicit SHA is enforced if supplied.
-- `--target-global-step` is the explicit final-step interface and must exceed
-  the loaded checkpoint step. Legacy `--max-steps` means *additional* updates
-  from the loaded checkpoint; exactly one of the two is required and each
-  continuation is capped at 300 updates.
-- New Gate-E runs require a new output directory. Resumes must use exactly the
-  parent checkpoint's existing run directory. Published checkpoint names are
-  fail-closed and are never overwritten. Full model/optimizer/scheduler,
-  epoch/batch position, RNG, and flow-generator restoration still uses the
-  existing `train.restore_full_training_state` machinery.
-- Optimizer-step metrics now aggregate all accumulation microbatches, including
-  active/eligible sample and active-microbatch counts, mean/max active pose
-  loss, mean flow/total loss, and timestep min/max/mean. This is observability
-  only and does not change RNG draws, loss construction, backward scaling,
-  optimizer behavior, VAE/critic behavior, or frozen-boundary checks.
+- Gate E training continuation is complete; its Turbo evaluation has not yet
+  been run. Gate E is not PASS until that evaluation/inspection is complete.
+- Gate-E checkpoints store top-level `gate_e` metadata: pose loss/window,
+  critical model/training config, and trainable state names. Resume validation
+  remains fail-closed.
+- The generic Turbo evaluator now supports a `direct_local` exact-checkpoint
+  selector for bounded local branches without an HF checkpoint mirror. It
+  checks direct filenames, embedded global steps, and every configured SHA;
+  this changes no sampler, VAE, diagnostic, CLIP, or PCK semantics.
+- `configs/evaluation/gate_e_kl_l2e5_t010_020_turbo.json` fixes Krea-2 Turbo,
+  8 steps, CFG 0, fixed non-resolution-dependent `mu=1.15`, official schedule,
+  control scale 1.0, the established 24 diagnostics, and authoritative
+  21-sample numerical PCK (Danbooru remains excluded). It reuses the established
+  LR-only step-1500 result rather than regenerating it.
+- Gate-E output is isolated at `docs/evaluation/gate-e-kl-l2e5-t010-020/`.
+  It does not overwrite any historical evaluation output.
 
 ## Files changed this session
 
-- `pose_controlnet/checkpointing.py`
-- `pose_controlnet/pose_reward_tools.py`
-- `scripts/train_pose_reward_smoke.py`
-- `tests/test_pose_reward_tools.py`
+- `pose_controlnet/turbo_evaluation.py`
+- `scripts/turbo_benchmark.py`
+- `configs/evaluation/gate_e_kl_l2e5_t010_020_turbo.json`
+- `tests/test_turbo_evaluation.py`
 - `docs/CODEX_HANDOFF.md`
 
 Existing untracked Gate-B/C/D/E audit files remain user-owned and were not
-overwritten. `train.py` was not changed.
+overwritten. No training or historical evaluation artifacts were changed.
 
 ## Tests and checks
 
 - PASS: `PYTHONPATH=. UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest
-  tests.test_pose_reward_tools tests.test_train_mechanics` — 61 CPU tests.
-  Covers canonical SHA validation, arbitrary intermediate metadata resume,
-  legacy metrics-provenance resume, explicit intermediate SHA, target semantics,
-  incompatible configuration rejection, destination/publication safety, and
-  all-accumulation diagnostic aggregation/RNG/backward-scaling invariance.
-- PASS: `PYTHONPATH=. UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest
-  tests.test_keypoint_critic tests.test_keypoint_critic_audit
-  tests.test_pose_reward_tools` — 41 CPU tests.
+  tests.test_turbo_evaluation tests.test_turbo_lr5e5_evaluation
+  tests.test_turbo_timestep_evaluation tests.test_post1500_evaluation` — 30
+  CPU tests. Covers Gate-E spec/metadata, direct exact-local selection and SHA
+  mismatch failure, unchanged shared Turbo/PCK/CLIP contracts, and post-1500
+  PCK behavior.
 - PASS: `PYTHONPATH=. UV_CACHE_DIR=/tmp/uv-cache uv run python -m py_compile
-  pose_controlnet/checkpointing.py pose_controlnet/pose_reward_tools.py
-  scripts/train_pose_reward_smoke.py tests/test_pose_reward_tools.py`.
+  pose_controlnet/turbo_evaluation.py scripts/turbo_benchmark.py
+  tests/test_turbo_evaluation.py`.
 - PASS: `PYTHONPATH=. UV_CACHE_DIR=/tmp/uv-cache uv run python
-  scripts/train_pose_reward_smoke.py --help`.
+  scripts/turbo_benchmark.py preflight --help`.
+- PASS: Gate-E experiment-spec load check.
 - PASS: `git diff --check`.
 
 ## Exact next GH200 action (do not run from Codex)
 
-Resume the existing Gate-E run; do not pass the original step-1500 SHA for
-this later checkpoint:
+Run the complete staged Gate-E Turbo evaluation from the repository root:
 
 ```bash
-PYTHONPATH=. python scripts/train_pose_reward_smoke.py \
-  --parent-checkpoint /lambda/nfs/adhit/krea2-pose/checkpoints/gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32/step_001610.pt \
-  --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors \
-  --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
-  --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
-  --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
-  --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints \
-  --run-name gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32 \
-  --lambda-pose 2e-5 --pose-timestep-min 0.10 --pose-timestep-max 0.20 \
-  --target-global-step 1700 --save-every 50 \
-  --microbatch-size 1 --gradient-accumulation-steps 32 --device cuda
+PYTHONPATH=. python scripts/turbo_benchmark.py preflight --spec configs/evaluation/gate_e_kl_l2e5_t010_020_turbo.json && \
+PYTHONPATH=. python scripts/turbo_benchmark.py generate --spec configs/evaluation/gate_e_kl_l2e5_t010_020_turbo.json && \
+PYTHONPATH=. python scripts/turbo_benchmark.py score --spec configs/evaluation/gate_e_kl_l2e5_t010_020_turbo.json && \
+PYTHONPATH=. python scripts/turbo_benchmark.py report --spec configs/evaluation/gate_e_kl_l2e5_t010_020_turbo.json
 ```
 
-Inspect the resumed metrics and checkpoint(s), then complete the required
-evaluation before considering Gate E PASS.
+Inspect `docs/evaluation/gate-e-kl-l2e5-t010-020/evaluation_summary.json` and
+the contact sheets. It contains CLIP, overall/subset PCK, coverage and people
+counts, plus deltas for all reported PCK variants and aggregate metrics versus
+step 1500.

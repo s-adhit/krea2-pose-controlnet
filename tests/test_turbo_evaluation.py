@@ -13,6 +13,7 @@ from pose_controlnet.post1500_evaluation import score_authoritative_pck
 from pose_controlnet.turbo_evaluation import (
     assert_exact_diagnostic_stems,
     discover_turbo_checkpoint_steps,
+    exact_direct_local_turbo_checkpoints,
     exact_local_turbo_checkpoints,
     load_turbo_experiment_spec,
     normalize_turbo_steps,
@@ -52,6 +53,18 @@ class TurboEvaluationTest(unittest.TestCase):
         self.assertEqual(config.diagnostics["expected_count"], 24)
         self.assertEqual({**turbo_metadata(), "control_scale": 1.0}["steps"], 8)
 
+    def test_gate_e_spec_pins_exact_local_checkpoints_training_facts_and_step1700_sha(self):
+        config = load_turbo_experiment_spec(ROOT / "configs/evaluation/gate_e_kl_l2e5_t010_020_turbo.json")
+        self.assertEqual(config.steps, (1550, 1600, 1650, 1700))
+        self.assertEqual(config.checkpoint_validation["mode"], "direct_local")
+        self.assertEqual(config.checkpoint_validation["expected_sha256"]["1700"], "b454cfff01e6c2608415abc54d910682be9705d1ea337b342511fe1586828415")
+        self.assertEqual(config.training_metadata["resumed_exposure"]["active_fraction_percent"], .7987)
+        deltas = turbo_benchmark._deltas(score_row(1700), score_row(1500), config)
+        self.assertEqual(deltas["coco_pck_pck_020"], 0.0)
+        self.assertEqual(deltas["human_art_pck_pck_010"], 0.0)
+        self.assertEqual(deltas["single_person_pck_pck_005"], 0.0)
+        self.assertEqual(deltas["multi_person_pck_pck_020"], 0.0)
+
     def test_arbitrary_steps_duplicates_and_cli_selection(self):
         args = turbo_benchmark.parser().parse_args(["preflight", "--spec", "example.json", "--steps", "1600", "1700", "1900"])
         self.assertEqual(normalize_turbo_steps(args.steps), (1600, 1700, 1900))
@@ -77,6 +90,14 @@ class TurboEvaluationTest(unittest.TestCase):
                 exact_local_turbo_checkpoints(checkpoint_root=checkpoints, hf_repo_id="org/repo", hf_namespace="run/full/", marker_download_dir=root / "markers", steps=(1700,))
         source = Path("pose_controlnet/turbo_evaluation.py").read_text(); resolver = source[source.index("def exact_local_turbo_checkpoints"):source.index("def turbo_schedule")]
         self.assertNotIn("validated_hf_checkpoint_for_step", resolver); self.assertNotIn("newest_valid", resolver)
+
+    def test_direct_local_checkpoint_selection_has_no_marker_fallback_and_honors_supplied_sha(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); checkpoint = root / "step_001700.pt"; checkpoint.write_bytes(b"gate-e")
+            with patch("pose_controlnet.turbo_evaluation.load_training_state", return_value={"global_step": 1700}):
+                self.assertEqual(exact_direct_local_turbo_checkpoints(checkpoint_root=root, steps=(1700,)), [(1700, checkpoint)])
+                with self.assertRaisesRegex(ValueError, "SHA-256 mismatch"):
+                    exact_direct_local_turbo_checkpoints(checkpoint_root=root, steps=(1700,), expected_sha256={"1700": "0" * 64})
 
     def test_existing_complete_generation_and_scores_are_dynamic_and_partial_output_fails_closed(self):
         with tempfile.TemporaryDirectory() as temporary:
