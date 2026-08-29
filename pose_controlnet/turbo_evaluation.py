@@ -76,6 +76,104 @@ class TurboExperiment:
         return self.hf_namespace.removesuffix("/").removesuffix("/full")
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def controlled_branch_metadata(checkpoints: Iterable[tuple[int, Path]]) -> dict[str, Any]:
+    """Read provenance from controlled checkpoints instead of a copied spec.
+
+    Static experiment-defining values must agree across every requested
+    checkpoint.  Counters and checkpoint checksums are deliberately retained
+    per checkpoint because they are expected to progress during training.
+    """
+    static_keys = (
+        "pose_loss", "temperature", "lambda_pose", "pose_timestep_window",
+        "forced_exposure_probability", "forced_sampler_policy", "immutable_parent",
+        "hf_subdir",
+    )
+    expected_static: dict[str, Any] | None = None
+    expected_config: dict[str, Any] | None = None
+    per_checkpoint: dict[str, dict[str, Any]] = {}
+    for step, checkpoint in checkpoints:
+        state = load_training_state(checkpoint)
+        if state.get("global_step") != step:
+            raise ValueError(f"Checkpoint filename/embedded step mismatch: {checkpoint} has {state.get('global_step')}")
+        gate = state.get("gate_e")
+        config = state.get("config")
+        if not isinstance(gate, Mapping) or not isinstance(config, Mapping):
+            raise ValueError(f"Controlled checkpoint lacks gate_e/config metadata: {checkpoint}")
+        static = {key: gate.get(key) for key in static_keys}
+        if any(value is None for value in static.values()):
+            raise ValueError(f"Controlled checkpoint has incomplete gate_e metadata: {checkpoint}")
+        if expected_static is None:
+            expected_static = static
+        elif static != expected_static:
+            raise ValueError(f"Controlled branch metadata is inconsistent at step {step}")
+        config_static = {
+            "microbatch_size": config.get("microbatch_size"),
+            "gradient_accumulation_steps": config.get("gradient_accumulation_steps"),
+            "save_every_steps": config.get("save_every"),
+            "target_global_step": config.get("max_steps"),
+        }
+        if expected_config is None:
+            expected_config = config_static
+        elif config_static != expected_config:
+            raise ValueError(f"Controlled branch runtime metadata is inconsistent at step {step}")
+        counters = gate.get("cumulative_counters")
+        if not isinstance(counters, Mapping):
+            raise ValueError(f"Controlled checkpoint lacks cumulative exposure counters: {checkpoint}")
+        per_checkpoint[str(step)] = {
+            "checkpoint_sha256": _sha256(checkpoint),
+            "cumulative_pose_counters": {str(key): int(value) for key, value in counters.items()},
+            **config_static,
+        }
+    if expected_static is None:
+        raise ValueError("At least one controlled checkpoint is required for metadata extraction")
+    first = next(iter(per_checkpoint.values()))
+    return {
+        "pose_loss": expected_static["pose_loss"],
+        "pose_loss_temperature": expected_static["temperature"],
+        "lambda_pose": expected_static["lambda_pose"],
+        "pose_timestep_window": expected_static["pose_timestep_window"],
+        "forced_pose_exposure_probability": expected_static["forced_exposure_probability"],
+        "forced_sampler_policy": expected_static["forced_sampler_policy"],
+        "parent_checkpoint": expected_static["immutable_parent"],
+        "hf_subdir": expected_static["hf_subdir"],
+        "microbatch_size": first["microbatch_size"],
+        "gradient_accumulation_steps": first["gradient_accumulation_steps"],
+        "per_checkpoint": per_checkpoint,
+    }
+
+
+def validate_controlled_experiment_metadata(checkpoint_root: str | Path,
+                                            metadata: Mapping[str, Any]) -> None:
+    """Fail closed if the optional branch-side metadata disagrees with checkpoints."""
+    path = Path(checkpoint_root) / "experiment_metadata.json"
+    if not path.is_file():
+        return
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Controlled experiment metadata is invalid JSON: {path}") from exc
+    gate = payload.get("gate_e") if isinstance(payload, Mapping) else None
+    if not isinstance(gate, Mapping):
+        raise ValueError(f"Controlled experiment metadata lacks gate_e: {path}")
+    comparisons = {
+        "pose_loss": metadata["pose_loss"], "lambda_pose": metadata["lambda_pose"],
+        "pose_timestep_window": metadata["pose_timestep_window"],
+        "forced_exposure_probability": metadata["forced_pose_exposure_probability"],
+        "forced_sampler_policy": metadata["forced_sampler_policy"],
+        "immutable_parent": metadata["parent_checkpoint"], "hf_subdir": metadata["hf_subdir"],
+    }
+    if any(gate.get(key) != value for key, value in comparisons.items()):
+        raise ValueError(f"Controlled experiment metadata disagrees with requested checkpoints: {path}")
+
+
 def _required_string(payload: Mapping[str, Any], key: str) -> str:
     value = payload.get(key)
     if not isinstance(value, str) or not value.strip():
@@ -98,6 +196,11 @@ def load_turbo_experiment_spec(path: str | Path, *, overrides: Mapping[str, Any]
         raise ValueError(f"Turbo experiment spec is not valid JSON: {source}") from exc
     if not isinstance(payload, dict):
         raise ValueError("Turbo experiment spec must be a JSON object")
+    return turbo_experiment_from_payload(payload, overrides=overrides)
+
+
+def turbo_experiment_from_payload(payload: Mapping[str, Any], *, overrides: Mapping[str, Any] | None = None) -> TurboExperiment:
+    """Validate a resolved CLI payload with the same contract as JSON specs."""
     merged = dict(payload)
     for key, value in (overrides or {}).items():
         if value is not None:
@@ -144,10 +247,15 @@ def load_turbo_experiment_spec(path: str | Path, *, overrides: Mapping[str, Any]
         raise ValueError("Turbo experiment checkpoint_validation.expected_sha256 contains a step outside the configured steps")
     if "baseline" in merged and merged["baseline"] is not None and not isinstance(merged["baseline"], dict):
         raise ValueError("Turbo experiment baseline must be an object when configured")
+    hf_repo_id = merged.get("hf_repo_id", "")
+    if not isinstance(hf_repo_id, str):
+        raise ValueError("Turbo experiment hf_repo_id must be a string")
+    if mode != "direct_local" and not hf_repo_id.strip():
+        raise ValueError("Turbo experiment requires hf_repo_id for marker-backed validation")
     return TurboExperiment(
         experiment_name=experiment_name,
         checkpoint_root=checkpoint_root,
-        hf_repo_id=_required_string(merged, "hf_repo_id"),
+        hf_repo_id=hf_repo_id.strip(),
         hf_namespace=namespace,
         output_root=output_root,
         steps=spec_steps,

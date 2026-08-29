@@ -2,39 +2,27 @@
 
 ## Current objective
 
-Implement, but do not launch, the isolated controlled pose-reward exposure continuation. `train.py` remains unchanged and production remains flow-MSE only. Prior Gate-E was technically successful but did not improve external pose: step-1500 Turbo CLIP/PCK(.05/.10/.20) was `.33684298 / .05461 / .18083 / .41262`; Gate-E step-1700 was `.33441689 / .04369 / .14199 / .37257`. Its resumed exposure was only `20 / 2504 = 0.7987%` eligible samples (`18 / 90` optimizer steps): under-exposure, not evidence against Gaussian KL.
+Prepare, but do not launch, generic controlled pose-reward continuation/evaluation. `train.py` is untouched; production remains flow-MSE only.
 
-## New branch contract
+## Generic workflow now implemented
 
-- Parent is only the immutable local step-1500 checkpoint `/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt`, SHA-256 `6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0`. Never continue from the historical Gate-E step-1700 branch.
-- Run/remote namespace is exactly `pose-reward-kl-exposure5pct-l2e5-t010-020`. New starts fail if that local directory already exists; resumed checkpoints must be from that same directory and carry format-2 controlled-branch metadata. No checkpoint is overwritten.
-- Gaussian heatmap KL, temperature `1.0`, `lambda_pose=2e-5`, final window `[0.10, 0.20]`, microbatch `1`, accumulation `32`, target step `1700`, and saves/mirrors every `50` steps are fixed. Phase-1, evaluator, `make_flow_pair`, and production flow are untouched.
-- `--forced-pose-exposure-probability` is required. At `0.05`, only available samples may be selected. Normal timesteps are always drawn first; selected samples receive a uniform final-window timestep; non-forced samples retain normal results. At zero, no extra RNG draws occur. Natural activity excludes forced samples.
-- Metadata fail-closes on loss/lambda/window/probability/policy, parent, HF namespace, critical config, and trainable state. It saves cumulative eligible/forced/natural/total counters plus flow-generator state.
+- Training takes parent, target, cadence, exposure, lambda, and namespace from CLI; resume remains fail-closed. `checkpoint_publication_steps(1500, 1650, 25)` yields `1525 1550 1575 1600 1625 1650`.
+- `turbo_benchmark.py experiment` validates local checkpoint names/steps/optional hashes and extracts gate-E provenance/counters; inconsistent metadata fails before GPU work.
+- Fixed contract retained: Turbo 8-step CFG-0/mu=1.15/control=1.0, canonical 24 samples/seed 420200, CLIP ViT-B/32, authoritative 21-sample PCK (Danbooru visual-only).
+- Valid artifacts are reused; partial branch artifacts fail; absent baseline PNGs merely omit their visual column. Reports emit generic grids, summary, and separate PCK/CLIP rankings.
 
-## Optional W&B logging
+## Latest completed experiment result
 
-- `wandb>=0.19` was already present in `pyproject.toml`/`uv.lock`; the audited environment has `wandb 0.28.2`. No dependency change was made.
-- W&B is disabled unless `--wandb-project` is explicit. JSONL remains the canonical local telemetry, and W&B is only a secondary mirror: W&B failures warn and disable further W&B calls without affecting optimizer work, NFS/local checkpoints, or HF mirroring.
-- New enabled checkpoints save `gate_e.wandb_run_id`; enabled resumes use it with W&B `resume="allow"`. If W&B flags are omitted during recovery, local resume remains valid and the ID is preserved. Legacy checkpoints without this optional field remain loadable.
-- Suggested project/run: `krea2-pose-controlnet` / `pose-reward-kl-exposure5pct-l2e5-t010-020`. The W&B config is non-secret and includes the immutable parent SHA, Krea-2 Raw identity, branch hyperparameters, cadence/HF target, and sidecar records SHA.
+5% + `lambda_pose=2e-5`: exposure PASS; 333/5567 active (5.98%), forced 280/5567 (5.03%), 159/200 steps pose-active. Step1600 coarse PCK@.20 `.41262 -> .41990`, Human-Art `.41227 -> .42368`, multi-person `.38439 -> .39740`; precise PCK and CLIP did not improve. Do not select `2e-5`; next hypothesis is `1e-5` with 5% exposure.
 
-## HF mirror and recovery
+## Next controlled run — do not run from Codex
 
-Repository: `adhit-420/Krea-2-PoseControl-LoRA-checkpoints`. Remote full checkpoints are exactly:
+Immutable parent:
 
 ```text
-pose-reward-kl-exposure5pct-l2e5-t010-020/full/step_001550.pt
-pose-reward-kl-exposure5pct-l2e5-t010-020/full/step_001600.pt
-pose-reward-kl-exposure5pct-l2e5-t010-020/full/step_001650.pt
-pose-reward-kl-exposure5pct-l2e5-t010-020/full/step_001700.pt
+/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt
+sha256: 6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0
 ```
-
-Each is locally saved/validated before HF queueing with a checksum completion marker. Local files are retained; failures are loud after the safe local save and retryable. Final metrics and metadata/config are mirrored too; no token is logged or serialized.
-
-Resume from the newest valid local branch checkpoint by replacing `--parent-checkpoint` below (for example with `.../step_001600.pt`) and removing `--expected-parent-sha256`; retain all other flags. To recover remotely, use `fetch` below then pass its printed path. Never overwrite an existing `step_001700.pt`; evaluate it.
-
-## Exact GH200 command with W&B — do not run from Codex
 
 ```bash
 cd /home/ubuntu/krea2-pose-controlnet
@@ -46,54 +34,53 @@ PYTHONPATH=. python scripts/train_pose_reward_smoke.py \
   --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
   --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
   --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints \
-  --run-name pose-reward-kl-exposure5pct-l2e5-t010-020 \
-  --lambda-pose 2e-5 --pose-timestep-min 0.10 --pose-timestep-max 0.20 \
+  --run-name pose-reward-kl-exposure5pct-l1e5-t010-020 \
+  --lambda-pose 1e-5 --pose-timestep-min 0.10 --pose-timestep-max 0.20 \
   --forced-pose-exposure-probability 0.05 \
+  --target-global-step 1650 --save-every 25 --microbatch-size 1 --gradient-accumulation-steps 32 \
   --hf-repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints \
-  --hf-subdir pose-reward-kl-exposure5pct-l2e5-t010-020 \
-  --hf-mirror-every-steps 50 --target-global-step 1700 --save-every 50 \
-  --microbatch-size 1 --gradient-accumulation-steps 32 --device cuda \
-  --wandb-project krea2-pose-controlnet \
-  --wandb-run-name pose-reward-kl-exposure5pct-l2e5-t010-020
+  --hf-subdir pose-reward-kl-exposure5pct-l1e5-t010-020 --hf-mirror-every-steps 25 --device cuda \
+  --wandb-entity adhit-projects --wandb-project Krea-2-PoseControl-Lora \
+  --wandb-run-name pose-reward-kl-exposure5pct-l1e5-t010-020
 ```
 
-Fallback with W&B disabled: use the exact command above with the final two `--wandb-*` lines omitted.
+Start an interactive tmux shell, then paste that command:
 
-Verify/list the mirror:
+```bash
+tmux new-session -s pose-reward-kl-exposure5pct-l1e5-t010-020 'cd /home/ubuntu/krea2-pose-controlnet && exec bash'
+```
+
+Expected local/HF steps: `1525 1550 1575 1600 1625 1650`. Check remote completion markers with:
 
 ```bash
 PYTHONPATH=. python scripts/mirror_checkpoint.py list \
   --repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints \
-  --run-name pose-reward-kl-exposure5pct-l2e5-t010-020
+  --run-name pose-reward-kl-exposure5pct-l1e5-t010-020
 ```
 
-Retry an already-saved checkpoint (and verify its marker):
+Resume: set `--parent-checkpoint .../pose-reward-kl-exposure5pct-l1e5-t010-020/step_00XXXX.pt`, omit `--expected-parent-sha256`, and preserve all other experiment flags.
+
+## Dynamic evaluation — do not run from Codex
 
 ```bash
-PYTHONPATH=. python scripts/mirror_checkpoint.py mirror \
-  --repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints \
-  --run-name pose-reward-kl-exposure5pct-l2e5-t010-020 \
-  --checkpoint /lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l2e5-t010-020/step_001650.pt
+PYTHONPATH=. python scripts/turbo_benchmark.py experiment \
+  --checkpoint-root /lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l1e5-t010-020 \
+  --steps 1525 1550 1575 1600 1625 1650 \
+  --output-root docs/evaluation/pose-reward-kl-exposure5pct-l1e5-t010-020 \
+  --experiment-name pose-reward-kl-exposure5pct-l1e5-t010-020 \
+  --checkpoint-label-template 'Pose KL 1e-5 {step}' \
+  --baseline-output-root docs/evaluation/turbo-8step-cfg0-lr5e5 \
+  --baseline-step 1500 --baseline-label 'LR-only 1500 @ 5e-5' \
+  --canonical-reference-spec docs/evaluation/turbo-8step-cfg0-lr5e5/turbo_spec.json
 ```
 
-Fetch a marker-validated remote checkpoint for recovery:
-
-```bash
-PYTHONPATH=. python scripts/mirror_checkpoint.py fetch \
-  --repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints \
-  --run-name pose-reward-kl-exposure5pct-l2e5-t010-020 --step 1650 \
-  --download-dir /lambda/nfs/adhit/krea2-pose/recovery/pose-reward-kl-exposure5pct-l2e5-t010-020
-```
+Add `--expected-sha256 1650=<known-lowercase-sha256>` when available. Re-running reuses validated artifacts. Outputs: `pose-reward-kl-exposure5pct-l1e5-t010-020_full_contact_sheet.png`, `pose-reward-kl-exposure5pct-l1e5-t010-020_checkpoint_selection_grid.png`, `evaluation_summary.json`, `checkpoint_ranking.json`, and resolved `turbo_spec.json` provenance.
 
 ## Checks this session
 
-- PASS: `PYTHONPATH=. python -m unittest tests.test_pose_reward_wandb tests.test_pose_reward_tools tests.test_timestep_exposure tests.test_gate_e tests.test_wandb_logging` — 47 CPU/no-network tests, including W&B failure isolation and run-ID resume.
-- PASS: `PYTHONPATH=. python -m py_compile scripts/train_pose_reward_smoke.py pose_controlnet/wandb_logging.py tests/test_pose_reward_wandb.py`.
-- PASS: `PYTHONPATH=. python scripts/train_pose_reward_smoke.py --help`.
+- PASS: 74 CPU/no-network tests: pose-reward, W&B, Turbo, and exposure suites.
+- PASS: `PYTHONPATH=. python -m py_compile scripts/train_pose_reward_smoke.py scripts/turbo_benchmark.py pose_controlnet/turbo_evaluation.py`.
+- PASS: trainer and both Turbo CLI help commands.
 - PASS: `git diff --check`.
 
-Files changed this session: `scripts/train_pose_reward_smoke.py`, `pose_controlnet/wandb_logging.py`, `tests/test_pose_reward_wandb.py`, and this handoff. No training, W&B login, or network call was made.
-
-## After step 1700
-
-Run the fixed Turbo evaluator on only these four checkpoints; compare CLIP and authoritative PCK with the preserved step-1500 numerical baseline. Do not alter historical Gate-E/Phase-1 artifacts.
+Changed: `pose_controlnet/turbo_evaluation.py`, `scripts/turbo_benchmark.py`, `tests/test_turbo_evaluation.py`; updated pre-existing untracked trainer/tests in place. No training, evaluation, network call, commit, or push.

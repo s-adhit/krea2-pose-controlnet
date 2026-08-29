@@ -31,6 +31,7 @@ from pose_controlnet.turbo_evaluation import (
     TurboExperiment,
     assert_turbo_diagnostic_contract,
     assert_exact_diagnostic_stems,
+    controlled_branch_metadata,
     discover_turbo_checkpoint_steps,
     exact_direct_local_turbo_checkpoints,
     exact_local_turbo_checkpoints,
@@ -40,6 +41,8 @@ from pose_controlnet.turbo_evaluation import (
     sample_turbo_pose_image,
     turbo_metadata,
     turbo_scoring_geometry,
+    turbo_experiment_from_payload,
+    validate_controlled_experiment_metadata,
 )
 from pose_controlnet.vae_preprocessing import decode_normalized_latents, load_krea_vae
 
@@ -73,12 +76,90 @@ def _manifest_stems(path: Path) -> tuple[str, ...]:
 
 
 def _config(args) -> TurboExperiment:
-    return load_turbo_experiment_spec(args.spec, overrides={
+    cached = getattr(args, "_turbo_config", None)
+    if cached is not None:
+        return cached
+    if getattr(args, "dynamic_experiment", False):
+        config = _dynamic_experiment_config(args)
+        args._turbo_config = config
+        return config
+    config = load_turbo_experiment_spec(args.spec, overrides={
         "checkpoint_root": args.checkpoint_root,
         "hf_repo_id": args.hf_repo_id,
         "hf_namespace": args.hf_namespace,
         "output_root": args.output_root,
     })
+    args._turbo_config = config
+    return config
+
+
+def _parse_expected_sha256(values: Iterable[str]) -> dict[str, str]:
+    """Parse exact ``STEP=SHA256`` provenance supplied at the CLI boundary."""
+    parsed: dict[str, str] = {}
+    for value in values:
+        step, separator, digest = value.partition("=")
+        if not separator or not step.isdigit() or len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest):
+            raise ValueError("--expected-sha256 values must be STEP=<lowercase-64-hex-sha256>")
+        step = str(int(step))
+        if step in parsed:
+            raise ValueError(f"--expected-sha256 repeats step {step}")
+        parsed[step] = digest
+    return parsed
+
+
+def _dynamic_experiment_config(args) -> TurboExperiment:
+    """Resolve the controlled-branch CLI into the ordinary audited spec model."""
+    expected_sha256 = _parse_expected_sha256(args.expected_sha256 or ())
+    steps = normalize_turbo_steps(args.steps)
+    if any(int(step) not in steps for step in expected_sha256):
+        raise ValueError("--expected-sha256 includes a step that was not requested")
+    if bool(args.baseline_output_root) != (args.baseline_step is not None):
+        raise ValueError("--baseline-output-root and --baseline-step must be supplied together")
+    try:
+        args.checkpoint_label_template.format(step=steps[0])
+    except (KeyError, IndexError, ValueError) as exc:
+        raise ValueError("--checkpoint-label-template must be a valid format string using {step}") from exc
+    payload: dict[str, Any] = {
+        "experiment_name": args.experiment_name,
+        "checkpoint_root": args.checkpoint_root,
+        "hf_repo_id": args.hf_repo_id or "",
+        "hf_namespace": f"{args.experiment_name}/full/",
+        "output_root": args.output_root,
+        "steps": list(steps),
+        "checkpoint_validation": {"mode": "direct_local", "expected_sha256": expected_sha256},
+        "labels": {"checkpoint_template": args.checkpoint_label_template},
+        "turbo_contract": {**turbo_metadata(), "control_scale": 1.0},
+        "diagnostics": {
+            "canonical_manifest": args.diagnostic_manifest,
+            "canonical_reference_spec": args.canonical_reference_spec,
+            "expected_count": 24,
+            "seed": 420200,
+        },
+        "paths": {
+            "latent_root": args.latent_root,
+            "text_conditioning_root": args.text_conditioning_root,
+            "turbo_ckpt": args.turbo_ckpt,
+            "reference_sidecar": args.reference_sidecar,
+            "clip_model_id": args.clip_model_id,
+        },
+    }
+    if args.baseline_output_root:
+        payload["baseline"] = {
+            "output_root": args.baseline_output_root,
+            "checkpoint_step": args.baseline_step,
+            "label": args.baseline_label or f"baseline {args.baseline_step}",
+        }
+    config = turbo_experiment_from_payload(payload)
+    checkpoints = exact_direct_local_turbo_checkpoints(
+        checkpoint_root=config.checkpoint_root, steps=config.steps or (),
+        expected_sha256=config.checkpoint_validation.get("expected_sha256"),
+    )
+    metadata = controlled_branch_metadata(checkpoints)
+    validate_controlled_experiment_metadata(config.checkpoint_root, metadata)
+    # Keep checkpoint-varying counters and hashes nested, rather than copying
+    # one final-step value into every candidate's report row.
+    payload["training_metadata"] = metadata
+    return turbo_experiment_from_payload(payload)
 
 
 def _path(config: TurboExperiment, key: str, args, *, required: bool = True) -> Path | None:
@@ -147,6 +228,13 @@ def _dataset_and_spec(args, config: TurboExperiment | None = None) -> tuple[Prep
     spec["turbo"] = turbo_metadata()
     spec["control_scale"] = 1.0
     spec["experiment_name"] = config.experiment_name
+    spec["resolved_experiment"] = {
+        "checkpoint_root": str(config.checkpoint_root), "steps": list(config.steps or ()),
+        "checkpoint_validation": dict(config.checkpoint_validation),
+        "training_metadata": dict(config.training_metadata),
+        "baseline": None if config.baseline is None else dict(config.baseline),
+        "labels": dict(config.labels),
+    }
     canonical_path = config.diagnostics.get("canonical_reference_spec")
     if not isinstance(canonical_path, str) or not canonical_path:
         raise ValueError("Turbo experiment spec requires diagnostics.canonical_reference_spec")
@@ -420,8 +508,13 @@ def score(args) -> None:
 def _summary_row(row: dict[str, Any], config: TurboExperiment, *, label: str,
                  training_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     pose, clip = row["pose"], row["clip"]
-    metadata = config.training_metadata if training_metadata is None else training_metadata
+    metadata = dict(config.training_metadata if training_metadata is None else training_metadata)
+    per_checkpoint = metadata.pop("per_checkpoint", {})
+    checkpoint_metadata = per_checkpoint.get(str(row["checkpoint_step"]), {}) if isinstance(per_checkpoint, dict) else {}
+    if not isinstance(checkpoint_metadata, dict):
+        raise ValueError("training_metadata.per_checkpoint must map steps to metadata objects")
     return {"label": label, "checkpoint_step": row["checkpoint_step"], **metadata,
+            **checkpoint_metadata,
             "control_scale": 1.0, **turbo_metadata(), "clip_mean_cosine_similarity": clip["mean_cosine_similarity"],
             "detection_coverage": pose["detection_coverage"], "joint_coverage": pose["joint_evaluation_coverage"],
             "pck_005": pose["pck_005"], "pck_010": pose["pck_010"], "pck_020": pose["pck_020"],
@@ -451,6 +544,22 @@ def _reference_image(config: TurboExperiment, stem: str) -> Path | None:
     if not isinstance(reference, dict) or not isinstance(reference.get("root"), str):
         raise ValueError("diagnostics.reference_images must provide root when configured")
     return Path(reference["root"]) / f"{stem}{reference.get('extension', '.png')}"
+
+
+def _ranking(rows: Iterable[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    """Emit independently sortable metrics; this deliberately names no winner."""
+    values = list(rows)
+    metrics = {
+        "pck_005": lambda row: row["pose"]["pck_005"],
+        "pck_010": lambda row: row["pose"]["pck_010"],
+        "pck_020": lambda row: row["pose"]["pck_020"],
+        "clip_mean_cosine_similarity": lambda row: row["clip"]["mean_cosine_similarity"],
+    }
+    return {
+        name: [{"rank": index + 1, "checkpoint_step": row["checkpoint_step"], "value": value(row)}
+               for index, row in enumerate(sorted(values, key=lambda row: (-value(row), row["checkpoint_step"]))) ]
+        for name, value in metrics.items()
+    }
 
 
 def report(args) -> None:
@@ -497,8 +606,10 @@ def report(args) -> None:
         if not all(path.is_file() for path in paths):
             raise FileNotFoundError(f"Incomplete Turbo comparison row: {stem}")
         grid_rows.append((stem, paths))
-    make_contact_sheet(grid_rows[:min(4, len(grid_rows))], output / "turbo_checkpoint_selection_grid.png", thumbnail_width=180, thumbnail_height=180, column_labels=tuple(labels))
-    make_contact_sheet(grid_rows, output / "turbo_full_contact_sheet.png", thumbnail_width=320, thumbnail_height=320, column_labels=tuple(labels))
+    selection_name = f"{config.experiment_name}_checkpoint_selection_grid.png"
+    contact_name = f"{config.experiment_name}_full_contact_sheet.png"
+    make_contact_sheet(grid_rows[:min(4, len(grid_rows))], output / selection_name, thumbnail_width=180, thumbnail_height=180, column_labels=tuple(labels))
+    make_contact_sheet(grid_rows, output / contact_name, thumbnail_width=320, thumbnail_height=320, column_labels=tuple(labels))
     comparison = ([] if baseline is None else [_summary_row(
         baseline, config, label=str(config.baseline.get("label", f"baseline {baseline['checkpoint_step']}")),
         training_metadata={},
@@ -512,8 +623,12 @@ def report(args) -> None:
            "comparison": comparison, "checkpoints": completed,
            "deltas_vs_baseline": {} if baseline is None else {str(row["checkpoint_step"]): _deltas(row, baseline, config) for row in completed},
            "spec_sha256": hashlib.sha256((output / "turbo_spec.json").read_bytes()).hexdigest(),
-           "qualitative_grids": {"checkpoint_selection": "turbo_checkpoint_selection_grid.png", "full_contact_sheet": "turbo_full_contact_sheet.png"},
+           "qualitative_grids": {"checkpoint_selection": selection_name, "full_contact_sheet": contact_name},
            "production_winner_declared": False})
+    ranked_rows = ([] if baseline is None else [baseline]) + completed
+    _write(output / "checkpoint_ranking.json", {"experiment_name": config.experiment_name,
+           "includes_baseline": baseline is not None, "ranking": _ranking(ranked_rows),
+           "composite_winner_declared": False})
     print(json.dumps(comparison, indent=2))
     print(output / "evaluation_summary.json")
 
@@ -531,6 +646,26 @@ def parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(required=True)
     for name, function in (("preflight", preflight), ("generate", generate), ("score", score), ("report", report)):
         item = sub.add_parser(name, parents=[common]); item.set_defaults(function=function)
+    experiment = sub.add_parser("experiment", help="run the staged generic controlled-branch evaluation")
+    experiment.add_argument("--checkpoint-root", required=True)
+    experiment.add_argument("--steps", type=int, nargs="+", required=True, help="exact branch checkpoint steps")
+    experiment.add_argument("--output-root", required=True)
+    experiment.add_argument("--experiment-name", required=True)
+    experiment.add_argument("--checkpoint-label-template", default="checkpoint {step}")
+    experiment.add_argument("--expected-sha256", nargs="*", default=[], metavar="STEP=SHA256")
+    experiment.add_argument("--baseline-output-root"); experiment.add_argument("--baseline-step", type=int); experiment.add_argument("--baseline-label")
+    experiment.add_argument("--hf-repo-id", default=None, help="recorded provenance only for direct-local evaluation")
+    experiment.add_argument("--diagnostic-manifest", default="data/manifests/diagnostic_val.jsonl")
+    experiment.add_argument("--canonical-reference-spec", default="docs/evaluation/turbo-8step-cfg0/turbo_spec.json")
+    experiment.add_argument("--latent-root", default="/lambda/nfs/adhit/krea2-pose/posebridge_latents")
+    experiment.add_argument("--text-conditioning-root", default="/lambda/nfs/adhit/krea2-pose/text_conditioning")
+    experiment.add_argument("--turbo-ckpt", default="/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors")
+    experiment.add_argument("--reference-sidecar", default="data/manifests/diagnostic_reference_pose.json")
+    experiment.add_argument("--clip-model-id", default="openai/clip-vit-base-patch32")
+    experiment.add_argument("--dataset-root", default=None)
+    experiment.add_argument("--skip-existing", action="store_true", help="reuse only complete validated artifacts (the default behavior)")
+    experiment.set_defaults(function=lambda args: (preflight(args), generate(args), score(args), report(args)), dynamic_experiment=True,
+                            spec=None, hf_namespace=None, all_checkpoints=False)
     return parser
 
 

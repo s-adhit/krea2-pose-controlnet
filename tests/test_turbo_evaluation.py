@@ -1,4 +1,5 @@
 import contextlib
+import hashlib
 import io
 import json
 import tempfile
@@ -15,6 +16,7 @@ from pose_controlnet.turbo_evaluation import (
     discover_turbo_checkpoint_steps,
     exact_direct_local_turbo_checkpoints,
     exact_local_turbo_checkpoints,
+    controlled_branch_metadata,
     load_turbo_experiment_spec,
     normalize_turbo_steps,
     turbo_metadata,
@@ -46,6 +48,54 @@ def score_row(step: int) -> dict:
 
 
 class TurboEvaluationTest(unittest.TestCase):
+    @staticmethod
+    def _controlled_state(step: int, *, lambda_pose: float = 1e-5, microbatch: int = 1) -> dict:
+        return {
+            "global_step": step,
+            "config": {"microbatch_size": microbatch, "gradient_accumulation_steps": 32,
+                       "save_every": 25, "max_steps": 1650},
+            "gate_e": {
+                "pose_loss": "gaussian_heatmap_kl", "temperature": 1.0,
+                "lambda_pose": lambda_pose, "pose_timestep_window": [.1, .2],
+                "forced_exposure_probability": .05, "forced_sampler_policy": "policy-v1",
+                "immutable_parent": {"global_step": 1500, "sha256": "a" * 64, "filename": "step_001500.pt"},
+                "hf_subdir": "arbitrary-run",
+                "cumulative_counters": {"eligible_samples_seen": step, "forced_samples": 1,
+                                        "naturally_active_samples": 2, "total_active_samples": 3},
+            },
+        }
+
+    def test_dynamic_experiment_cli_derives_arbitrary_branch_metadata_and_labels(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); checkpoints = root / "checkpoints"; checkpoints.mkdir()
+            paths = []
+            for step in (1525, 1550, 1600):
+                path = checkpoints / f"step_{step:06d}.pt"; path.write_bytes(f"checkpoint-{step}".encode()); paths.append(path)
+            digests = [f"{step}={hashlib.sha256(path.read_bytes()).hexdigest()}" for step, path in zip((1525, 1550, 1600), paths)]
+            args = turbo_benchmark.parser().parse_args([
+                "experiment", "--checkpoint-root", str(checkpoints), "--steps", "1525", "1550", "1600",
+                "--output-root", str(root / "isolated-output"), "--experiment-name", "arbitrary-run",
+                "--checkpoint-label-template", "candidate {step}", "--expected-sha256", *digests,
+            ])
+            with patch("pose_controlnet.turbo_evaluation.load_training_state", side_effect=lambda path: self._controlled_state(int(Path(path).stem.split("_")[1]))):
+                config = turbo_benchmark._config(args)
+            self.assertEqual(config.steps, (1525, 1550, 1600))
+            self.assertEqual(config.labels["checkpoint_template"], "candidate {step}")
+            self.assertEqual(config.output_root, root / "isolated-output")
+            self.assertEqual(config.training_metadata["lambda_pose"], 1e-5)
+            self.assertEqual(config.training_metadata["per_checkpoint"]["1550"]["microbatch_size"], 1)
+
+    def test_controlled_branch_metadata_rejects_inconsistent_runtime_values(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); first = root / "step_001525.pt"; second = root / "step_001550.pt"
+            first.write_bytes(b"first"); second.write_bytes(b"second")
+            def state(path):
+                step = int(Path(path).stem.split("_")[1])
+                return self._controlled_state(step, microbatch=2 if step == 1550 else 1)
+            with patch("pose_controlnet.turbo_evaluation.load_training_state", side_effect=state):
+                with self.assertRaisesRegex(ValueError, "runtime metadata is inconsistent"):
+                    controlled_branch_metadata(((1525, first), (1550, second)))
+
     def test_current_spec_pins_contract_and_established_24_diagnostics(self):
         config = load_turbo_experiment_spec(ROOT / "configs/evaluation/controlinput_lr2x_turbo.json")
         self.assertEqual(config.experiment_name, "pose-learning-1500-controlinput-lr2x-to2800")
@@ -133,6 +183,9 @@ class TurboEvaluationTest(unittest.TestCase):
             self.assertEqual([row["checkpoint_step"] for row in summary["checkpoints"]], [1600, 2200])
             self.assertEqual([row[0] for row in calls[1][0]], ["second", "first"])
             self.assertEqual(calls[1][1], ("control", "candidate 1600", "candidate 2200"))
+            self.assertEqual(summary["qualitative_grids"]["full_contact_sheet"], "arbitrary-run_full_contact_sheet.png")
+            ranking = json.loads((output / "checkpoint_ranking.json").read_text())
+            self.assertEqual(ranking["ranking"]["pck_020"][0]["checkpoint_step"], 1600)
 
     def test_report_keeps_numerical_baseline_when_its_sample_images_are_missing(self):
         with tempfile.TemporaryDirectory() as temporary:
