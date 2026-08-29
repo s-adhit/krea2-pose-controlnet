@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    1344,
+    768
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_05/coco_64240_crowd.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "A photograph depicts four motorcyclists on motorcycles in a row against a grey asphalt road and a red and white barrier fence under bright daylight, featuring black leather jackets with \"Dainese\" visible on the arms, gold-tinted visors on the helmets, and license plates reading \"Darnes\" and various unreadable white rectangles on the rear fenders, captured with a telephoto lens from a low angle, telephoto lens, motion blur, film grain",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 594100244186452314,
+  "stem": "coco_64240_crowd",
+  "steps": 8
+}

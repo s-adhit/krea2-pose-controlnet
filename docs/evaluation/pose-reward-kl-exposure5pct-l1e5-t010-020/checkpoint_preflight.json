@@ -1,0 +1,179 @@
+{
+  "checkpoint_validation": {
+    "expected_sha256": {
+      "1650": "67a68b7322c11cde670280e566ad616086064945df1fde71090f8fb5eec623c4"
+    },
+    "mode": "direct_local"
+  },
+  "checkpoints": [
+    {
+      "checkpoint_step": 1525,
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l1e5-t010-020/step_001525.pt"
+    },
+    {
+      "checkpoint_step": 1550,
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l1e5-t010-020/step_001550.pt"
+    },
+    {
+      "checkpoint_step": 1575,
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l1e5-t010-020/step_001575.pt"
+    },
+    {
+      "checkpoint_step": 1600,
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l1e5-t010-020/step_001600.pt"
+    },
+    {
+      "checkpoint_step": 1625,
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l1e5-t010-020/step_001625.pt"
+    },
+    {
+      "checkpoint_step": 1650,
+      "expected_sha256": "67a68b7322c11cde670280e566ad616086064945df1fde71090f8fb5eec623c4",
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l1e5-t010-020/step_001650.pt"
+    }
+  ],
+  "control_scale": 1.0,
+  "diagnostic_sample_count": 24,
+  "experiment_name": "pose-reward-kl-exposure5pct-l1e5-t010-020",
+  "hf_namespace": "pose-reward-kl-exposure5pct-l1e5-t010-020/full/",
+  "hf_repo_id": "",
+  "local_checkpoint_root": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l1e5-t010-020",
+  "metadata": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "reused_baseline": {
+    "checkpoint_step": 1500,
+    "regenerated": false,
+    "source": "docs/evaluation/turbo-8step-cfg0-lr5e5/pck_clip_results.json"
+  },
+  "stems": [
+    "coco_156320_crowd",
+    "coco_299468_426600",
+    "coco_379542_449327",
+    "coco_64240_crowd",
+    "danbooru_anime_11903560",
+    "danbooru_anime_11910154",
+    "danbooru_anime_11917323",
+    "painting_humanart_10000000000555",
+    "painting_humanart_10000000000838",
+    "painting_humanart_1000000000218",
+    "painting_humanart_1000000001225",
+    "painting_humanart_1000000002653",
+    "painting_humanart_6000000000319",
+    "painting_humanart_6000000002434",
+    "painting_humanart_9000000000608",
+    "painting_humanart_9000000002722",
+    "real_human_humanart_15000000000201",
+    "real_human_humanart_15000000002196",
+    "real_human_humanart_17000000000288",
+    "real_human_humanart_17000000001552",
+    "real_human_humanart_17000000001695",
+    "sculpture_humanart_14000000000243",
+    "sculpture_humanart_14000000001143",
+    "sculpture_humanart_14000000004479"
+  ],
+  "training_metadata": {
+    "forced_pose_exposure_probability": 0.05,
+    "forced_sampler_policy": "final-window-uniform-v1",
+    "gradient_accumulation_steps": 32,
+    "hf_subdir": "pose-reward-kl-exposure5pct-l1e5-t010-020",
+    "lambda_pose": 1e-05,
+    "microbatch_size": 1,
+    "parent_checkpoint": {
+      "filename": "step_001500.pt",
+      "global_step": 1500,
+      "sha256": "6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0"
+    },
+    "per_checkpoint": {
+      "1525": {
+        "checkpoint_sha256": "8b0d950c46c508803acbb8a0711da18db2fdb6dcf9dbe26e517222bfe7a084e0",
+        "cumulative_pose_counters": {
+          "eligible_samples_seen": 695,
+          "forced_samples": 40,
+          "naturally_active_samples": 6,
+          "total_active_samples": 46
+        },
+        "gradient_accumulation_steps": 32,
+        "microbatch_size": 1,
+        "save_every_steps": 25,
+        "target_global_step": 1650
+      },
+      "1550": {
+        "checkpoint_sha256": "c2e76dbaa6e0c8c3ac3ded9c5d7291f4a152ccf116c9d7df2e51eb5635ac2fa4",
+        "cumulative_pose_counters": {
+          "eligible_samples_seen": 1396,
+          "forced_samples": 71,
+          "naturally_active_samples": 14,
+          "total_active_samples": 85
+        },
+        "gradient_accumulation_steps": 32,
+        "microbatch_size": 1,
+        "save_every_steps": 25,
+        "target_global_step": 1650
+      },
+      "1575": {
+        "checkpoint_sha256": "151404ca8b3ae3531344dd962ea18f815287e19958dda19dc3418bfaf292670b",
+        "cumulative_pose_counters": {
+          "eligible_samples_seen": 2092,
+          "forced_samples": 105,
+          "naturally_active_samples": 19,
+          "total_active_samples": 124
+        },
+        "gradient_accumulation_steps": 32,
+        "microbatch_size": 1,
+        "save_every_steps": 25,
+        "target_global_step": 1650
+      },
+      "1600": {
+        "checkpoint_sha256": "537229644aa93bee3333276df4c039c143c91c2b274552e3df9e7323f1f00782",
+        "cumulative_pose_counters": {
+          "eligible_samples_seen": 2786,
+          "forced_samples": 155,
+          "naturally_active_samples": 25,
+          "total_active_samples": 180
+        },
+        "gradient_accumulation_steps": 32,
+        "microbatch_size": 1,
+        "save_every_steps": 25,
+        "target_global_step": 1650
+      },
+      "1625": {
+        "checkpoint_sha256": "255005304c19327cdbff517f747142ee4df066829e67c5580fc654a5f3b7f47f",
+        "cumulative_pose_counters": {
+          "eligible_samples_seen": 3488,
+          "forced_samples": 187,
+          "naturally_active_samples": 27,
+          "total_active_samples": 214
+        },
+        "gradient_accumulation_steps": 32,
+        "microbatch_size": 1,
+        "save_every_steps": 25,
+        "target_global_step": 1650
+      },
+      "1650": {
+        "checkpoint_sha256": "67a68b7322c11cde670280e566ad616086064945df1fde71090f8fb5eec623c4",
+        "cumulative_pose_counters": {
+          "eligible_samples_seen": 4176,
+          "forced_samples": 218,
+          "naturally_active_samples": 36,
+          "total_active_samples": 254
+        },
+        "gradient_accumulation_steps": 32,
+        "microbatch_size": 1,
+        "save_every_steps": 25,
+        "target_global_step": 1650
+      }
+    },
+    "pose_loss": "gaussian_heatmap_kl",
+    "pose_loss_temperature": 1.0,
+    "pose_timestep_window": [
+      0.1,
+      0.2
+    ]
+  }
+}

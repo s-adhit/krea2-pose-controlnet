@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    1472,
+    704
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_07/painting_humanart_10000000000555.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "A ukiyo-e depicts men and women in traditional Japanese attire interacting near a stall and a tall stacked container featuring Japanese text. The scene includes architectural structures with traditional Japanese signage bearing the characters \"\u308d\u3053\u3069\" and vertical calligraphy scrolls on the left wall. The color palette consists of muted earthy tones including yellow, green, brown, and grey. The lighting is bright and even, characteristic of traditional woodblock prints. The composition is presented from an eye-level angle, woodblock print, Edo period, pigment on paper",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 6753491079149504082,
+  "stem": "painting_humanart_10000000000555",
+  "steps": 8
+}
