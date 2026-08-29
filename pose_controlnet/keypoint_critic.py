@@ -15,6 +15,7 @@ from torch.nn import functional as F
 
 
 COCO17_JOINT_COUNT = 17
+POSE_LOSS_NAMES = ("gaussian_heatmap_kl", "normalized_coordinate_huber")
 
 
 @dataclass(frozen=True)
@@ -260,6 +261,31 @@ def masked_gaussian_heatmap_kl(
 
 
 gaussian_heatmap_kl = masked_gaussian_heatmap_kl
+
+
+def differentiable_pose_loss(
+    pose_loss: str, logits: Tensor, target_coordinates: Tensor, boxes_xyxy: Tensor,
+    reward_joint_valid: Tensor, *, temperature: float = 1.0, gaussian_sigma: float = 1.5,
+    coordinate_huber_delta: float = 1.0,
+) -> Tensor:
+    """Select a differentiable fixed-box pose loss from raw critic heatmap logits.
+
+    Both choices use only the supplied authoritative ROI geometry and
+    ``reward_joint_valid`` mask.  The coordinate variant deliberately uses the
+    differentiable spatial expectation; no decoder or detector operation is in
+    this backward path.
+    """
+    if pose_loss == "gaussian_heatmap_kl":
+        return gaussian_heatmap_kl(
+            logits, target_coordinates, boxes_xyxy, reward_joint_valid,
+            sigma=gaussian_sigma, temperature=temperature,
+        )
+    if pose_loss == "normalized_coordinate_huber":
+        return normalized_coordinate_huber(
+            soft_coordinates(logits, boxes_xyxy, temperature), target_coordinates,
+            boxes_xyxy, reward_joint_valid, delta=coordinate_huber_delta,
+        )
+    raise ValueError(f"Unsupported pose loss {pose_loss!r}; expected one of {POSE_LOSS_NAMES}")
 
 
 @torch.no_grad()

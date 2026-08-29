@@ -62,7 +62,7 @@ class PoseRewardWandbTests(unittest.TestCase):
 
     def config(self) -> dict:
         return gate_e_wandb_config(
-            cfg=self.cfg, immutable_parent=self.parent, lambda_pose=2e-5,
+            cfg=self.cfg, immutable_parent=self.parent, pose_loss="normalized_coordinate_huber", lambda_pose=2e-5,
             timestep_min=.10, timestep_max=.20, forced_exposure_probability=.05,
             target_global_step=1700, hf_subdir=self.cfg.run_name,
             sidecar_metadata={"records_sha256": "sidecar-sha"},
@@ -100,6 +100,7 @@ class PoseRewardWandbTests(unittest.TestCase):
         self.assertEqual(fake.kwargs["config"]["model_base"], "Krea-2 Raw")
         self.assertEqual(fake.kwargs["config"]["effective_batch_size"], 32)
         self.assertEqual(fake.kwargs["config"]["canonical_sidecar_records_sha256"], "sidecar-sha")
+        self.assertEqual(fake.kwargs["config"]["pose_loss"], "normalized_coordinate_huber")
         metrics = gate_e_wandb_step_metrics(self.step_metrics())
         mirror.log(metrics, step=1501)
         logged, step = fake.run.records[0]
@@ -141,7 +142,7 @@ class PoseRewardWandbTests(unittest.TestCase):
 
     def test_checkpoint_run_id_resume_and_legacy_metadata(self) -> None:
         metadata = _gate_e_metadata(
-            self.cfg, lambda_pose=2e-5, timestep_min=.10, timestep_max=.20,
+            self.cfg, pose_loss="gaussian_heatmap_kl", lambda_pose=2e-5, timestep_min=.10, timestep_max=.20,
             forced_exposure_probability=.05, hf_subdir=self.cfg.run_name,
             immutable_parent=self.parent,
             cumulative_counters={"eligible_samples_seen": 0, "forced_samples": 0,
@@ -159,7 +160,7 @@ class PoseRewardWandbTests(unittest.TestCase):
 
     def test_config_and_metadata_do_not_serialize_secrets(self) -> None:
         metadata = _gate_e_metadata(
-            self.cfg, lambda_pose=2e-5, timestep_min=.10, timestep_max=.20,
+            self.cfg, pose_loss="gaussian_heatmap_kl", lambda_pose=2e-5, timestep_min=.10, timestep_max=.20,
             forced_exposure_probability=.05, hf_subdir=self.cfg.run_name,
             immutable_parent=self.parent,
             cumulative_counters={"eligible_samples_seen": 0, "forced_samples": 0,

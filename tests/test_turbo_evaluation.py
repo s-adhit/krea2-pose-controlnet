@@ -49,13 +49,14 @@ def score_row(step: int) -> dict:
 
 class TurboEvaluationTest(unittest.TestCase):
     @staticmethod
-    def _controlled_state(step: int, *, lambda_pose: float = 1e-5, microbatch: int = 1) -> dict:
+    def _controlled_state(step: int, *, pose_loss: str = "gaussian_heatmap_kl",
+                          lambda_pose: float = 1e-5, microbatch: int = 1) -> dict:
         return {
             "global_step": step,
             "config": {"microbatch_size": microbatch, "gradient_accumulation_steps": 32,
                        "save_every": 25, "max_steps": 1650},
             "gate_e": {
-                "pose_loss": "gaussian_heatmap_kl", "temperature": 1.0,
+                "pose_loss": pose_loss, "temperature": 1.0,
                 "lambda_pose": lambda_pose, "pose_timestep_window": [.1, .2],
                 "forced_exposure_probability": .05, "forced_sampler_policy": "policy-v1",
                 "immutable_parent": {"global_step": 1500, "sha256": "a" * 64, "filename": "step_001500.pt"},
@@ -95,6 +96,15 @@ class TurboEvaluationTest(unittest.TestCase):
             with patch("pose_controlnet.turbo_evaluation.load_training_state", side_effect=state):
                 with self.assertRaisesRegex(ValueError, "runtime metadata is inconsistent"):
                     controlled_branch_metadata(((1525, first), (1550, second)))
+
+    def test_dynamic_provenance_extracts_selected_coordinate_pose_loss(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); checkpoint = root / "step_001525.pt"
+            checkpoint.write_bytes(b"coordinate")
+            with patch("pose_controlnet.turbo_evaluation.load_training_state",
+                       return_value=self._controlled_state(1525, pose_loss="normalized_coordinate_huber")):
+                metadata = controlled_branch_metadata(((1525, checkpoint),))
+        self.assertEqual(metadata["pose_loss"], "normalized_coordinate_huber")
 
     def test_current_spec_pins_contract_and_established_24_diagnostics(self):
         config = load_turbo_experiment_spec(ROOT / "configs/evaluation/controlinput_lr2x_turbo.json")

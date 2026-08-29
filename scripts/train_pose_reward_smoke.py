@@ -2,8 +2,9 @@
 
 Normal ``train.py`` remains flow-only.  This command is blocked unless an
 operator provides the parent, lambda, timestep window, and isolated run name.
-It samples production flow timesteps unchanged and only adds Gaussian heatmap
-KL to eligible samples within that supplied window.
+It samples production flow timesteps unchanged and only adds the explicitly
+selected differentiable pose loss to eligible samples within that supplied
+window.
 """
 from __future__ import annotations
 
@@ -26,7 +27,11 @@ from pose_controlnet.diffusion import (
     CONTROLLED_POSE_EXPOSURE_POLICY_VERSION, forward_pose_control, make_flow_pair,
     patchify_and_position, sample_controlled_pose_exposure_timestep,
 )
-from pose_controlnet.keypoint_critic import FixedBoxKeypointRCNNCritic, gaussian_heatmap_kl
+from pose_controlnet.keypoint_critic import (
+    POSE_LOSS_NAMES,
+    FixedBoxKeypointRCNNCritic,
+    differentiable_pose_loss,
+)
 from pose_controlnet.keypoint_critic_audit import assert_frozen_no_parameter_grad
 from pose_controlnet.model import audit_control_model, build_pose_model, trainable_params, trainable_state_dict
 from pose_controlnet.pose_reward_tools import combine_flow_and_pose_loss, validate_smoke_invocation
@@ -130,14 +135,14 @@ def _immutable_parent_identity(parent_path: Path, state: Mapping[str, Any]) -> d
     return identity
 
 
-def _gate_e_metadata(cfg: train.TrainConfig, *, lambda_pose: float, timestep_min: float,
+def _gate_e_metadata(cfg: train.TrainConfig, *, pose_loss: str, lambda_pose: float, timestep_min: float,
                      timestep_max: float, forced_exposure_probability: float,
                      hf_subdir: str, immutable_parent: Mapping[str, Any],
                      cumulative_counters: Mapping[str, int], model_state: Mapping[str, Any],
                      wandb_run_id: str | None = None) -> dict[str, Any]:
     metadata = {
         "format": GATE_E_METADATA_FORMAT,
-        "pose_loss": "gaussian_heatmap_kl",
+        "pose_loss": pose_loss,
         "temperature": 1.0,
         "lambda_pose": lambda_pose,
         "pose_timestep_window": [timestep_min, timestep_max],
@@ -164,7 +169,7 @@ def gate_e_wandb_run_id(state: Mapping[str, Any]) -> str | None:
 
 
 def gate_e_wandb_config(*, cfg: train.TrainConfig, immutable_parent: Mapping[str, Any],
-                        lambda_pose: float, timestep_min: float, timestep_max: float,
+                        pose_loss: str, lambda_pose: float, timestep_min: float, timestep_max: float,
                         forced_exposure_probability: float, target_global_step: int,
                         hf_subdir: str, sidecar_metadata: Mapping[str, Any]) -> dict[str, Any]:
     """The non-secret static experiment record mirrored once to W&B."""
@@ -173,6 +178,7 @@ def gate_e_wandb_config(*, cfg: train.TrainConfig, immutable_parent: Mapping[str
         "parent_checkpoint": dict(immutable_parent),
         "model_base": "Krea-2 Raw",
         "raw_checkpoint": cfg.raw_ckpt,
+        "pose_loss": pose_loss,
         "lambda_pose": lambda_pose,
         "pose_timestep_window": [timestep_min, timestep_max],
         "forced_pose_exposure_probability": forced_exposure_probability,
@@ -210,7 +216,7 @@ def parse_wandb_tags(value: str | None) -> list[str] | None:
 
 
 def validate_gate_e_resume_checkpoint(checkpoint: Path, state: dict[str, Any], *, cfg: train.TrainConfig,
-                                      lambda_pose: float, timestep_min: float, timestep_max: float,
+                                      pose_loss: str, lambda_pose: float, timestep_min: float, timestep_max: float,
                                       forced_exposure_probability: float, hf_subdir: str,
                                       immutable_parent: Mapping[str, Any]) -> dict[str, int]:
     """Fail closed unless a checkpoint proves this exact controlled branch."""
@@ -224,7 +230,7 @@ def validate_gate_e_resume_checkpoint(checkpoint: Path, state: dict[str, Any], *
         raise ValueError("Gate-E resume metadata is malformed")
     if metadata.get("format") != GATE_E_METADATA_FORMAT:
         raise ValueError("Gate-E resume metadata format is unsupported")
-    expected = _gate_e_metadata(cfg, lambda_pose=lambda_pose, timestep_min=timestep_min,
+    expected = _gate_e_metadata(cfg, pose_loss=pose_loss, lambda_pose=lambda_pose, timestep_min=timestep_min,
                                 timestep_max=timestep_max,
                                 forced_exposure_probability=forced_exposure_probability,
                                 hf_subdir=hf_subdir, immutable_parent=immutable_parent,
@@ -299,12 +305,14 @@ def prepare_gate_e_run_setup(*, parent_path: Path, expected_parent_sha256: str |
                              run_name: str, microbatch_size: int,
                              gradient_accumulation_steps: int, save_every: int,
                              hf_repo_id: str, hf_subdir: str,
-                             hf_mirror_every_steps: int, lambda_pose: float,
+                             hf_mirror_every_steps: int, pose_loss: str, lambda_pose: float,
                              timestep_min: float, timestep_max: float,
                              forced_exposure_probability: float,
                              target_global_step: int | None,
                              max_steps: int | None, destination: Path) -> GateERunSetup:
     """Validate new-start or controlled-resume setup without model or network work."""
+    if pose_loss not in POSE_LOSS_NAMES:
+        raise ValueError(f"unsupported --pose-loss {pose_loss!r}; expected one of {POSE_LOSS_NAMES}")
     parent_state = _validate_parent(parent_path, expected_parent_sha256)
     resolved_target_global_step = resolve_target_global_step(
         parent_state["global_step"], target_global_step=target_global_step, max_steps=max_steps,
@@ -320,7 +328,7 @@ def prepare_gate_e_run_setup(*, parent_path: Path, expected_parent_sha256: str |
     )
     immutable_parent = _immutable_parent_identity(parent_path, parent_state)
     cumulative_counters = validate_gate_e_resume_checkpoint(
-        parent_path, parent_state, cfg=cfg, lambda_pose=lambda_pose,
+        parent_path, parent_state, cfg=cfg, pose_loss=pose_loss, lambda_pose=lambda_pose,
         timestep_min=timestep_min, timestep_max=timestep_max,
         forced_exposure_probability=forced_exposure_probability, hf_subdir=hf_subdir,
         immutable_parent=immutable_parent,
@@ -338,7 +346,7 @@ def prepare_gate_e_run_setup(*, parent_path: Path, expected_parent_sha256: str |
 
 def _pose_smoke_loss(model: torch.nn.Module, vae: Any, critic: FixedBoxKeypointRCNNCritic, batch: dict[str, Any],
                      sidecar_by_stem: dict[str, dict[str, Any]], cfg: train.TrainConfig, device: torch.device,
-                     generator: torch.Generator, *, lambda_pose: float, timestep_min: float,
+                     generator: torch.Generator, *, pose_loss_name: str, lambda_pose: float, timestep_min: float,
                      timestep_max: float, forced_exposure_probability: float) -> tuple[torch.Tensor, dict[str, Any]]:
     clean = batch["latent"].to(device=device, dtype=torch.float32, non_blocking=True)
     control = batch["control"].to(device=device, dtype=torch.bfloat16, non_blocking=True)
@@ -371,8 +379,12 @@ def _pose_smoke_loss(model: torch.nn.Module, vae: Any, critic: FixedBoxKeypointR
         decoded = qwen_decoded_to_unit_rgb(decode_normalized_latents_autograd(vae, x0_hat)).float()
         boxes, targets, valid = zip(*(_person_tensors(records[index], device) for index in active_indices.tolist()))
         heatmaps = critic(decoded, list(boxes))
-        pose_loss = gaussian_heatmap_kl(heatmaps.logits, torch.cat(targets), heatmaps.boxes_training, torch.cat(valid), sigma=1.5, temperature=1.0)
-        if not torch.isfinite(pose_loss): raise FloatingPointError("non-finite Gaussian heatmap KL")
+        pose_loss_value = differentiable_pose_loss(
+            pose_loss_name, heatmaps.logits, torch.cat(targets), heatmaps.boxes_training, torch.cat(valid),
+            temperature=1.0, gaussian_sigma=1.5,
+        )
+        if not torch.isfinite(pose_loss_value): raise FloatingPointError(f"non-finite pose loss: {pose_loss_name}")
+        pose_loss = pose_loss_value
     total = combine_flow_and_pose_loss(flow_loss, pose_loss, int(active_indices.numel()), lambda_pose)
     if not torch.isfinite(total): raise FloatingPointError("non-finite total loss")
     return total, {
@@ -444,13 +456,15 @@ def update_cumulative_counters(counters: Mapping[str, int], metrics: Mapping[str
     return updated
 
 
-def main() -> None:
+def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--parent-checkpoint", type=Path, required=True)
     parser.add_argument("--expected-parent-sha256", default=None,
                         help="optional SHA256 for the explicitly supplied immutable parent")
     parser.add_argument("--raw-ckpt", required=True); parser.add_argument("--latent-root", required=True); parser.add_argument("--text-conditioning-root", required=True); parser.add_argument("--sidecar", type=Path, required=True)
     parser.add_argument("--checkpoint-dir", required=True); parser.add_argument("--run-name", required=True); parser.add_argument("--lambda-pose", type=float, required=True)
+    parser.add_argument("--pose-loss", choices=POSE_LOSS_NAMES, default="gaussian_heatmap_kl",
+                        help="differentiable fixed-box reward (default: gaussian_heatmap_kl)")
     parser.add_argument("--pose-timestep-min", type=float, required=True); parser.add_argument("--pose-timestep-max", type=float, required=True)
     parser.add_argument("--forced-pose-exposure-probability", type=float, required=True,
                         help="per-eligible-sample probability of a final-window forced timestep")
@@ -470,6 +484,11 @@ def main() -> None:
     parser.add_argument("--wandb-run-name", default=None, help="optional W&B display name; defaults to --run-name")
     parser.add_argument("--wandb-group", default=None, help="optional W&B group")
     parser.add_argument("--wandb-tags", default=None, help="optional comma-separated W&B tags")
+    return parser
+
+
+def main() -> None:
+    parser = build_arg_parser()
     args = parser.parse_args()
     if args.save_every < 1 or args.microbatch_size < 1 or args.gradient_accumulation_steps < 1:
         parser.error("save-every, microbatch-size, and gradient-accumulation-steps must be positive")
@@ -492,7 +511,7 @@ def main() -> None:
             run_name=args.run_name, microbatch_size=args.microbatch_size,
             gradient_accumulation_steps=args.gradient_accumulation_steps, save_every=args.save_every,
             hf_repo_id=args.hf_repo_id, hf_subdir=hf_subdir,
-            hf_mirror_every_steps=args.hf_mirror_every_steps, lambda_pose=lambda_pose,
+            hf_mirror_every_steps=args.hf_mirror_every_steps, pose_loss=args.pose_loss, lambda_pose=lambda_pose,
             timestep_min=args.pose_timestep_min, timestep_max=args.pose_timestep_max,
             forced_exposure_probability=args.forced_pose_exposure_probability,
             target_global_step=args.target_global_step, max_steps=args.max_steps,
@@ -530,7 +549,7 @@ def main() -> None:
         tags=parse_wandb_tags(args.wandb_tags),
         resume_run_id=resumed_wandb_run_id,
         config=gate_e_wandb_config(
-            cfg=cfg, immutable_parent=immutable_parent, lambda_pose=lambda_pose,
+            cfg=cfg, immutable_parent=immutable_parent, pose_loss=args.pose_loss, lambda_pose=lambda_pose,
             timestep_min=args.pose_timestep_min, timestep_max=args.pose_timestep_max,
             forced_exposure_probability=args.forced_pose_exposure_probability,
             target_global_step=target_global_step, hf_subdir=hf_subdir,
@@ -549,7 +568,7 @@ def main() -> None:
     metadata_path = destination / "experiment_metadata.json"
     def write_experiment_metadata() -> None:
         metadata = _gate_e_metadata(
-            cfg, lambda_pose=lambda_pose, timestep_min=args.pose_timestep_min,
+            cfg, pose_loss=args.pose_loss, lambda_pose=lambda_pose, timestep_min=args.pose_timestep_min,
             timestep_max=args.pose_timestep_max,
             forced_exposure_probability=args.forced_pose_exposure_probability,
             hf_subdir=hf_subdir, immutable_parent=immutable_parent,
@@ -584,6 +603,7 @@ def main() -> None:
                 with torch.autocast("cuda", dtype=torch.bfloat16):
                     loss, diagnostics = _pose_smoke_loss(
                         model, vae, critic, batch, by_stem, cfg, device, generator,
+                        pose_loss_name=args.pose_loss,
                         lambda_pose=lambda_pose, timestep_min=args.pose_timestep_min,
                         timestep_max=args.pose_timestep_max,
                         forced_exposure_probability=args.forced_pose_exposure_probability,
@@ -609,7 +629,7 @@ def main() -> None:
                     "global_step": global_step, "epoch": epoch, "batch_position": batch_position,
                     "rng": train._capture_rng(), "flow_generator_state": generator.get_state(), "config": asdict(cfg),
                     GATE_E_METADATA_KEY: _gate_e_metadata(
-                        cfg, lambda_pose=lambda_pose, timestep_min=args.pose_timestep_min,
+                        cfg, pose_loss=args.pose_loss, lambda_pose=lambda_pose, timestep_min=args.pose_timestep_min,
                         timestep_max=args.pose_timestep_max,
                         forced_exposure_probability=args.forced_pose_exposure_probability,
                         hf_subdir=hf_subdir, immutable_parent=immutable_parent,

@@ -18,7 +18,7 @@ from scripts.train_pose_reward_smoke import (
     aggregate_step_diagnostics, load_gate_e_microbatch, pose_active_window,
     checkpoint_publication_steps, resolve_target_global_step, should_build_pose_graph,
     update_cumulative_counters, validate_gate_e_destination, validate_gate_e_resume_checkpoint,
-    _validate_hf_branch_args, prepare_gate_e_run_setup,
+    _validate_hf_branch_args, build_arg_parser, prepare_gate_e_run_setup,
 )
 from pose_controlnet.keypoint_critic_audit import deterministic_noise_like
 
@@ -50,7 +50,7 @@ class PoseRewardToolsTest(unittest.TestCase):
 
     def _metadata(self, cfg, model_state):
         return _gate_e_metadata(
-            cfg, lambda_pose=2e-5, timestep_min=.10, timestep_max=.20,
+            cfg, pose_loss="gaussian_heatmap_kl", lambda_pose=2e-5, timestep_min=.10, timestep_max=.20,
             forced_exposure_probability=.05, hf_subdir=cfg.run_name,
             immutable_parent=self._immutable_parent(), cumulative_counters={
                 "eligible_samples_seen": 4, "forced_samples": 1,
@@ -111,6 +111,21 @@ class PoseRewardToolsTest(unittest.TestCase):
         self.assertFalse(should_build_pose_graph(torch.empty(0, dtype=torch.long)))
         self.assertTrue(should_build_pose_graph(torch.tensor([0])))
 
+    def test_pose_loss_cli_parsing_defaults_to_compatible_kl_and_selects_coordinate_huber(self):
+        common = [
+            "--parent-checkpoint", "parent.pt", "--raw-ckpt", "raw", "--latent-root", "latents",
+            "--text-conditioning-root", "text", "--sidecar", "sidecar", "--checkpoint-dir", "checkpoints",
+            "--run-name", "isolated", "--lambda-pose", "1e-5", "--pose-timestep-min", ".10",
+            "--pose-timestep-max", ".20", "--forced-pose-exposure-probability", ".10",
+            "--hf-repo-id", "owner/private", "--hf-subdir", "isolated", "--hf-mirror-every-steps", "25",
+            "--target-global-step", "1600", "--save-every", "25", "--microbatch-size", "1",
+            "--gradient-accumulation-steps", "32",
+        ]
+        parser = build_arg_parser()
+        self.assertEqual(parser.parse_args(common).pose_loss, "gaussian_heatmap_kl")
+        self.assertEqual(parser.parse_args([*common, "--pose-loss", "normalized_coordinate_huber"]).pose_loss,
+                         "normalized_coordinate_huber")
+
     def test_gate_d_independent_graphs_use_identical_deterministic_noise(self):
         clean = torch.zeros(1, 2, 3, 4)
         first = deterministic_noise_like(clean, seed=42, stem="same-sample", label="gate-d-noise")
@@ -155,7 +170,7 @@ class PoseRewardToolsTest(unittest.TestCase):
             state[GATE_E_METADATA_KEY] = self._metadata(cfg, state["model"])
             checkpoint = destination / "step_001537.pt"; save_training_state(checkpoint, state)
             loaded = _validate_parent(checkpoint, None)
-            counters = validate_gate_e_resume_checkpoint(checkpoint, loaded, cfg=cfg, lambda_pose=2e-5,
+            counters = validate_gate_e_resume_checkpoint(checkpoint, loaded, cfg=cfg, pose_loss="gaussian_heatmap_kl", lambda_pose=2e-5,
                                                          timestep_min=.10, timestep_max=.20,
                                                          forced_exposure_probability=.05, hf_subdir=cfg.run_name,
                                                          immutable_parent=self._immutable_parent())
@@ -181,7 +196,7 @@ class PoseRewardToolsTest(unittest.TestCase):
                 "run_name": "gate-e", "microbatch_size": 1,
                 "gradient_accumulation_steps": 32, "save_every": 25,
                 "hf_repo_id": "user/private", "hf_subdir": "gate-e",
-                "hf_mirror_every_steps": 25, "lambda_pose": 2e-5,
+                "hf_mirror_every_steps": 25, "pose_loss": "gaussian_heatmap_kl", "lambda_pose": 2e-5,
                 "timestep_min": .10, "timestep_max": .20,
                 "forced_exposure_probability": .05, "target_global_step": 1700,
                 "max_steps": None, "destination": destination,
@@ -199,7 +214,7 @@ class PoseRewardToolsTest(unittest.TestCase):
             destination.mkdir()
             resumed_state = self._state(global_step=1537, config=asdict(new_setup.cfg))
             resumed_state[GATE_E_METADATA_KEY] = _gate_e_metadata(
-                new_setup.cfg, lambda_pose=common["lambda_pose"],
+                new_setup.cfg, pose_loss=common["pose_loss"], lambda_pose=common["lambda_pose"],
                 timestep_min=common["timestep_min"], timestep_max=common["timestep_max"],
                 forced_exposure_probability=common["forced_exposure_probability"],
                 hf_subdir=common["hf_subdir"], immutable_parent=new_setup.immutable_parent,
@@ -232,6 +247,8 @@ class PoseRewardToolsTest(unittest.TestCase):
         self.assertEqual(checkpoint_publication_steps(1500, 1650, 25),
                          (1525, 1550, 1575, 1600, 1625, 1650))
         self.assertEqual(checkpoint_publication_steps(1537, 1601, 25), (1550, 1575, 1600, 1601))
+        source = Path("scripts/train_pose_reward_smoke.py").read_text(encoding="utf-8")
+        self.assertNotIn("pose-reward-coord-exposure10pct-l1e5-t010-020", source)
 
     def test_legacy_gate_e_intermediate_resume_is_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -240,7 +257,7 @@ class PoseRewardToolsTest(unittest.TestCase):
             checkpoint = destination / "step_001610.pt"; save_training_state(checkpoint, self._state(config=asdict(cfg)))
             with self.assertRaisesRegex(ValueError, "metadata"):
                 validate_gate_e_resume_checkpoint(
-                    checkpoint, _validate_parent(checkpoint, None), cfg=cfg, lambda_pose=2e-5,
+                    checkpoint, _validate_parent(checkpoint, None), cfg=cfg, pose_loss="gaussian_heatmap_kl", lambda_pose=2e-5,
                     timestep_min=.10, timestep_max=.20, forced_exposure_probability=.05,
                     hf_subdir=cfg.run_name, immutable_parent=self._immutable_parent(),
                 )
@@ -253,21 +270,39 @@ class PoseRewardToolsTest(unittest.TestCase):
             state[GATE_E_METADATA_KEY] = self._metadata(cfg, state["model"])
             checkpoint = destination / "step_001610.pt"; save_training_state(checkpoint, state)
             with self.assertRaisesRegex(ValueError, "lambda_pose"):
-                validate_gate_e_resume_checkpoint(checkpoint, state, cfg=cfg, lambda_pose=3e-5,
+                validate_gate_e_resume_checkpoint(checkpoint, state, cfg=cfg, pose_loss="gaussian_heatmap_kl", lambda_pose=3e-5,
                                                   timestep_min=.10, timestep_max=.20,
                                                   forced_exposure_probability=.05, hf_subdir=cfg.run_name,
                                                   immutable_parent=self._immutable_parent())
             mismatched_cfg = replace(cfg, gradient_accumulation_steps=16)
             with self.assertRaisesRegex(ValueError, "critical_train_config"):
-                validate_gate_e_resume_checkpoint(checkpoint, state, cfg=mismatched_cfg, lambda_pose=2e-5,
+                validate_gate_e_resume_checkpoint(checkpoint, state, cfg=mismatched_cfg, pose_loss="gaussian_heatmap_kl", lambda_pose=2e-5,
                                                   timestep_min=.10, timestep_max=.20,
                                                   forced_exposure_probability=.05, hf_subdir=cfg.run_name,
                                                   immutable_parent=self._immutable_parent())
             with self.assertRaisesRegex(ValueError, "forced_exposure_probability"):
-                validate_gate_e_resume_checkpoint(checkpoint, state, cfg=cfg, lambda_pose=2e-5,
+                validate_gate_e_resume_checkpoint(checkpoint, state, cfg=cfg, pose_loss="gaussian_heatmap_kl", lambda_pose=2e-5,
                                                   timestep_min=.10, timestep_max=.20,
                                                   forced_exposure_probability=.0, hf_subdir=cfg.run_name,
                                                   immutable_parent=self._immutable_parent())
+            with self.assertRaisesRegex(ValueError, "pose_loss"):
+                validate_gate_e_resume_checkpoint(checkpoint, state, cfg=cfg,
+                                                  pose_loss="normalized_coordinate_huber", lambda_pose=2e-5,
+                                                  timestep_min=.10, timestep_max=.20,
+                                                  forced_exposure_probability=.05, hf_subdir=cfg.run_name,
+                                                  immutable_parent=self._immutable_parent())
+
+    def test_checkpoint_metadata_records_selected_pose_loss(self):
+        cfg = self._gate_e_cfg(Path("/tmp") / "gate-e")
+        metadata = _gate_e_metadata(
+            cfg, pose_loss="normalized_coordinate_huber", lambda_pose=1e-5,
+            timestep_min=.10, timestep_max=.20, forced_exposure_probability=.10,
+            hf_subdir=cfg.run_name, immutable_parent=self._immutable_parent(),
+            cumulative_counters={"eligible_samples_seen": 0, "forced_samples": 0,
+                                 "naturally_active_samples": 0, "total_active_samples": 0},
+            model_state={"first.weight": torch.ones(1)},
+        )
+        self.assertEqual(metadata["pose_loss"], "normalized_coordinate_huber")
 
     def test_controlled_branch_hf_namespace_is_fail_closed_and_upload_preserves_local(self):
         self.assertEqual(_validate_hf_branch_args(hf_repo_id="user/private", hf_subdir="isolated",

@@ -11,6 +11,7 @@ from pose_controlnet.keypoint_critic import (
     FixedBoxHeatmaps,
     FixedBoxKeypointRCNNCritic,
     detached_pose_diagnostics,
+    differentiable_pose_loss,
     gaussian_heatmap_kl,
     gaussian_heatmap_target,
     map_heatmap_coordinates_to_boxes,
@@ -145,6 +146,30 @@ class KeypointCriticTests(unittest.TestCase):
         logits = torch.randn((1, 17, 6, 8))
         loss = gaussian_heatmap_kl(logits, _coordinates(), _boxes(), torch.ones((1, 17), dtype=torch.bool))
         self.assertTrue(torch.isfinite(loss))
+
+    def test_selectable_losses_preserve_gaussian_kl_and_coordinate_huber_is_differentiable(self) -> None:
+        logits = torch.randn((1, 17, 6, 8), requires_grad=True)
+        target, boxes = _coordinates(), _boxes()
+        valid = torch.ones((1, 17), dtype=torch.bool)
+        baseline = gaussian_heatmap_kl(logits, target, boxes, valid, sigma=1.5, temperature=1.0)
+        selected_kl = differentiable_pose_loss("gaussian_heatmap_kl", logits, target, boxes, valid)
+        self.assertTrue(torch.allclose(selected_kl, baseline))
+        coordinate = differentiable_pose_loss("normalized_coordinate_huber", logits, target, boxes, valid)
+        coordinate.backward()
+        self.assertTrue(torch.isfinite(logits.grad).all())
+        self.assertGreater(logits.grad.norm().item(), 0.0)
+
+    def test_coordinate_selector_ignores_invalid_oob_joints(self) -> None:
+        logits = torch.randn((1, 17, 6, 8), requires_grad=True)
+        target = _coordinates()
+        valid = torch.zeros((1, 17), dtype=torch.bool)
+        valid[:, 0] = True
+        changed = target.clone()
+        changed[:, 1:] = 1e6
+        baseline = differentiable_pose_loss("normalized_coordinate_huber", logits, target, _boxes(), valid)
+        self.assertTrue(torch.allclose(
+            baseline, differentiable_pose_loss("normalized_coordinate_huber", logits, changed, _boxes(), valid),
+        ))
 
     def test_invalid_joints_do_not_change_heatmap_kl(self) -> None:
         logits = torch.randn((1, 17, 6, 8))
