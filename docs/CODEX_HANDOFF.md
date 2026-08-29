@@ -2,18 +2,17 @@
 
 ## Current objective
 
-Prepare, but do not launch, generic controlled pose-reward continuation/evaluation. `train.py` is untouched; production remains flow-MSE only.
+Gate-E pose-reward smoke trainer runtime repair is complete; do not launch training from Codex. `train.py` is untouched; production remains flow-MSE only.
 
-## Generic workflow now implemented
+## Runtime repair completed
 
-- Training takes parent, target, cadence, exposure, lambda, and namespace from CLI; resume remains fail-closed. `checkpoint_publication_steps(1500, 1650, 25)` yields `1525 1550 1575 1600 1625 1650`.
-- `turbo_benchmark.py experiment` validates local checkpoint names/steps/optional hashes and extracts gate-E provenance/counters; inconsistent metadata fails before GPU work.
-- Fixed contract retained: Turbo 8-step CFG-0/mu=1.15/control=1.0, canonical 24 samples/seed 420200, CLIP ViT-B/32, authoritative 21-sample PCK (Danbooru visual-only).
-- Valid artifacts are reused; partial branch artifacts fail; absent baseline PNGs merely omit their visual column. Reports emit generic grids, summary, and separate PCK/CLIP rankings.
+Root cause: `scripts/train_pose_reward_smoke.py::main` initially stored the checkpoint `Path` in `parent`, then rebound `parent` to the loaded checkpoint dictionary. The later new-run directory setup evaluated `parent.parent`, causing `AttributeError: 'dict' object has no attribute 'parent'` after W&B/model setup.
 
-## Latest completed experiment result
+Fix: non-GPU setup now returns a `GateERunSetup` with explicitly separate `parent_path` and `parent_state`. Path comparison/directory creation use only `parent_path`; configuration, canonical provenance, controlled-resume validation, W&B run-id recovery, model loading, and full state restoration use only `parent_state`. SHA validation, controlled-branch detection, fail-closed destination behavior, W&B/HF behavior, checkpoint schema, optimizer, RNG, timestep sampling, forced exposure, and lambda remain unchanged.
 
-5% + `lambda_pose=2e-5`: exposure PASS; 333/5567 active (5.98%), forced 280/5567 (5.03%), 159/200 steps pose-active. Step1600 coarse PCK@.20 `.41262 -> .41990`, Human-Art `.41227 -> .42368`, multi-person `.38439 -> .39740`; precise PCK and CLIP did not improve. Do not select `2e-5`; next hypothesis is `1e-5` with 5% exposure.
+Focused CPU/no-network regression: `test_non_gpu_setup_keeps_checkpoint_path_and_state_separate_for_new_and_resume` executes both canonical new-start and intermediate controlled-resume setup without model loading or W&B/HF calls.
+
+Artifact inspection: no artifacts were deleted. In the current Codex filesystem, the intended run directory, `step_001525.pt`, and `experiment_metadata.json` are absent under `/lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l1e5-t010-020`. Recheck from the actual GH200 operator shell before rerunning, since the failed invocation may have created metadata outside this view.
 
 ## Next controlled run — do not run from Codex
 
@@ -60,27 +59,11 @@ PYTHONPATH=. python scripts/mirror_checkpoint.py list \
 
 Resume: set `--parent-checkpoint .../pose-reward-kl-exposure5pct-l1e5-t010-020/step_00XXXX.pt`, omit `--expected-parent-sha256`, and preserve all other experiment flags.
 
-## Dynamic evaluation — do not run from Codex
-
-```bash
-PYTHONPATH=. python scripts/turbo_benchmark.py experiment \
-  --checkpoint-root /lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l1e5-t010-020 \
-  --steps 1525 1550 1575 1600 1625 1650 \
-  --output-root docs/evaluation/pose-reward-kl-exposure5pct-l1e5-t010-020 \
-  --experiment-name pose-reward-kl-exposure5pct-l1e5-t010-020 \
-  --checkpoint-label-template 'Pose KL 1e-5 {step}' \
-  --baseline-output-root docs/evaluation/turbo-8step-cfg0-lr5e5 \
-  --baseline-step 1500 --baseline-label 'LR-only 1500 @ 5e-5' \
-  --canonical-reference-spec docs/evaluation/turbo-8step-cfg0-lr5e5/turbo_spec.json
-```
-
-Add `--expected-sha256 1650=<known-lowercase-sha256>` when available. Re-running reuses validated artifacts. Outputs: `pose-reward-kl-exposure5pct-l1e5-t010-020_full_contact_sheet.png`, `pose-reward-kl-exposure5pct-l1e5-t010-020_checkpoint_selection_grid.png`, `evaluation_summary.json`, `checkpoint_ranking.json`, and resolved `turbo_spec.json` provenance.
-
 ## Checks this session
 
-- PASS: 74 CPU/no-network tests: pose-reward, W&B, Turbo, and exposure suites.
-- PASS: `PYTHONPATH=. python -m py_compile scripts/train_pose_reward_smoke.py scripts/turbo_benchmark.py pose_controlnet/turbo_evaluation.py`.
-- PASS: trainer and both Turbo CLI help commands.
+- PASS: `PYTHONPATH=. python -m unittest tests.test_pose_reward_tools tests.test_pose_reward_wandb tests.test_train_mechanics` (70 tests: Gate-E new/resume, W&B, and training-resume mechanics).
+- PASS: `PYTHONPATH=. python -m py_compile scripts/train_pose_reward_smoke.py tests/test_pose_reward_tools.py tests/test_pose_reward_wandb.py`.
+- PASS: `PYTHONPATH=. python scripts/train_pose_reward_smoke.py --help`.
 - PASS: `git diff --check`.
 
-Changed: `pose_controlnet/turbo_evaluation.py`, `scripts/turbo_benchmark.py`, `tests/test_turbo_evaluation.py`; updated pre-existing untracked trainer/tests in place. No training, evaluation, network call, commit, or push.
+Changed this session: `scripts/train_pose_reward_smoke.py`, `tests/test_pose_reward_tools.py`, `docs/CODEX_HANDOFF.md`. No training, evaluation, network call, commit, or push.
