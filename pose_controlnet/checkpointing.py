@@ -135,7 +135,9 @@ class HFTrainingCheckpointMirror:
                  max_attempts: int = 3, retry_base_seconds: float = 5.0,
                  telemetry: object | None = None, api: object | None = None,
                  sleep: Callable[[float], None] = time.sleep,
-                 protected_milestone_steps: tuple[int, ...] = ()) -> None:
+                 protected_milestone_steps: tuple[int, ...] = (),
+                 prune_local_after_success: bool = True,
+                 on_result: Callable[[bool, int | None, str | None, str | None], None] | None = None) -> None:
         if interval_seconds < 0 or max_attempts < 1 or retry_base_seconds < 0:
             raise ValueError("Invalid HF mirror cadence or retry configuration")
         self.repo_id, self.run_name = repo_id, run_name
@@ -144,6 +146,7 @@ class HFTrainingCheckpointMirror:
         if any(not isinstance(step, int) or step <= 0 for step in protected_milestone_steps):
             raise ValueError("Protected checkpoint milestones must be positive integer steps")
         self.protected_milestone_steps = frozenset(protected_milestone_steps)
+        self.prune_local_after_success, self.on_result = prune_local_after_success, on_result
         self._pending: queue.Queue[tuple[Path, str] | None] = queue.Queue()
         self._queued: set[Path] = set(); self._completed: set[Path] = set(); self._reasons: dict[Path, str] = {}
         self._lock = threading.Lock()
@@ -239,7 +242,8 @@ class HFTrainingCheckpointMirror:
                 self.last_success_time, self.last_success_step, self.last_error = time.monotonic(), state["global_step"], None
                 with self._lock:
                     self._completed.add(checkpoint)
-                self.prune_local(checkpoint.parent)
+                if self.prune_local_after_success:
+                    self.prune_local(checkpoint.parent)
                 self._record(True, state["global_step"], None, reason); return True
             except Exception as error:
                 error_text = _safe_error(error)
@@ -253,6 +257,33 @@ class HFTrainingCheckpointMirror:
             self.telemetry.log_hf_upload(success=success, uploaded_checkpoint_step=step,
                                          remote_checkpoint_age_seconds=age, error_status=error,
                                          mirror_reason=reason, step=step or 0)
+        if self.on_result is not None:
+            self.on_result(success, step, error, reason)
+
+    def upload_artifact(self, path: str | Path, *, path_in_repo: str) -> bool:
+        """Retry a small branch artifact after its local checkpoint is safe.
+
+        Full checkpoints retain completion markers via ``_upload``.  This is
+        intentionally only for human-readable run metadata and metrics.
+        """
+        artifact = Path(path)
+        if not self.repo_id or not artifact.is_file() or not path_in_repo or path_in_repo.startswith("/"):
+            return False
+        error_text = ""
+        for attempt in range(self.max_attempts):
+            try:
+                api = self._get_api()
+                api.create_repo(self.repo_id, repo_type="model", private=True, exist_ok=True)
+                api.upload_file(path_or_fileobj=str(artifact), path_in_repo=path_in_repo,
+                                repo_id=self.repo_id, repo_type="model",
+                                commit_message=f"Mirror experiment artifact {artifact.name}")
+                return True
+            except Exception as error:
+                error_text = _safe_error(error)
+                if attempt + 1 < self.max_attempts:
+                    self._sleep(self.retry_base_seconds * (2 ** attempt))
+        self._record(False, None, error_text, "artifact")
+        return False
 
     def _worker(self) -> None:
         while True:

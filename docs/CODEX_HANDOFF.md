@@ -1,95 +1,86 @@
 # Project handoff
 
-## Current objective and enforced decisions
+## Current objective
 
-`train.py` remains unchanged and production training remains flow-matching MSE
-only. Gate E is the separately invoked bounded Gaussian-heatmap-KL smoke
-continuation: `lambda_pose=2e-5`, inclusive pose timestep window `[0.10,
-0.20]`, microbatch `1`, gradient accumulation `32`, and target effective batch
-`32`. Do not launch production training from the Codex sandbox.
+Implement, but do not launch, the isolated controlled pose-reward exposure continuation. `train.py` remains unchanged and production remains flow-MSE only. Prior Gate-E was technically successful but did not improve external pose: step-1500 Turbo CLIP/PCK(.05/.10/.20) was `.33684298 / .05461 / .18083 / .41262`; Gate-E step-1700 was `.33441689 / .04369 / .14199 / .37257`. Its resumed exposure was only `20 / 2504 = 0.7987%` eligible samples (`18 / 90` optimizer steps): under-exposure, not evidence against Gaussian KL.
 
-Gate-E training is complete at global step `1700`. Its checkpoints are local
-under `/lambda/nfs/adhit/krea2-pose/checkpoints/gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32/`:
-steps `1550`, `1600`, `1650`, and `1700`. The supplied SHA-256 for
-`step_001700.pt` is
-`b454cfff01e6c2608415abc54d910682be9705d1ea337b342511fe1586828415`.
-Measured resumed exposure was `20 / 2504 = 0.7987%` active/eligible samples;
-`18 / 90` optimizer steps had at least one active sample.
+## New branch contract
 
-## Gate-E Turbo runtime state
+- Parent is only the immutable local step-1500 checkpoint `/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt`, SHA-256 `6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0`. Never continue from the historical Gate-E step-1700 branch.
+- Run/remote namespace is exactly `pose-reward-kl-exposure5pct-l2e5-t010-020`. New starts fail if that local directory already exists; resumed checkpoints must be from that same directory and carry format-2 controlled-branch metadata. No checkpoint is overwritten.
+- Gaussian heatmap KL, temperature `1.0`, `lambda_pose=2e-5`, final window `[0.10, 0.20]`, microbatch `1`, accumulation `32`, target step `1700`, and saves/mirrors every `50` steps are fixed. Phase-1, evaluator, `make_flow_pair`, and production flow are untouched.
+- `--forced-pose-exposure-probability` is required. At `0.05`, only available samples may be selected. Normal timesteps are always drawn first; selected samples receive a uniform final-window timestep; non-forced samples retain normal results. At zero, no extra RNG draws occur. Natural activity excludes forced samples.
+- Metadata fail-closes on loss/lambda/window/probability/policy, parent, HF namespace, critical config, and trainable state. It saves cumulative eligible/forced/natural/total counters plus flow-generator state.
 
-Gate-E preflight, generation, and scoring completed successfully in the
-isolated `docs/evaluation/gate-e-kl-l2e5-t010-020/` output. It has generated
-and scored all four configured current-branch checkpoints: `1550`, `1600`,
-`1650`, and `1700`. Do not regenerate step 1500, alter historical artifacts,
-or rerun expensive stages.
+## HF mirror and recovery
 
-The report stage failed only because the generic visual contact-sheet code
-required historical per-sample baseline PNGs at
-`docs/evaluation/turbo-8step-cfg0-lr5e5/fixed_pose/*/step_001500.png`. Those
-PNGs are absent, while the required historical numerical artifacts remain:
-`turbo_spec.json`, `pck_clip_results.json` (including exact step 1500), and
-`evaluation_summary.json`.
+Repository: `adhit-420/Krea-2-PoseControl-LoRA-checkpoints`. Remote full checkpoints are exactly:
 
-The generic report now keeps the established step-1500 numerical baseline and
-all existing delta math untouched. It scans only the optional historical PNG
-column: if every configured sample PNG exists, contact sheets retain that
-column; otherwise the whole baseline visual column is omitted so every grid row
-has equal columns. Current-branch control/1550/1600/1650/1700 files remain
-required and fail closed. The resulting `evaluation_summary.json` records
-`baseline_visual_artifacts_available` and
-`baseline_visual_artifacts_missing_count`; it does not substitute any image or
-checkpoint for the numerical baseline.
-
-## Verified gates and decisions
-
-- Gates A, A.5, B, and C: PASS as previously documented. Gate D remains
-  IMPLEMENTED / GH200 RUN REQUIRED.
-- Gate E is not PASS until the report-only command below completes and its
-  generated summary/contact sheets are inspected.
-- Gate-E checkpoints store top-level `gate_e` metadata: pose loss/window,
-  critical model/training config, and trainable state names. Resume validation
-  remains fail-closed.
-- The generic Turbo evaluator now supports a `direct_local` exact-checkpoint
-  selector for bounded local branches without an HF checkpoint mirror. It
-  checks direct filenames, embedded global steps, and every configured SHA;
-  this changes no sampler, VAE, diagnostic, CLIP, or PCK semantics.
-- `configs/evaluation/gate_e_kl_l2e5_t010_020_turbo.json` fixes Krea-2 Turbo,
-  8 steps, CFG 0, fixed non-resolution-dependent `mu=1.15`, official schedule,
-  control scale 1.0, the established 24 diagnostics, and authoritative
-  21-sample numerical PCK (Danbooru remains excluded). It reuses the established
-  LR-only step-1500 result rather than regenerating it.
-- Gate-E output is isolated at `docs/evaluation/gate-e-kl-l2e5-t010-020/`.
-  It does not overwrite any historical evaluation output.
-
-## Files changed this session
-
-- `scripts/turbo_benchmark.py`
-- `tests/test_turbo_evaluation.py`
-- `docs/CODEX_HANDOFF.md`
-
-Existing untracked Gate-B/C/D/E audit files remain user-owned and were not
-overwritten. Gate-E evaluation artifacts were not overwritten.
-
-## Tests and checks
-
-- PASS: `PYTHONPATH=. python -m unittest tests.test_turbo_evaluation
-  tests.test_turbo_lr5e5_evaluation tests.test_turbo_timestep_evaluation
-  tests.test_post1500_evaluation` — 31 CPU tests. Includes the regression:
-  a valid step-1500 numerical baseline plus missing baseline PNGs reports
-  successfully with unchanged deltas and explicit availability metadata;
-  deleting a current-branch image still fails closed.
-- PASS: `PYTHONPATH=. python -m py_compile scripts/turbo_benchmark.py
-  tests/test_turbo_evaluation.py`.
-- PASS: `git diff --check`.
-
-## Exact next GH200 action (report only)
-
-```bash
-PYTHONPATH=. python scripts/turbo_benchmark.py report --spec configs/evaluation/gate_e_kl_l2e5_t010_020_turbo.json
+```text
+pose-reward-kl-exposure5pct-l2e5-t010-020/full/step_001550.pt
+pose-reward-kl-exposure5pct-l2e5-t010-020/full/step_001600.pt
+pose-reward-kl-exposure5pct-l2e5-t010-020/full/step_001650.pt
+pose-reward-kl-exposure5pct-l2e5-t010-020/full/step_001700.pt
 ```
 
-Inspect `docs/evaluation/gate-e-kl-l2e5-t010-020/evaluation_summary.json` and
-the contact sheets. Confirm the baseline numerical identity/deltas and that
-`baseline_visual_artifacts_available` is `false` with the expected missing
-count before declaring Gate E evaluated.
+Each is locally saved/validated before HF queueing with a checksum completion marker. Local files are retained; failures are loud after the safe local save and retryable. Final metrics and metadata/config are mirrored too; no token is logged or serialized.
+
+Resume from the newest valid local branch checkpoint by replacing `--parent-checkpoint` below (for example with `.../step_001600.pt`) and removing `--expected-parent-sha256`; retain all other flags. To recover remotely, use `fetch` below then pass its printed path. Never overwrite an existing `step_001700.pt`; evaluate it.
+
+## Exact GH200 command — do not run from Codex
+
+```bash
+cd /home/ubuntu/krea2-pose-controlnet
+PYTHONPATH=. python scripts/train_pose_reward_smoke.py \
+  --parent-checkpoint /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt \
+  --expected-parent-sha256 6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0 \
+  --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors \
+  --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
+  --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
+  --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
+  --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints \
+  --run-name pose-reward-kl-exposure5pct-l2e5-t010-020 \
+  --lambda-pose 2e-5 --pose-timestep-min 0.10 --pose-timestep-max 0.20 \
+  --forced-pose-exposure-probability 0.05 \
+  --hf-repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints \
+  --hf-subdir pose-reward-kl-exposure5pct-l2e5-t010-020 \
+  --hf-mirror-every-steps 50 --target-global-step 1700 --save-every 50 \
+  --microbatch-size 1 --gradient-accumulation-steps 32 --device cuda
+```
+
+Verify/list the mirror:
+
+```bash
+PYTHONPATH=. python scripts/mirror_checkpoint.py list \
+  --repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints \
+  --run-name pose-reward-kl-exposure5pct-l2e5-t010-020
+```
+
+Retry an already-saved checkpoint (and verify its marker):
+
+```bash
+PYTHONPATH=. python scripts/mirror_checkpoint.py mirror \
+  --repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints \
+  --run-name pose-reward-kl-exposure5pct-l2e5-t010-020 \
+  --checkpoint /lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l2e5-t010-020/step_001650.pt
+```
+
+Fetch a marker-validated remote checkpoint for recovery:
+
+```bash
+PYTHONPATH=. python scripts/mirror_checkpoint.py fetch \
+  --repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints \
+  --run-name pose-reward-kl-exposure5pct-l2e5-t010-020 --step 1650 \
+  --download-dir /lambda/nfs/adhit/krea2-pose/recovery/pose-reward-kl-exposure5pct-l2e5-t010-020
+```
+
+## Checks this session
+
+- PASS: `PYTHONPATH=. python -m unittest tests.test_pose_reward_tools tests.test_timestep_exposure tests.test_train_mechanics tests.test_gate_e` — 77 CPU tests, including deterministic forced exposure, zero-probability historical RNG behavior, counter/resume contract, and mocked HF isolation.
+- PASS: `PYTHONPATH=. python -m py_compile` on modified Python files.
+- PASS: `scripts/train_pose_reward_smoke.py --help` and `scripts/mirror_checkpoint.py --help`.
+- PASS: `git diff --check`.
+
+## After step 1700
+
+Run the fixed Turbo evaluator on only these four checkpoints; compare CLIP and authoritative PCK with the preserved step-1500 numerical baseline. Do not alter historical Gate-E/Phase-1 artifacts.

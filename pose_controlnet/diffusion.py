@@ -87,6 +87,61 @@ def sample_flow_timestep(batch_size: int, seq_len: int, cfg, device,
     return (shifted, auxiliary_mask) if return_aux_mask else shifted
 
 
+CONTROLLED_POSE_EXPOSURE_POLICY_VERSION = "final-window-uniform-v1"
+
+
+def sample_controlled_pose_exposure_timestep(batch_size: int, seq_len: int, cfg, device,
+                                             generator: torch.Generator | None, *,
+                                             pose_reward_available: torch.Tensor,
+                                             force_probability: float,
+                                             final_timestep_min: float,
+                                             final_timestep_max: float,
+                                             ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Add opt-in final-window pose exposure without changing production sampling.
+
+    The normal production timestep is always drawn first through
+    :func:`sample_flow_timestep`.  Only eligible samples selected by the
+    explicit auxiliary experiment receive a replacement *final* timestep.
+    Sampling that replacement after ``shift_timestep`` is deliberate: a
+    pre-shift interval cannot represent one invariant final interval when
+    resolution-dependent ``mu`` varies between buckets.
+
+    When ``force_probability`` is zero this function makes no additional RNG
+    draws, so it is exactly the historical Gate-E sampler path.  Natural
+    activity deliberately excludes forced samples, preventing double-counting
+    when a normally drawn forced sample already happened to be in the window.
+    """
+    if not 0.0 <= force_probability <= 1.0:
+        raise ValueError("forced pose exposure probability must be in [0, 1]")
+    if not 0.0 < final_timestep_min <= final_timestep_max < 1.0:
+        raise ValueError("final pose timestep window must satisfy 0 < min <= max < 1")
+    if pose_reward_available.ndim != 1 or pose_reward_available.shape[0] != batch_size:
+        raise ValueError("pose_reward_available must be a rank-1 batch mask")
+
+    normal = sample_flow_timestep(batch_size, seq_len, cfg, device, generator)
+    available = pose_reward_available.to(device=device, dtype=torch.bool)
+    forced = torch.zeros(batch_size, device=device, dtype=torch.bool)
+    if force_probability:
+        eligible_indices = available.nonzero(as_tuple=False).flatten()
+        selected = torch.rand(eligible_indices.numel(), device=device, dtype=torch.float32,
+                              generator=generator) < force_probability
+        forced[eligible_indices] = selected
+
+    timestep = normal
+    if bool(forced.any()):
+        forced_values = torch.empty(int(forced.sum().item()), device=device, dtype=torch.float32)
+        forced_values.uniform_(final_timestep_min, final_timestep_max, generator=generator)
+        timestep = normal.clone()
+        timestep[forced] = forced_values
+
+    in_window = (timestep >= final_timestep_min) & (timestep <= final_timestep_max)
+    natural_active = available & ~forced & in_window
+    total_active = natural_active | forced
+    if not torch.all((timestep[forced] >= final_timestep_min) & (timestep[forced] <= final_timestep_max)):
+        raise AssertionError("forced pose exposure escaped its final timestep window")
+    return timestep, forced, natural_active, total_active
+
+
 def make_flow_pair(clean_image: torch.Tensor, noise: torch.Tensor,
                    timestep: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     """Construct x_t and v target while leaving any control latent untouched."""
