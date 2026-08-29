@@ -214,3 +214,83 @@ class TrainingTelemetry:
 def init_wandb(cfg: Any, run_name: str) -> TrainingTelemetry:
     """Compatibility factory; returns failure-isolated project telemetry."""
     return TrainingTelemetry(cfg, run_name)
+
+
+class OptionalWandbMirror:
+    """Remote-only W&B mirror for tools that already own durable local logging.
+
+    Unlike :class:`TrainingTelemetry`, this class never opens or writes a local
+    metrics file.  It is for isolated commands whose JSONL layout is already a
+    compatibility contract.  Any W&B failure disables only this mirror.
+    """
+
+    def __init__(
+        self,
+        *,
+        project: str | None,
+        run_name: str,
+        config: Mapping[str, Any],
+        entity: str | None = None,
+        group: str | None = None,
+        tags: list[str] | None = None,
+        resume_run_id: str | None = None,
+        wandb_module: Any | None = None,
+    ) -> None:
+        self.run: Any | None = None
+        self.run_id: str | None = resume_run_id
+        self.errors: list[str] = []
+        self._wandb_module = wandb_module
+        self.project = project.strip() if isinstance(project, str) else ""
+        if not self.project:
+            return
+        try:
+            module = self._wandb_module
+            if module is None:
+                import wandb as module
+            kwargs: dict[str, Any] = {
+                "project": self.project,
+                "name": run_name,
+                "config": _json_value(config),
+            }
+            if entity:
+                kwargs["entity"] = entity
+            if group:
+                kwargs["group"] = group
+            if tags:
+                kwargs["tags"] = list(tags)
+            if resume_run_id:
+                kwargs["id"] = resume_run_id
+                kwargs["resume"] = "allow"
+            self.run = module.init(**kwargs)
+            observed_id = getattr(self.run, "id", None)
+            if not isinstance(observed_id, str) or not observed_id:
+                raise RuntimeError("W&B init returned a run without a usable id")
+            self.run_id = observed_id
+        except Exception as error:  # missing package, auth, and network are all non-fatal
+            self._disable(f"W&B init unavailable; continuing with JSONL/checkpoints only: {error}")
+
+    @property
+    def enabled(self) -> bool:
+        return self.run is not None
+
+    def _disable(self, message: str) -> None:
+        self.errors.append(message)
+        self.run = None
+        print(f"[wandb] warning: {message}", flush=True)
+
+    def log(self, metrics: Mapping[str, Any], *, step: int) -> None:
+        """Best-effort remote metric logging; a failed call disables the mirror."""
+        if self.run is None:
+            return
+        try:
+            self.run.log(_json_value(dict(metrics)), step=int(step))
+        except Exception as error:
+            self._disable(f"W&B log unavailable; disabling W&B for this process: {error}")
+
+    def close(self) -> None:
+        if self.run is None:
+            return
+        try:
+            self.run.finish()
+        except Exception as error:
+            self._disable(f"W&B finish unavailable: {error}")

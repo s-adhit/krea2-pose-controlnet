@@ -12,6 +12,13 @@ Implement, but do not launch, the isolated controlled pose-reward exposure conti
 - `--forced-pose-exposure-probability` is required. At `0.05`, only available samples may be selected. Normal timesteps are always drawn first; selected samples receive a uniform final-window timestep; non-forced samples retain normal results. At zero, no extra RNG draws occur. Natural activity excludes forced samples.
 - Metadata fail-closes on loss/lambda/window/probability/policy, parent, HF namespace, critical config, and trainable state. It saves cumulative eligible/forced/natural/total counters plus flow-generator state.
 
+## Optional W&B logging
+
+- `wandb>=0.19` was already present in `pyproject.toml`/`uv.lock`; the audited environment has `wandb 0.28.2`. No dependency change was made.
+- W&B is disabled unless `--wandb-project` is explicit. JSONL remains the canonical local telemetry, and W&B is only a secondary mirror: W&B failures warn and disable further W&B calls without affecting optimizer work, NFS/local checkpoints, or HF mirroring.
+- New enabled checkpoints save `gate_e.wandb_run_id`; enabled resumes use it with W&B `resume="allow"`. If W&B flags are omitted during recovery, local resume remains valid and the ID is preserved. Legacy checkpoints without this optional field remain loadable.
+- Suggested project/run: `krea2-pose-controlnet` / `pose-reward-kl-exposure5pct-l2e5-t010-020`. The W&B config is non-secret and includes the immutable parent SHA, Krea-2 Raw identity, branch hyperparameters, cadence/HF target, and sidecar records SHA.
+
 ## HF mirror and recovery
 
 Repository: `adhit-420/Krea-2-PoseControl-LoRA-checkpoints`. Remote full checkpoints are exactly:
@@ -27,7 +34,7 @@ Each is locally saved/validated before HF queueing with a checksum completion ma
 
 Resume from the newest valid local branch checkpoint by replacing `--parent-checkpoint` below (for example with `.../step_001600.pt`) and removing `--expected-parent-sha256`; retain all other flags. To recover remotely, use `fetch` below then pass its printed path. Never overwrite an existing `step_001700.pt`; evaluate it.
 
-## Exact GH200 command — do not run from Codex
+## Exact GH200 command with W&B — do not run from Codex
 
 ```bash
 cd /home/ubuntu/krea2-pose-controlnet
@@ -45,8 +52,12 @@ PYTHONPATH=. python scripts/train_pose_reward_smoke.py \
   --hf-repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints \
   --hf-subdir pose-reward-kl-exposure5pct-l2e5-t010-020 \
   --hf-mirror-every-steps 50 --target-global-step 1700 --save-every 50 \
-  --microbatch-size 1 --gradient-accumulation-steps 32 --device cuda
+  --microbatch-size 1 --gradient-accumulation-steps 32 --device cuda \
+  --wandb-project krea2-pose-controlnet \
+  --wandb-run-name pose-reward-kl-exposure5pct-l2e5-t010-020
 ```
+
+Fallback with W&B disabled: use the exact command above with the final two `--wandb-*` lines omitted.
 
 Verify/list the mirror:
 
@@ -76,10 +87,12 @@ PYTHONPATH=. python scripts/mirror_checkpoint.py fetch \
 
 ## Checks this session
 
-- PASS: `PYTHONPATH=. python -m unittest tests.test_pose_reward_tools tests.test_timestep_exposure tests.test_train_mechanics tests.test_gate_e` — 77 CPU tests, including deterministic forced exposure, zero-probability historical RNG behavior, counter/resume contract, and mocked HF isolation.
-- PASS: `PYTHONPATH=. python -m py_compile` on modified Python files.
-- PASS: `scripts/train_pose_reward_smoke.py --help` and `scripts/mirror_checkpoint.py --help`.
+- PASS: `PYTHONPATH=. python -m unittest tests.test_pose_reward_wandb tests.test_pose_reward_tools tests.test_timestep_exposure tests.test_gate_e tests.test_wandb_logging` — 47 CPU/no-network tests, including W&B failure isolation and run-ID resume.
+- PASS: `PYTHONPATH=. python -m py_compile scripts/train_pose_reward_smoke.py pose_controlnet/wandb_logging.py tests/test_pose_reward_wandb.py`.
+- PASS: `PYTHONPATH=. python scripts/train_pose_reward_smoke.py --help`.
 - PASS: `git diff --check`.
+
+Files changed this session: `scripts/train_pose_reward_smoke.py`, `pose_controlnet/wandb_logging.py`, `tests/test_pose_reward_wandb.py`, and this handoff. No training, W&B login, or network call was made.
 
 ## After step 1700
 
