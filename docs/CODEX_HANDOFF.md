@@ -2,116 +2,99 @@
 
 ## Current objective and enforced decisions
 
-The completed bounded milestone implements tooling only: Gate D is a
-read-only actual-trainable gradient calibration, and Gate E is a separately
-invoked, bounded pose-reward smoke continuation. `train.py` remains unchanged
-and normal production training remains flow-matching MSE only. Gate E's
-selected invocation policy is parent step 1500, Gaussian heatmap KL,
-`lambda_pose=2e-5`, inclusive pose-timestep window `[0.10, 0.20]`,
-microbatch size 2, accumulation 16, 200 steps, and saves every 50 steps.
-Do not launch either tool from the Codex sandbox.
+`train.py` remains unchanged and production training remains flow-matching MSE
+only. Gate D is read-only tooling. Gate E is the separately invoked, bounded
+Gaussian-heatmap-KL smoke continuation only: `lambda_pose=2e-5`, inclusive
+pose timestep window `[0.10, 0.20]`, microbatch size `1`, gradient
+accumulation `32`, and target effective batch `32`. Do not launch either tool
+from the Codex sandbox.
 
-Phase-1 provenance remains authoritative and unchanged. Canonical sidecar SHA:
-`dfc32293f1bdb76de58e34a02f95a14e515b0080b7c2f60ddd4a28c6f9fb2d8f`.
-The exact required parent is
+The immutable Gate-E source parent remains
 `/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt`
-with SHA256 `6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0`.
+with SHA256
+`6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0`.
+The graceful Gate-E checkpoint at
+`/lambda/nfs/adhit/krea2-pose/checkpoints/gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32/step_001610.pt`
+is the current continuation parent. Desired final global step: `1700`.
 
 ## Verified gates and decisions
 
-- Gate A and A.5: PASS. Temperature 1.0; primary critic loss is Gaussian
-  heatmap KL; normalized-coordinate Huber is diagnostic/fallback only; raw
-  pixel-coordinate Huber is rejected.
-- Gate B: PASS. Exact VAE decode, geometry, gradients, and frozen-boundary
-  audit completed on GH200.
-- Gate C: PASS. Exact convention is `x_t=t*noise+(1-t)*x0`,
-  `v_target=noise-x0`, `x0_hat=x_t-t*v_hat`. Primary pose timestep `.20`,
-  secondary `.10`, stress/upper-bound diagnostic `.30`; `.40` is held for
-  strong gradient escalation/outliers. `.02`/`.05` are not primary candidates
-  because `d x0_hat / d v_hat = -t` attenuates exposure.
-- Gate D: IMPLEMENTED, GH200 RUN REQUIRED. It remains audit-only: no optimizer
-  construction or update. It validates exact rank-64/alpha-64 LoRA plus
-  ControlInput trainables, independent equal-state flow/Gaussian-KL graphs,
-  norms/dot/cosine, candidate lambda panel, combined gradients, and
-  source/timestep statistics.
-- Gate E: TOOLING IMPLEMENTED, RUNTIME BUG FIXED, BUT NOT PASS. The smoke
-  loader now uses the same `PreparedLatentShardDataset[index]` semantics as
-  `train.py`, then collates that exact item list and preserves aligned stems.
-  Epoch rollover, batch-position advancement, microbatch planning, and
-  accumulation scaling match the production continuation loop. It retains
-  production flow sampling/MSE and only decodes/runs the critic for
-  `pose_reward_available=true` active samples. A real GH200 run remains
-  required; do not mark Gate E PASS.
+- Gate A, A.5, B, and C: PASS as previously documented. Gate D remains
+  IMPLEMENTED / GH200 RUN REQUIRED.
+- Gate E: tooling supports safe dynamic continuation, but it is **not PASS**.
+  The real GH200 continuation to step 1700 and its evaluation/inspection are
+  still required.
+- Gate-E checkpoints now store top-level `gate_e` metadata: pose loss/window,
+  critical model/training config, and trainable state names. A later checkpoint
+  must match it before it can resume. The already-written legacy step 1610 is
+  accepted only after its `metrics.jsonl` proves a single consistent
+  `lambda_pose` and timestep window, while its stored full config proves the
+  remaining critical config.
+- Canonical step 1500 always verifies its pinned SHA (an explicitly supplied
+  SHA is an additional check). A later Gate-E checkpoint does not require the
+  canonical SHA, but an explicit SHA is enforced if supplied.
+- `--target-global-step` is the explicit final-step interface and must exceed
+  the loaded checkpoint step. Legacy `--max-steps` means *additional* updates
+  from the loaded checkpoint; exactly one of the two is required and each
+  continuation is capped at 300 updates.
+- New Gate-E runs require a new output directory. Resumes must use exactly the
+  parent checkpoint's existing run directory. Published checkpoint names are
+  fail-closed and are never overwritten. Full model/optimizer/scheduler,
+  epoch/batch position, RNG, and flow-generator restoration still uses the
+  existing `train.restore_full_training_state` machinery.
+- Optimizer-step metrics now aggregate all accumulation microbatches, including
+  active/eligible sample and active-microbatch counts, mean/max active pose
+  loss, mean flow/total loss, and timestep min/max/mean. This is observability
+  only and does not change RNG draws, loss construction, backward scaling,
+  optimizer behavior, VAE/critic behavior, or frozen-boundary checks.
 
 ## Files changed this session
 
+- `pose_controlnet/checkpointing.py`
 - `pose_controlnet/pose_reward_tools.py`
-- `scripts/audit_pose_gradient_balance.py`
 - `scripts/train_pose_reward_smoke.py`
 - `tests/test_pose_reward_tools.py`
-- `docs/KEYPOINT_RCNN_CRITIC_AUDIT.md`
 - `docs/CODEX_HANDOFF.md`
 
-This runtime-fix session modified only `scripts/train_pose_reward_smoke.py`,
-`tests/test_pose_reward_tools.py`, and this handoff.
+Existing untracked Gate-B/C/D/E audit files remain user-owned and were not
+overwritten. `train.py` was not changed.
 
-Existing untracked Gate B/C audit files were preserved; do not overwrite them.
+## Tests and checks
 
-## Tests/checks
-
-- PASS: `PYTHONPATH=. python -m unittest tests.test_keypoint_critic
-  tests.test_keypoint_critic_audit tests.test_pose_reward_tools` — 32 CPU
-  tests. Coverage includes incremental norm/dot/cosine, zero safety, lambda
-  formula, combined gradients, trainable/frozen selection, deterministic
-  state, active/availability masks, inactive pose-graph skipping, invalid-joint
-  masking, inactive/active total loss, required lambda/output isolation, no
-  Gate-D optimizer step, existing-loader checkpoint schema, and the Gate-E
-  index-only dataset microbatch fetch/collation/stem path.
-- PASS: `python -m py_compile pose_controlnet/pose_reward_tools.py
-  scripts/audit_pose_gradient_balance.py scripts/train_pose_reward_smoke.py
-  tests/test_pose_reward_tools.py`.
-- PASS: `PYTHONPATH=. python scripts/audit_pose_gradient_balance.py --help`;
-  `PYTHONPATH=. python scripts/train_pose_reward_smoke.py --help`.
+- PASS: `PYTHONPATH=. UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest
+  tests.test_pose_reward_tools tests.test_train_mechanics` — 61 CPU tests.
+  Covers canonical SHA validation, arbitrary intermediate metadata resume,
+  legacy metrics-provenance resume, explicit intermediate SHA, target semantics,
+  incompatible configuration rejection, destination/publication safety, and
+  all-accumulation diagnostic aggregation/RNG/backward-scaling invariance.
+- PASS: `PYTHONPATH=. UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest
+  tests.test_keypoint_critic tests.test_keypoint_critic_audit
+  tests.test_pose_reward_tools` — 41 CPU tests.
+- PASS: `PYTHONPATH=. UV_CACHE_DIR=/tmp/uv-cache uv run python -m py_compile
+  pose_controlnet/checkpointing.py pose_controlnet/pose_reward_tools.py
+  scripts/train_pose_reward_smoke.py tests/test_pose_reward_tools.py`.
+- PASS: `PYTHONPATH=. UV_CACHE_DIR=/tmp/uv-cache uv run python
+  scripts/train_pose_reward_smoke.py --help`.
 - PASS: `git diff --check`.
 
-## Blockers and exact GH200 run order
+## Exact next GH200 action (do not run from Codex)
 
-The only blocker is the required Gate-D real GH200 output and its human review.
-Do not mark Gate D PASS or launch Gate E automatically.
+Resume the existing Gate-E run; do not pass the original step-1500 SHA for
+this later checkpoint:
 
-1. Run Gate D:
+```bash
+PYTHONPATH=. python scripts/train_pose_reward_smoke.py \
+  --parent-checkpoint /lambda/nfs/adhit/krea2-pose/checkpoints/gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32/step_001610.pt \
+  --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors \
+  --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
+  --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
+  --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
+  --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints \
+  --run-name gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32 \
+  --lambda-pose 2e-5 --pose-timestep-min 0.10 --pose-timestep-max 0.20 \
+  --target-global-step 1700 --save-every 50 \
+  --microbatch-size 1 --gradient-accumulation-steps 32 --device cuda
+```
 
-   ```bash
-   PYTHONPATH=. python scripts/audit_pose_gradient_balance.py \
-     --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
-     --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
-     --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
-     --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
-     --split train --samples-per-source 4 --timesteps .10 .20 .30 --device cuda \
-     --output-json /lambda/nfs/adhit/krea2-pose/keypoint_critic_gate_d_gradient_balance.json
-   ```
-
-2. Inspect Gate D, especially per-source/timestep ratio/cosine and sculpture
-   outliers.
-3. Gate-E policy is selected as above. Only after the required Gate-D review,
-   launch Gate E with this corrected command (the isolated run directory must
-   not already exist):
-
-   ```bash
-   PYTHONPATH=. python scripts/train_pose_reward_smoke.py \
-     --parent-checkpoint /lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt \
-     --expected-parent-sha256 6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0 \
-     --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors \
-     --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
-     --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
-     --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
-     --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints \
-     --run-name gate-e-parent1500-heatmap-kl-lambda2e-5-t010-020 \
-     --lambda-pose 2e-5 --pose-timestep-min 0.10 --pose-timestep-max 0.20 \
-     --max-steps 200 --save-every 50 \
-     --microbatch-size 2 --gradient-accumulation-steps 16 \
-     --device cuda
-   ```
-
-4. Inspect the first 50/100/200-step checkpoints and local metrics before any
-   longer branch.
+Inspect the resumed metrics and checkpoint(s), then complete the required
+evaluation before considering Gate E PASS.

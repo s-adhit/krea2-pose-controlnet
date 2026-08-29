@@ -40,8 +40,12 @@ def _validate_training_state(state: object, source: str | Path) -> dict:
     return state
 
 
-def save_training_state(path: str | Path, state: dict) -> Path:
-    """Atomically publish a deserialize-validated complete training checkpoint."""
+def save_training_state(path: str | Path, state: dict, *, overwrite: bool = True) -> Path:
+    """Atomically publish a deserialize-validated complete training checkpoint.
+
+    ``overwrite=False`` uses an atomic hard-link publication so a continuation
+    tool can fail closed instead of replacing an already published checkpoint.
+    """
     _validate_training_state(state, "in-memory state")
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -50,7 +54,13 @@ def save_training_state(path: str | Path, state: dict) -> Path:
     try:
         torch.save(state, temporary)
         load_training_state(temporary)
-        os.replace(temporary, destination)
+        if overwrite:
+            os.replace(temporary, destination)
+        else:
+            try:
+                os.link(temporary, destination)
+            except FileExistsError as error:
+                raise FileExistsError(f"Refusing to overwrite existing checkpoint: {destination}") from error
     finally:
         temporary.unlink(missing_ok=True)
     return destination
