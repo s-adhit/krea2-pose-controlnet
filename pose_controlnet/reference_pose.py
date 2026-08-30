@@ -701,7 +701,12 @@ def load_exact_capacity_reference_sidecar(path: str | Path, *, experiment_name: 
     if generic:
         if metadata.get("format_version") != EXACT_MANIFEST_REFERENCE_FORMAT_VERSION:
             raise ReferencePoseError("Exact-manifest reference sidecar metadata has an unsupported schema")
-        if experiment_name not in metadata.get("compatible_experiments", []):
+        # The immutable Mixed-32 JSONL pre-dates calibration, so its metadata
+        # cannot enumerate an unknown calibrated lambda.  Permit only the
+        # concrete coordinate-Huber 768 namespace, never an arbitrary run.
+        calibrated_coordinate = re.fullmatch(r"overfit32-mixed-r64-coord-l[0-9]+(?:\.[0-9]+)?(?:e-[0-9]+)?-res768", experiment_name)
+        calibration_audit = experiment_name == "overfit32-mixed-r64-coord-calibration-res768"
+        if experiment_name not in metadata.get("compatible_experiments", []) and not calibrated_coordinate and not calibration_audit:
             raise ReferencePoseError("Exact-manifest reference sidecar is not declared compatible with the requested experiment")
         if metadata.get("manifest_stems") != list(expected) or stems != list(expected):
             raise ReferencePoseError("Exact-manifest reference sidecar manifest provenance is not the exact requested stem order")

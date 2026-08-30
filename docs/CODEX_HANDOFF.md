@@ -2,76 +2,117 @@
 
 ## Current bounded objective
 
-The circular legacy-native provenance dependency is fixed for the archived
-Mixed-32 legacy experiment `overfit32-mixed-r64-mse`. The change only enables
-its foreground native regeneration; no training, GPU generation, checkpoint or
-evaluation-output mutation, deletion, commit, or push occurred in this session.
+The definitive Mixed-32 768 training experiment is prepared, but has **not**
+been calibrated or trained. It is a fresh coordinate-Huber branch, distinct
+from the completed MSE-only baseline. No 500-step training, generation, GPU
+evaluation, checkpoint/evaluation mutation, commit, or push occurred.
 
-## Legacy-native compatibility rule
+## Baseline hurdle
 
-The allowlist is only `overfit32-mixed-r64-mse`, at exactly
-`/lambda/nfs/adhit/krea2-pose/overfit_capacity/checkpoints/overfit32-mixed-r64-mse`.
-For `--stage generate`, it can resolve absent/`none` checkpoint resolution to
-`training_resolution = native` only when all checkpoint resolution fields are
-absent/`none`, the checkpoint files are exactly steps
-`0,50,100,200,300,400,500`, the immutable Mixed-32 order matches exactly,
-there is no alternate-resolution cache/manifest, and every persisted native
-RGB/control latent geometry is present, aligned, and valid. Generation also
-preflights that each indexed RGB/control source pair recovers the exact
-persisted native geometry before writing an artifact.
+`overfit32-mixed-r64-mse-res768` trained at 768 and was evaluated natively.
+At step 500 it recorded PCK@.05 `.172269`, PCK@.10 `.358543`, PCK@.20
+`.553221`, detection coverage `.866667`, 39 matched people, 6 unmatched
+reference people, and CLIP `.333764`.
 
-`--stage report` and `--stage score-only` do not infer this legacy resolution
-from checkpoints. They require regenerated `generation_results.json` metadata
-with `training_resolution = native`, `evaluation_resolution = native`, and
-`evaluation_provenance.training_resolution_source = legacy_native_compatibility`.
-Any conflict fails closed. The completed 768 experiment remains
-`training_resolution = 768`, `evaluation_resolution = native`.
+## Prepared coordinate-Huber contract
 
-PCK, CLIP, detector, matching, sidecar handling, deterministic seeds, Turbo
-generation behavior, and native geometry behavior were not changed.
+- Exact immutable Mixed-32 stem order and sidecar:
+  `data/manifests/overfit_capacity_reference_pose/overfit32-mixed-r64-mse.jsonl`.
+  The six Danbooru records remain in identity but are explicitly excluded from
+  numerical pose reward.
+- Training only permits `normalized_coordinate_huber` for a pose-enabled
+  capacity run. The audited path is `x0_hat -> autograd VAE decode -> frozen
+  fixed-box Keypoint R-CNN -> soft expected normalized coordinates -> SmoothL1`.
+- The JSONL source coordinates are reprojected through the exact paired 768
+  crop before entering the existing fixed-box critic; it is never rewritten.
+- R64/alpha64, 224 LoRA targets, trainable `ControlInputLayer`, frozen Raw
+  base, AdamW `1e-4`, warmup 0, microbatch 1, accumulation/effective batch 8,
+  500 steps, and checkpoints `0,50,100,200,300,400,500` are unchanged.
+- Native evaluation remains the only evaluation geometry. The compact
+  comparison table pairs every required checkpoint and never declares a winner.
+- Pose exposure remains configurable. Start with the conservative selectable
+  window `[.10,.20]`; the command below uses zero forced exposure.
 
-## Files changed this session
+Run identities round-trip the selected lambda, for example
+`overfit32-mixed-r64-coord-l2.5e-5-res768`; no lambda has been selected or
+hardcoded for the future run.
 
-- `scripts/evaluate_overfit_capacity.py`
-- `pose_controlnet/capacity_resolution.py`
-- `tests/test_overfit_evaluation_resolution.py`
-- `docs/CODEX_HANDOFF.md`
+## Gradient calibration rationale and command
 
-## Verification
-
-PASS (CPU/no-network only):
+Choose lambda from trainable-gradient norms, not loss scalars. The audit uses
+deterministic representative eligible Mixed-32 microbatches at 768, a fresh
+model, the actual trainable parameter set, and `torch.autograd.grad`; it does
+not construct an optimizer, update parameters, write a cache/checkpoint, or
+run generation/evaluation.
 
 ```bash
-PYTHONPATH=. python -m unittest tests.test_capacity_reference_pose tests.test_overfit_evaluation_resolution tests.test_overfit_mixed_reference_pose -v
-PYTHONPATH=. python -m py_compile scripts/evaluate_overfit_capacity.py pose_controlnet/capacity_resolution.py pose_controlnet/reference_pose.py tests/test_capacity_reference_pose.py tests/test_overfit_evaluation_resolution.py tests/test_overfit_mixed_reference_pose.py
+cd /home/ubuntu/krea2-pose-controlnet
+PYTHONPATH=. python scripts/audit_pose_gradient_balance.py \
+  --sidecar data/manifests/overfit_capacity_reference_pose/overfit32-mixed-r64-mse.jsonl \
+  --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
+  --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
+  --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
+  --pose-timestep-min 0.10 --pose-timestep-max 0.20 --timesteps 0.10 0.15 0.20 \
+  --samples-per-source 2 --candidate-lambda 1e-6 3e-6 1e-5 3e-5 1e-4 \
+  --device cuda \
+  --output-json /lambda/nfs/adhit/krea2-pose/overfit_capacity/audits/mixed32-coordinate-res768-gradient-balance.json
+```
+
+Read `aggregate.raw_flow_grad_norm`, `aggregate.raw_pose_grad_norm`, and
+`aggregate.implied_lambda.lambda_5pct` / `lambda_10pct`. The candidate panel
+is exactly `||lambda * grad L_pose|| / ||grad L_flow||`; select a finite
+candidate near `.05`–`.10`, record it, then substitute it below. The utility
+does not select a winner or lambda itself.
+
+## Future operator commands (not run)
+
+```bash
+cd /home/ubuntu/krea2-pose-controlnet
+LAMBDA_POSE='<selected calibration value>'
+EXPERIMENT='overfit32-mixed-r64-coord-l<same selected value token>-res768'
+PYTHONPATH=. python scripts/run_overfit_capacity.py --stage train \
+  --base-experiment mixed32 --resolution 768 \
+  --pose-loss normalized_coordinate_huber --lambda-pose "$LAMBDA_POSE" \
+  --forced-pose-exposure-probability 0.0 --pose-timestep-min 0.10 --pose-timestep-max 0.20 \
+  --pose-target-sidecar data/manifests/overfit_capacity_reference_pose/overfit32-mixed-r64-mse.jsonl
+```
+
+`EXPERIMENT` must use Python's compact float token with leading exponent zero
+removed (`2.5e-05` becomes `2.5e-5`); the runner verifies this identity.
+
+Foreground native generation, report, and score-only commands:
+
+```bash
+PYTHONPATH=. python scripts/evaluate_overfit_capacity.py --experiment "$EXPERIMENT" --stage generate
+PYTHONPATH=. python scripts/evaluate_overfit_capacity.py --experiment "$EXPERIMENT" --stage report
+PYTHONPATH=. python scripts/evaluate_overfit_capacity.py --experiment "$EXPERIMENT" --stage score-only --reference-sidecar data/manifests/overfit_capacity_reference_pose/overfit32-mixed-r64-mse.jsonl
+```
+
+Compact native-only comparison (steps 0/50/100/200/300/400/500):
+
+```bash
+PYTHONPATH=. python scripts/summarize_overfit_capacity.py \
+  --output-root /lambda/nfs/adhit/krea2-pose/overfit_capacity/evaluation \
+  --checkpoint-root /lambda/nfs/adhit/krea2-pose/overfit_capacity/checkpoints \
+  --compare overfit32-mixed-r64-mse-res768 "$EXPERIMENT"
+```
+
+## Files changed and verification
+
+Changed: `pose_controlnet/capacity_pose.py`, `pose_controlnet/overfit_capacity.py`,
+`pose_controlnet/reference_pose.py`, `scripts/audit_pose_gradient_balance.py`,
+`scripts/train_overfit_capacity.py`, `scripts/run_overfit_capacity.py`,
+`scripts/summarize_overfit_capacity.py`, focused tests, and this handoff.
+
+PASS (CPU/no-network):
+
+```bash
+PYTHONPATH=. python -m unittest tests.test_mixed_coordinate_capacity tests.test_capacity_experiment_axes tests.test_overfit_evaluation_resolution tests.test_overfit_mixed_reference_pose tests.test_overfit_capacity -v
+PYTHONPATH=. python -m py_compile pose_controlnet/capacity_pose.py pose_controlnet/overfit_capacity.py pose_controlnet/reference_pose.py scripts/audit_pose_gradient_balance.py scripts/train_overfit_capacity.py scripts/run_overfit_capacity.py scripts/summarize_overfit_capacity.py tests/test_mixed_coordinate_capacity.py
+PYTHONPATH=. python scripts/train_overfit_capacity.py --preflight --base-experiment mixed32 --resolution 768 --pose-loss normalized_coordinate_huber --lambda-pose 2.5e-5 --forced-pose-exposure-probability 0.0 --pose-timestep-min 0.10 --pose-timestep-max 0.20 --pose-target-sidecar data/manifests/overfit_capacity_reference_pose/overfit32-mixed-r64-mse.jsonl --no-wandb
 git diff --check
 ```
 
-The 34 tests cover no-metadata generation inference, exact allowlist/root/stem
-order/schedule checks, contradictory resolution, alternate cache/manifest,
-missing latent geometry, exact paired source recovery, emitted compatibility
-marker, report/score metadata requirements, no checkpoint metadata write, and
-unchanged 768/native behavior.
-
-## Exact next actions (not run in this session)
-
-Foreground native regeneration:
-
-```bash
-cd /home/ubuntu/krea2-pose-controlnet
-PYTHONPATH=. python scripts/evaluate_overfit_capacity.py --experiment overfit32-mixed-r64-mse --stage generate
-```
-
-Foreground report:
-
-```bash
-cd /home/ubuntu/krea2-pose-controlnet
-PYTHONPATH=. python scripts/evaluate_overfit_capacity.py --experiment overfit32-mixed-r64-mse --stage report
-```
-
-Foreground score-only:
-
-```bash
-cd /home/ubuntu/krea2-pose-controlnet
-PYTHONPATH=. python scripts/evaluate_overfit_capacity.py --experiment overfit32-mixed-r64-mse --stage score-only --reference-sidecar data/manifests/overfit_capacity_reference_pose/overfit32-mixed-r64-mse.jsonl
-```
+Next action: run only the gradient calibration command on the GH200, inspect
+the 5–10% gradient-ratio panel, and explicitly choose the lambda before any
+training command.
