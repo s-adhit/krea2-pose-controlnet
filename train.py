@@ -7,6 +7,7 @@ It is not a production-run launcher.
 from __future__ import annotations
 
 import argparse
+import inspect
 import copy
 import math
 import random
@@ -766,13 +767,33 @@ class OptimizerStepWarmup:
         self._apply_for_update(self.step_count + 1)
 
 
+def fused_adamw_supported() -> bool:
+    """Whether this installed PyTorch exposes the fused AdamW backend.
+
+    This is deliberately an API capability check, not a claim that a given
+    model/batch fits or is faster.  The GH200 benchmark remains authoritative.
+    """
+    return "fused" in inspect.signature(torch.optim.AdamW).parameters
+
+
+def _adamw_kwargs(cfg: TrainConfig) -> dict[str, object]:
+    kwargs: dict[str, object] = {"betas": (0.9, 0.99), "eps": 1e-8, "weight_decay": 0.0}
+    if cfg.fused_adamw:
+        if not fused_adamw_supported():
+            raise RuntimeError("This PyTorch build does not expose fused AdamW")
+        if not torch.cuda.is_available():
+            raise RuntimeError("fused AdamW is a CUDA-only production benchmark option")
+        kwargs["fused"] = True
+    return kwargs
+
+
 def build_optimizer(model: torch.nn.Module, cfg: TrainConfig) -> torch.optim.AdamW:
     audit_control_model(model, rank=cfg.rank)
     params = trainable_params(model)
     if not params or any(not parameter.requires_grad for parameter in params):
         raise AssertionError("Optimizer parameter selection includes frozen or no tensors")
     if cfg.control_input_lr is None:
-        optimizer = torch.optim.AdamW(params, lr=cfg.lr, betas=(0.9, 0.99), eps=1e-8, weight_decay=0.0)
+        optimizer = torch.optim.AdamW(params, lr=cfg.lr, **_adamw_kwargs(cfg))
     else:
         if (cfg.lr != CONTROLINPUT_BRANCH_LORA_LR
                 or cfg.control_input_lr != CONTROLINPUT_BRANCH_CONTROL_LR
@@ -783,7 +804,7 @@ def build_optimizer(model: torch.nn.Module, cfg: TrainConfig) -> torch.optim.Ada
         optimizer = torch.optim.AdamW([
             {"params": [parameter for _, parameter in lora], "lr": cfg.lr, "group_name": "lora"},
             {"params": [parameter for _, parameter in control], "lr": cfg.control_input_lr, "group_name": "control_input"},
-        ], betas=(0.9, 0.99), eps=1e-8, weight_decay=0.0)
+        ], **_adamw_kwargs(cfg))
     if cfg.control_input_lr is not None:
         _assert_controlinput_optimizer(optimizer)
     optimizer_ids = {id(parameter) for group in optimizer.param_groups for parameter in group["params"]}
@@ -871,7 +892,7 @@ def configure_runtime(model: torch.nn.Module, *, compile_enabled: bool) -> None:
         model.txtmlp.forward = torch.compile(model.txtmlp.forward, dynamic=True)
 
 
-def _flow_loss(model, conditioner, batch: dict, cfg: TrainConfig, device: torch.device, generator: torch.Generator, *, gradient_checkpointing_blocks: int) -> tuple[torch.Tensor, dict]:
+def _flow_loss(model, conditioner, batch: dict, cfg: TrainConfig, device: torch.device, generator: torch.Generator, *, gradient_checkpointing_blocks: int, collect_diagnostics: bool = True) -> tuple[torch.Tensor, dict]:
     clean = batch["latent"].to(device=device, dtype=torch.float32, non_blocking=True)
     control = batch["control"].to(device=device, dtype=torch.bfloat16, non_blocking=True)
     if clean.shape != control.shape or not torch.isfinite(clean).all() or not torch.isfinite(control).all():
@@ -891,7 +912,12 @@ def _flow_loss(model, conditioner, batch: dict, cfg: TrainConfig, device: torch.
                                       gradient_checkpointing_blocks=gradient_checkpointing_blocks)
     loss = F.mse_loss(prediction.float(), target_tokens.float())
     if not torch.isfinite(loss): raise FloatingPointError("Non-finite flow-matching MSE")
-    diagnostics = {"control_latent_rms": control.float().square().mean().sqrt().item(), "control_latent_std": control.float().std(unbiased=False).item()}
+    # These scalar conversions synchronize CUDA.  They are only consumed at
+    # the configured diagnostic cadence, so avoid two unnecessary sync points
+    # on all other microbatches without weakening the finite-value checks.
+    diagnostics = ({"control_latent_rms": control.float().square().mean().sqrt().item(),
+                    "control_latent_std": control.float().std(unbiased=False).item()}
+                   if collect_diagnostics else {})
     return loss, diagnostics
 
 
@@ -940,6 +966,36 @@ def restore_full_training_state(model: torch.nn.Module, optimizer: torch.optim.O
     return global_step, epoch, batch_position, state.get("flow_generator_state")
 
 
+_RESUME_SCIENTIFIC_CONFIG_FIELDS = (
+    "raw_ckpt", "shard_dir", "rank", "alpha", "lr", "microbatch_size",
+    "gradient_accumulation_steps", "warmup_steps", "max_grad_norm",
+    "caption_dropout", "control_dropout", "compile", "fused_adamw",
+    "gradient_checkpointing", "gradient_checkpointing_blocks", "mu_x1", "mu_y1",
+    "mu_x2", "mu_y2", "timestep_aux_prob", "timestep_aux_min", "timestep_aux_max", "seed",
+)
+
+
+def validate_resume_scientific_identity(saved_config: dict, cfg: TrainConfig) -> None:
+    """Reject a normal resume that silently changes training semantics.
+
+    Checkpoint/log/mirror cadences and a larger terminal ``max_steps`` are
+    operational controls and intentionally remain adjustable.  Every field
+    that changes model, batch, optimizer, scheduler, stochastic sampling, or
+    runtime numerical path is compared exactly.  Older checkpoints lacking
+    the new fused flag are interpreted as the historical default ``False``.
+    """
+    if not isinstance(saved_config, dict):
+        raise ValueError("Resume checkpoint has no serialised TrainConfig")
+    current = asdict(cfg)
+    differences = {}
+    for field in _RESUME_SCIENTIFIC_CONFIG_FIELDS:
+        saved = saved_config.get(field, False if field == "fused_adamw" else None)
+        if saved != current[field]:
+            differences[field] = {"checkpoint": saved, "requested": current[field]}
+    if differences:
+        raise ValueError(f"Unsafe resume refused: scientific configuration differs: {differences}")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--raw-ckpt", default="/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors")
@@ -961,6 +1017,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--diagnostics-every", type=int, default=10)
     parser.add_argument("--compile", action=argparse.BooleanOptionalAction, default=False,
                         help="opt in to compiling the rank-stable text projection")
+    parser.add_argument("--fused-adamw", action=argparse.BooleanOptionalAction, default=False,
+                        help="opt in only after the GH200 throughput/parity benchmark passes")
     parser.add_argument("--gradient-checkpointing", action=argparse.BooleanOptionalAction, default=None,
                         help="legacy shorthand: checkpoint all 28 main transformer blocks")
     parser.add_argument("--gradient-checkpointing-blocks", type=int, default=None, metavar="N",
@@ -1053,7 +1111,8 @@ def config_from_args(args: argparse.Namespace) -> TrainConfig:
                        max_steps=args.max_steps, microbatch_size=args.microbatch_size, gradient_accumulation_steps=args.gradient_accumulation_steps,
                        allow_extended_training=args.allow_extended_training,
                        max_grad_norm=args.max_grad_norm, validation_batches=args.validation_batches, val_every=args.val_every, save_every=args.save_every, diagnostics_every=args.diagnostics_every,
-                       compile=args.compile, gradient_checkpointing=gradient_checkpointing_blocks > 0,
+                       compile=args.compile, fused_adamw=args.fused_adamw,
+                       gradient_checkpointing=gradient_checkpointing_blocks > 0,
                        gradient_checkpointing_blocks=gradient_checkpointing_blocks,
                        wandb_enabled=not args.no_wandb, wandb_mode=args.wandb_mode,
                        metrics_jsonl_path=str(Path(args.checkpoint_dir) / args.run_name / "metrics.jsonl"),
@@ -1096,7 +1155,7 @@ def main() -> None:
         assert_controlinput_branch_destination_is_new()
     set_seed(cfg.seed); device = torch.device("cuda"); torch.cuda.reset_peak_memory_stats()
     print(f"effective_batch={effective_batch_size(cfg.microbatch_size, cfg.gradient_accumulation_steps)} (microbatch × accumulation × world_size=1)", flush=True)
-    print(f"runtime: compile={cfg.compile} gradient_checkpointing_blocks={cfg.gradient_checkpointing_blocks} "
+    print(f"runtime: compile={cfg.compile} fused_adamw={cfg.fused_adamw} gradient_checkpointing_blocks={cfg.gradient_checkpointing_blocks} "
           f"allow_extended_training={cfg.allow_extended_training}", flush=True)
     cached_text = not args.online_text_conditioning
     train_data, val_data = PreparedLatentShardDataset(cfg.shard_dir, "train", text_conditioning_root=args.text_conditioning_root if cached_text else None), PreparedLatentShardDataset(cfg.shard_dir, "val", text_conditioning_root=args.text_conditioning_root if cached_text else None)
@@ -1160,6 +1219,7 @@ def main() -> None:
                        if args.resume == "auto" else Path(args.resume))
         if resume_path is None: raise FileNotFoundError("--resume auto found no valid local or HF full checkpoint")
         state = load_training_state(resume_path)
+        validate_resume_scientific_identity(state["config"], cfg)
         global_step, epoch, batch_position, resume_generator_state = restore_full_training_state(model, optimizer, scheduler, state)
         print(f"[resume] loaded validated full checkpoint {resume_path} at optimizer step {global_step} "
               f"(epoch={epoch}, batch_position={batch_position})", flush=True)
@@ -1188,6 +1248,7 @@ def main() -> None:
             batches = train_plan.for_epoch(epoch)
             if batch_position >= len(batches): epoch, batch_position = epoch + 1, 0; continue
             start = time.monotonic(); last_diag = None
+            diagnostics_due = (global_step + 1) % cfg.diagnostics_every == 0
             for accumulation_index in range(cfg.gradient_accumulation_steps):
                 if batch_position >= len(batches):
                     epoch, batch_position = epoch + 1, 0
@@ -1198,9 +1259,14 @@ def main() -> None:
                     apply_cached_caption_dropout(batch, train_data.text_conditioning.unconditional, cfg.caption_dropout, cfg.seed, dropout_index)
                 else:
                     batch["prompts"] = apply_caption_dropout(batch["prompts"], cfg.caption_dropout, cfg.seed, dropout_index)
-                with torch.autocast("cuda", dtype=torch.bfloat16): loss, last_diag = _flow_loss(model, conditioner, batch, cfg, device, generator, gradient_checkpointing_blocks=cfg.gradient_checkpointing_blocks)
+                with torch.autocast("cuda", dtype=torch.bfloat16):
+                    loss, last_diag = _flow_loss(
+                        model, conditioner, batch, cfg, device, generator,
+                        gradient_checkpointing_blocks=cfg.gradient_checkpointing_blocks,
+                        collect_diagnostics=diagnostics_due and accumulation_index == cfg.gradient_accumulation_steps - 1,
+                    )
                 (loss / cfg.gradient_accumulation_steps).backward()
-            diagnostics_due = last_diag is not None and (global_step + 1) % cfg.diagnostics_every == 0
+            diagnostics_due = diagnostics_due and last_diag is not None
             control_norms = lora_norms = None
             def capture_diagnostics() -> None:
                 nonlocal control_norms, lora_norms

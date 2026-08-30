@@ -25,6 +25,10 @@ class TrainConfig:
     caption_dropout: float = 0.1
     control_dropout: float = 0.0
     compile: bool = False
+    # Opt-in only: the benchmark must prove GPU support and throughput before
+    # this backend is selected for a production run.  AdamW hyperparameters
+    # and parameter membership remain identical.
+    fused_adamw: bool = False
     gradient_checkpointing: bool = False
     # Checkpoint the first N main transformer blocks in execution order.
     gradient_checkpointing_blocks: int = 0

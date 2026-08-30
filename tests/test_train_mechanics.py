@@ -23,6 +23,15 @@ from pose_controlnet.wandb_logging import TrainingTelemetry
 
 
 class TrainMechanicsTest(unittest.TestCase):
+    def test_normal_resume_rejects_changed_scientific_identity_but_allows_operational_cadence(self):
+        cfg = TrainConfig(raw_ckpt="raw", shard_dir="shards", microbatch_size=1, gradient_accumulation_steps=32)
+        saved = asdict(cfg)
+        saved["save_every"] = 999  # cadence is deliberately operational
+        train.validate_resume_scientific_identity(saved, cfg)
+        saved["gradient_accumulation_steps"] = 16
+        with self.assertRaisesRegex(ValueError, "gradient_accumulation_steps"):
+            train.validate_resume_scientific_identity(saved, cfg)
+
     def full_state(self, step: int = 1) -> dict:
         return {"model": {"first.weight": torch.ones(1)}, "optimizer": {"state": {}},
                 "scheduler": {"step_count": step, "base_lrs": [1e-4], "warmup_steps": 200},
@@ -548,13 +557,15 @@ class TrainMechanicsTest(unittest.TestCase):
         with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "1", "--microbatch-size", "1", "--gradient-accumulation-steps", "32"]):
             cfg = train.config_from_args(train.parse_args())
         self.assertFalse(cfg.compile)
+        self.assertFalse(cfg.fused_adamw)
         self.assertFalse(cfg.gradient_checkpointing)
         self.assertEqual(cfg.gradient_checkpointing_blocks, 0)
 
     def test_runtime_flags_propagate_to_config(self):
-        with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "1", "--microbatch-size", "1", "--gradient-accumulation-steps", "32", "--compile", "--gradient-checkpointing"]):
+        with patch.object(sys, "argv", ["train.py", "--run-name", "x", "--max-steps", "1", "--microbatch-size", "1", "--gradient-accumulation-steps", "32", "--compile", "--fused-adamw", "--gradient-checkpointing"]):
             cfg = train.config_from_args(train.parse_args())
         self.assertTrue(cfg.compile)
+        self.assertTrue(cfg.fused_adamw)
         self.assertTrue(cfg.gradient_checkpointing)
         self.assertEqual(cfg.gradient_checkpointing_blocks, 28)
 

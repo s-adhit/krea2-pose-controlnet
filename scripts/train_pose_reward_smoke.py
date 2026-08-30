@@ -48,7 +48,7 @@ GATE_E_METADATA_FORMAT = 2
 _GATE_E_CRITICAL_CONFIG_FIELDS = (
     "raw_ckpt", "shard_dir", "rank", "alpha", "lr", "microbatch_size",
     "gradient_accumulation_steps", "warmup_steps", "max_grad_norm",
-    "caption_dropout", "control_dropout", "compile", "gradient_checkpointing",
+    "caption_dropout", "control_dropout", "compile", "fused_adamw", "gradient_checkpointing",
     "gradient_checkpointing_blocks", "mu_x1", "mu_y1", "mu_x2", "mu_y2",
     "timestep_aux_prob", "timestep_aux_min", "timestep_aux_max", "seed",
     "run_name", "max_steps", "save_every", "hf_repo_id", "hf_mirror_every_steps",
@@ -347,7 +347,8 @@ def prepare_gate_e_run_setup(*, parent_path: Path, expected_parent_sha256: str |
 def _pose_smoke_loss(model: torch.nn.Module, vae: Any, critic: FixedBoxKeypointRCNNCritic, batch: dict[str, Any],
                      sidecar_by_stem: dict[str, dict[str, Any]], cfg: train.TrainConfig, device: torch.device,
                      generator: torch.Generator, *, pose_loss_name: str, lambda_pose: float, timestep_min: float,
-                     timestep_max: float, forced_exposure_probability: float) -> tuple[torch.Tensor, dict[str, Any]]:
+                     timestep_max: float, forced_exposure_probability: float,
+                     collect_diagnostics: bool = True) -> tuple[torch.Tensor, dict[str, Any]]:
     clean = batch["latent"].to(device=device, dtype=torch.float32, non_blocking=True)
     control = batch["control"].to(device=device, dtype=torch.bfloat16, non_blocking=True)
     if clean.shape != control.shape or not torch.isfinite(clean).all() or not torch.isfinite(control).all():
@@ -387,6 +388,11 @@ def _pose_smoke_loss(model: torch.nn.Module, vae: Any, critic: FixedBoxKeypointR
         pose_loss = pose_loss_value
     total = combine_flow_and_pose_loss(flow_loss, pose_loss, int(active_indices.numel()), lambda_pose)
     if not torch.isfinite(total): raise FloatingPointError("non-finite total loss")
+    if not collect_diagnostics:
+        # Keep only device-side counters for a timing harness.  The loss graph,
+        # sampler, active-set selection, and gradients are exactly unchanged;
+        # this avoids serializing diagnostic scalars on every timed microbatch.
+        return total, {"pose_active_count_tensor": active.sum(), "pose_eligible_count_tensor": available.sum()}
     return total, {
         "flow_loss": float(flow_loss.item()), "pose_loss": float(pose_loss.item()) if pose_loss is not None else None,
         "total_loss": float(total.item()), "pose_active_fraction": float(active.float().mean().item()),
