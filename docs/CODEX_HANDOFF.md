@@ -2,9 +2,35 @@
 
 ## Current bounded objective
 
-The exact-reference geometry reconciliation bug blocking COCO-32 score-only
-evaluation is fixed and CPU-tested. Do not train, generate, run the GH200
-evaluation, alter checkpoints, commit, or push as part of this milestone.
+The qualitative-only report path for the completed mixed 32-sample capacity
+experiment is fixed and CPU-tested. Do not train, generate, score PCK/CLIP,
+alter checkpoints, delete outputs, commit, or push as part of this milestone.
+
+## Completed mixed experiment and report-only fix
+
+- `overfit32-mixed-r64-mse` generation is complete for the exact immutable
+  32-sample training-set order at steps `0, 50, 100, 200, 300, 400, 500`
+  (224 existing generated PNGs). Its evaluation root is
+  `/lambda/nfs/adhit/krea2-pose/overfit_capacity/evaluation/overfit32-mixed-r64-mse`.
+  The mix is 6 COCO, 7 Human-Art Painting, 7 Human-Art Real Human, 6 Human-Art
+  Sculpture, and 6 Danbooru.
+- Root cause of foreground `--stage report` failure: `report()` unconditionally
+  read `training_set_overfit_metrics.json`, which does not exist before
+  quantitative scoring.
+- Report now validates deterministic generation metadata, exact immutable
+  stem/checkpoint order, and every existing control, target, and generated
+  PNG before any contact-sheet work. It creates
+  `checkpoint_selection_grid.png` and `full_training_set_contact_sheet.png`
+  with Pose control, Target training RGB, then all seven checkpoints.
+- If metrics exist, their score fields are retained and qualitative-grid
+  references are added. Without metrics, `overfit_summary.json` is
+  qualitative-only: experiment/provenance, explicit
+  `training_set_equals_evaluation_set=true`, `sample_count=32`, checkpoint
+  list, immutable order, grid paths, and
+  `quantitative_scoring="not_yet_available"`; no PCK/CLIP placeholders are
+  created.
+- The report stage has no generation or score/PCK dispatch. It only reuses the
+  existing artifacts and writes the two grids plus summary.
 
 ## Confirmed completed experiment state
 
@@ -68,38 +94,38 @@ evaluation, alter checkpoints, commit, or push as part of this milestone.
 
 ## Exact next operator action (foreground; do not run from Codex)
 
-Rescore the existing 224 PNGs without generation:
+Create qualitative contact sheets from the completed mixed-generation artifacts
+without training, generation, or scoring:
 
 ```bash
 cd /home/ubuntu/krea2-pose-controlnet
 PYTHONPATH=. python scripts/evaluate_overfit_capacity.py \
-  --experiment overfit32-coco-r64-mse \
-  --stage score-only \
-  --reference-sidecar data/manifests/overfit_capacity_reference_pose/overfit32-coco-r64-mse.jsonl
+  --experiment overfit32-mixed-r64-mse \
+  --stage report
 ```
 
-Expected updated machine-readable artifacts are
-`training_set_overfit_metrics.json` and `overfit_summary.json`; existing
-`checkpoint_selection_grid.png`, `full_training_set_contact_sheet.png`,
-`generation_results.json`, and all 224 generated images are reused unchanged.
+Expected outputs are `checkpoint_selection_grid.png`,
+`full_training_set_contact_sheet.png`, and `overfit_summary.json` under the
+mixed evaluation root. Existing `generation_results.json` and all 224 PNGs
+are reused unchanged.
 
-## Files changed in this geometry-fix session
+## Files changed in this session
 
-- `pose_controlnet/turbo_evaluation.py`
-- `tests/test_turbo_evaluation.py`
-- `tests/test_post1500_evaluation.py`
+- `scripts/evaluate_overfit_capacity.py`
+- `tests/test_overfit_capacity.py`
 - `tests/test_capacity_reference_pose.py`
 - `docs/CODEX_HANDOFF.md`
 
 PASS:
 
 ```bash
-python -m unittest tests.test_turbo_evaluation tests.test_capacity_reference_pose tests.test_post1500_evaluation tests.test_reference_pose tests.test_overfit_capacity tests.test_turbo_lr5e5_evaluation tests.test_turbo_timestep_evaluation -v  # 61 tests
-python -m py_compile pose_controlnet/turbo_evaluation.py tests/test_turbo_evaluation.py tests/test_capacity_reference_pose.py tests/test_post1500_evaluation.py
+python -m py_compile scripts/evaluate_overfit_capacity.py tests/test_overfit_capacity.py tests/test_capacity_reference_pose.py
+python -m unittest tests.test_overfit_capacity tests.test_capacity_reference_pose -v  # 19 tests
 ```
 
-Regression coverage proves complete canonical geometry is returned; malformed
-and stale geometry fail; exact four-field sidecars reconcile; each
-source/resized/crop/bucket mismatch fails closed; bucket addition leaves PCK
-results unchanged; and score-only has no generation, checkpoint-loading,
-backward, training, or optimizer path.
+Regression coverage proves reporting works before scores exist and when they
+exist; preserves compatible summary/metric fields; dispatches neither
+generation nor score/PCK; fails closed for missing PNGs or invalid ordered
+metadata; preserves the exact 32-sample/checkpoint order; labels the explicit
+train==evaluation condition; and sends control, target, and all seven
+checkpoints to both contact sheets.
