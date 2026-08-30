@@ -2,102 +2,99 @@
 
 ## Current bounded objective
 
-The overfit-capacity harness now exposes only two experiment axes: paired
-resolution policy and optional audited auxiliary pose loss. No training,
-generation, GPU evaluation, checkpoint/output mutation, commit, or push was
-performed in this session.
+The overfit-capacity evaluator has a fixed native-evaluation contract. This
+session changed only CPU-side evaluation, report, comparison, and paired
+geometry code. No training, generation, GPU evaluation, checkpoint/output
+mutation, deletion, commit, or push was performed.
 
-## Completed mixed native result and comparison contract
+## Resolution policy in force
 
-- The completed native flow-MSE experiment remains
-  `overfit32-mixed-r64-mse`, with the immutable 32-stem order: 6 COCO, 7
-  Human-Art Painting, 7 Human-Art Real Human, 6 Sculpture, 6 Danbooru.
-- Dynamic Mixed-32 namespace identity is derived from the scientific config:
-  `overfit32-mixed-r64-mse-resnative`,
-  `overfit32-mixed-r64-mse-res768`,
-  `overfit32-mixed-r64-coord-l1e5-res768`, or `...-kl-...`.
-  Checkpoint, evaluation, metrics, cache, and W&B run names use that identity.
-- Native means the verified persisted latent geometry is read verbatim. It is
-  never recomputed or silently resampled.
-- `768` rebuilds the paired RGB/control pixels and VAE latents in an isolated,
-  deterministic per-experiment cache. It cannot use native latents. The exact
-  buckets, all 64-pixel aligned, are: 768x768, 704x896, 896x704, 640x960,
-  960x640, 576x1024, 1024x576, 512x1152, 1152x512.
-- The cache validates its full scientific config, exact ordered Mixed-32 stems,
-  per-stem crop/bucket/latent geometry, finite equal RGB/control latents, and
-  VAE factor-eight shapes. `resolution_manifest.json` records source dimensions,
-  native bucket, requested bucket, resize/crop geometry, and latent dimensions.
+- Low resolution is a training-only capacity axis. Training may use `native`
+  or `768`; the training CLI still owns `--resolution`.
+- Every capacity evaluation is `native`, independently of training resolution.
+  The evaluation CLI has no resolution or resolution-cache option.
+- Native evaluation reads the persisted original source size, resized size,
+  crop box, and bucket from the native latent shard for every stem. It rebuilds
+  RGB target and pose control with that exact shared geometry; it never reads
+  an alternate-resolution cache.
+- Evaluation records both fields explicitly: `training_resolution` is read
+  from checkpoint provenance, while `evaluation_resolution` is always
+  `native`. Evaluation resolution is never inferred from the training value.
 
-## Pose-loss contract
+## Completed and non-authoritative state
 
-- Default is exactly flow-MSE only: `--pose-loss none --lambda-pose 0`, zero
-  forced exposure, and no auxiliary timestep window.
-- Selectable modes are `gaussian_heatmap_kl` and
-  `normalized_coordinate_huber`. Enabled pose loss requires positive lambda,
-  an explicit `[min,max]` window inside `(0,1)`, optional forced exposure in
-  `[0,1]`, and an immutable authoritative sidecar.
-- The capacity trainer reuses the audited x0-hat -> autograd VAE decode ->
-  frozen fixed-box Keypoint R-CNN -> raw logits path. It remaps authoritative
-  source labels through the requested geometry, masks invalid/OOB joints, and
-  rejects missing eligible targets. Danbooru is explicitly unavailable and
-  never receives numerical pose reward.
-- Rank/alpha 64/64, 224 LoRA targets, frozen Raw base, ControlInputLayer,
-  AdamW LR 1e-4, warmup 0, microbatch 1, accumulation 8/effective batch 8,
-  500 steps, and checkpoints 0/50/100/200/300/400/500 remain fixed.
+- Completed 768-trained checkpoint root (read-only):
+  `/lambda/nfs/adhit/krea2-pose/overfit_capacity/checkpoints/overfit32-mixed-r64-mse-res768`
+  with exact checkpoints `0, 50, 100, 200, 300, 400, 500`.
+- Its training provenance remains `training_resolution = 768`; checkpoint
+  metadata and weights were not modified.
+- The earlier 768-geometry evaluation for that experiment was interrupted and
+  is non-authoritative. It must not be resumed or compared.
+- Canonical native-evaluation root:
+  `/lambda/nfs/adhit/krea2-pose/overfit_capacity/evaluation/overfit32-mixed-r64-mse-res768`.
+  The evaluator refuses incompatible/malformed/incomplete content there before
+  writing. Its error gives an archive command; do not delete artifacts.
 
-## Files changed this session
+Read-only inspection confirmed that canonical directory currently contains a
+`training_set/` tree but no `generation_results.json`; it is incomplete and
+must be archived before native generation.
 
-- `pose_controlnet/overfit_capacity.py`
-- `pose_controlnet/capacity_resolution.py`
-- `pose_controlnet/paired_preprocessing.py`
-- `scripts/train_overfit_capacity.py`
-- `scripts/run_overfit_capacity.py`
-- `scripts/evaluate_overfit_capacity.py`
-- `tests/test_capacity_experiment_axes.py`
-- `docs/CODEX_HANDOFF.md`
-
-## Commands and verification
-
-PASS before final follow-up validation:
+If that refusal occurs, first confirm the archive destination does not exist,
+then an operator may preserve the old partial directory with:
 
 ```bash
-python -m py_compile pose_controlnet/overfit_capacity.py pose_controlnet/capacity_resolution.py pose_controlnet/paired_preprocessing.py scripts/train_overfit_capacity.py scripts/run_overfit_capacity.py scripts/evaluate_overfit_capacity.py
-python -m unittest tests.test_overfit_capacity -v
+mv -- /lambda/nfs/adhit/krea2-pose/overfit_capacity/evaluation/overfit32-mixed-r64-mse-res768 /lambda/nfs/adhit/krea2-pose/overfit_capacity/evaluation/overfit32-mixed-r64-mse-res768.partial-768-eval-archive
 ```
 
-Run on GH200 (not from Codex) for 768 MSE-only:
+After that archive, foreground native generation (not from Codex) is:
 
 ```bash
 cd /home/ubuntu/krea2-pose-controlnet
-PYTHONPATH=. python scripts/run_overfit_capacity.py --base-experiment mixed32 --resolution 768 --pose-loss none --stage train
+PYTHONPATH=. python scripts/evaluate_overfit_capacity.py --experiment overfit32-mixed-r64-mse-res768 --stage generate
 ```
 
-Pose-loss template (supply the authoritative sidecar):
+Then the foreground native qualitative report command is:
 
 ```bash
-PYTHONPATH=. python scripts/run_overfit_capacity.py --base-experiment mixed32 --resolution 768 --pose-loss normalized_coordinate_huber --lambda-pose 1e-5 --forced-pose-exposure-probability 0.1 --pose-timestep-min 0.1 --pose-timestep-max 0.2 --pose-target-sidecar <immutable-sidecar> --stage train
+PYTHONPATH=. python scripts/evaluate_overfit_capacity.py --experiment overfit32-mixed-r64-mse-res768 --stage report
 ```
 
-Foreground generation/report (not from Codex):
+The report remains: pose control, target training RGB, then steps `0, 50,
+100, 200, 300, 400, 500`, all at native geometry. Future 768 pose-loss
+experiments follow the same native-evaluation rule. Comparison labels are
+`Native train / Native eval`, `768 train / Native eval`, and
+`768+pose train / Native eval`; entries without explicit native evaluation
+provenance are excluded.
+
+## Files changed this session
+
+- `pose_controlnet/paired_preprocessing.py`
+- `pose_controlnet/capacity_resolution.py`
+- `scripts/evaluate_overfit_capacity.py`
+- `scripts/run_overfit_capacity.py`
+- `scripts/summarize_overfit_capacity.py`
+- `tests/test_overfit_capacity.py`
+- `tests/test_overfit_evaluation_resolution.py`
+- `docs/CODEX_HANDOFF.md`
+
+## Verification
+
+PASS:
 
 ```bash
-PYTHONPATH=. python scripts/evaluate_overfit_capacity.py --experiment overfit32-mixed-r64-mse-res768 --resolution 768 --stage generate
-PYTHONPATH=. python scripts/evaluate_overfit_capacity.py --experiment overfit32-mixed-r64-mse-res768 --resolution 768 --stage report
-PYTHONPATH=. python scripts/summarize_overfit_capacity.py --output-root /lambda/nfs/adhit/krea2-pose/overfit_capacity/evaluation --checkpoint-root /lambda/nfs/adhit/krea2-pose/overfit_capacity/checkpoints overfit32-mixed-r64-mse overfit32-mixed-r64-mse-res768 overfit32-mixed-r64-coord-l1e5-res768
+python -m py_compile pose_controlnet/paired_preprocessing.py pose_controlnet/capacity_resolution.py scripts/evaluate_overfit_capacity.py scripts/summarize_overfit_capacity.py scripts/run_overfit_capacity.py tests/test_overfit_capacity.py tests/test_overfit_evaluation_resolution.py
+python -m unittest tests.test_capacity_experiment_axes tests.test_overfit_capacity tests.test_overfit_evaluation_resolution -v
+git diff --check
 ```
 
-The 768 buckets contain roughly 57--63% of the native pixels, so a rough
-throughput expectation is materially faster than the observed 7.2--7.4 sec
-native optimizer step but not linearly proportional. After 20 steps, compute
-measured ETA from metrics JSONL with:
+The 26 CPU tests cover native and 768 training provenance, fixed native
+evaluation, exact Mixed-32 order and checkpoint steps, paired persisted
+geometry, no evaluator 768/cache mode, stale-output refusal/archive guidance,
+safe valid-native reuse, report provenance, comparison exclusion, no
+optimizer/backward path, and unchanged 768 training ownership.
 
-```bash
-python -c "import json,sys; r=[json.loads(x) for x in open(sys.argv[1])][-20:]; s=sum(x['sec_per_step'] for x in r)/len(r); print({'mean_sec_step':s,'eta_remaining_hours':s*(500-r[-1]['global_step'])/3600})" <checkpoint-root>/<experiment>/metrics.jsonl
-```
+## Exact next action
 
-## Exact next recommended action
-
-Run the final CPU test suite and static checks, review the uncommitted diff,
-then have an operator run the 768 MSE-only GH200 command above. Do not start
-the configurable pose-loss experiment until its immutable authoritative target
-sidecar is specified.
+An operator should archive the incompatible old canonical evaluation directory,
+then run the foreground native generation command above. Do not train or modify
+the completed checkpoints.

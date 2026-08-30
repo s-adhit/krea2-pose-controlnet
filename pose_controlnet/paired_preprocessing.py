@@ -139,6 +139,34 @@ def preprocess_pair(
     return PreprocessedPair(record=record, geometry=geometry, rgb=rgb, control=control)
 
 
+def preprocess_pair_with_persisted_geometry(
+    record: ManifestRecord, geometry: ResizeCropGeometry
+) -> PreprocessedPair:
+    """Apply an already-verified paired geometry without recomputing it.
+
+    Evaluation uses this for native-capacity examples: the persisted shard
+    geometry is authoritative, so it must not be reselected from the source
+    aspect ratio or silently replaced by an alternate-resolution policy.
+    """
+    try:
+        with Image.open(record.rgb_path) as rgb_source, Image.open(record.control_path) as control_source:
+            if rgb_source.size != geometry.source_size or control_source.size != geometry.source_size:
+                raise PairedPreprocessingError(
+                    f"Persisted source geometry disagrees for stem {record.stem!r}: "
+                    f"expected {geometry.source_size}, RGB {rgb_source.size}, control {control_source.size}"
+                )
+            rgb = _apply_geometry(rgb_source.convert("RGB"), geometry)
+            control = _apply_geometry(control_source.convert("RGB"), geometry)
+    except PairedPreprocessingError:
+        raise
+    except (OSError, ValueError) as exc:
+        raise PairedPreprocessingError(
+            f"Unable to read resolved pair for stem {record.stem!r}: "
+            f"RGB={record.rgb_path}, control={record.control_path}"
+        ) from exc
+    return PreprocessedPair(record=record, geometry=geometry, rgb=rgb, control=control)
+
+
 def inspect_resolved_samples(
     records: Iterable[ManifestRecord], limit: int
 ) -> list[dict[str, object]]:
