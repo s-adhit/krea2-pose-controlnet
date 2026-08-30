@@ -2,94 +2,94 @@
 
 ## Current objective
 
-The normalized-coordinate-Huber pose-reward smoke experiment is complete. The
-next bounded diagnostic is read-only critic alignment: score its already
-generated Turbo images with the same differentiable fixed-box Keypoint R-CNN
-objective used during the smoke run, then compare the internal error trend to
-the unchanged authoritative external PCK. Do not train, regenerate images,
-modify checkpoints, commit, or push from Codex.
+The deterministic 32-sample fresh-R64 capacity/overfit harness is implemented
+and ready for an operator-run GH200 experiment. Codex did **not** train,
+generate, evaluate, mutate checkpoints, commit, or push.
 
-## Completed experiment
+## Scientific/architecture contract
 
-Evaluation root:
+This is TRAINING-SET OVERFIT, not generalization: each run trains and evaluates
+the same 32 immutable train samples. It tests the existing frozen Krea-2 Raw
+base, fresh rank-64 Pose-Control LoRA, channel-concatenated ControlInputLayer,
+and flow-MSE only. No resume/trained LoRA state, ControlNet, pose reward,
+critic, KL, coordinate loss, warmup, new regularization, rank/target change,
+or architecture change is allowed.
 
-```text
-docs/evaluation/pose-reward-coord-exposure10pct-l1e5-t010-020
-```
+`scripts/train_overfit_capacity.py` is a thin harness over `train.py`'s fresh
+builder, `_flow_loss`, AdamW, scheduler, cached-text dropout, telemetry, and
+atomic checkpoint primitive; production `train.py` is unchanged.
 
-Branch checkpoints scored: `1525`, `1550`, `1575`, `1600`; required
-retrospective baseline: step `1500` from
-`docs/evaluation/turbo-8step-cfg0-lr5e5`. The immutable parent was
-`/lambda/nfs/adhit/krea2-pose/checkpoints/pose-learning-900-lr5e5-to1500/step_001500.pt`
-with SHA-256
-`6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0`.
+## Manifests
 
-Contract: `normalized_coordinate_huber`, temperature `1.0`, lambda `1e-5`,
-forced exposure `0.10`, window `[0.10, 0.20]`, final-window-uniform-v1,
-microbatch `1`, accumulation `32`.
+`configs/overfit_capacity/manifests/` contains six exact 32-unique immutable
+train subsets:
 
-## Critic-alignment implementation
+- COCO, Painting, Real Human, Sculpture: 16 one-person, 8 two-person, 4
+  three/four-person, 4 five-plus-person records from authoritative metadata.
+- Danbooru: 32 deterministic immutable train records; PCK is explicitly
+  unavailable because there are no authoritative targets.
+- Mixed: 6 COCO, 7 Painting, 7 Real Human, 6 Sculpture, 6 Danbooru. Every
+  mixed stem is reused from its homogeneous manifest.
 
-`scripts/turbo_benchmark.py critic-alignment` is generic: it derives branch
-steps, labels, Turbo provenance, and the recorded baseline from the completed
-`turbo_spec.json`; optional `--steps` must exactly match the branch generated
-and scored set. It first validates matching Turbo provenance, all generated
-images, baseline availability, score rows, image/sidecar bucket geometry,
-Phase-1 target availability, and the persisted coordinate-Huber training
-configuration. It then uses only the frozen fixed-box COCO_V1 critic with raw
-logits → spatial softmax at `T=1` → expected heatmap coordinates → cell-center
-ROI mapping → in-ROI normalization → delta-1 Huber over `reward_joint_valid`.
+`scripts/build_overfit_capacity_manifests.py` reproduces selection; persisted
+manifests define the experiment rather than filesystem order.
 
-The path has no sampler, generation, optimizer, parameter-gradient, or
-training operation. Danbooru/other Phase-1-unavailable samples are excluded;
-invalid/OOB joints are masked. `normalized_coordinate_distances` was added to
-`pose_controlnet/keypoint_critic.py` so the interpretable normalized Euclidean
-error shares the reward’s exact coordinate normalization.
+## Exact configuration
 
-It writes in the branch evaluation root:
+- Krea-2 Raw fresh base; rank/alpha 64/64; existing 28 × 8 targets
+  `attn.wq/wk/wv/wo/gate`, `mlp.gate/up/down`; `first.weight/bias` only.
+- Model: 13,035,162,188 total params; 215,488,512 trainable (1.6531326%).
+  LoRA 214,695,936; ControlInputLayer 792,576; 224 LoRA modules.
+- AdamW betas `(0.9,0.99)`, WD 0, LR `1e-4` constant from step 1. This is the
+  authoritative fresh `TrainConfig` R64 LR; `5e-5` is continuation-only.
+- Warmup 0; microbatch 1 × accumulation 8 = effective batch 8; steps
+  0/50/100/200/300/400/500. At 50…500: 400…4000 presentations or
+  12.5/25/50/75/100/125 dataset-equivalent passes.
+- Existing deterministic 10% cached-text caption dropout remains; no new
+  spatial augmentation; control dropout 0.
 
-```text
-critic_alignment_samples.json
-critic_alignment_summary.json
-critic_alignment_report.md
-```
+Checkpoints go to
+`/lambda/nfs/adhit/krea2-pose/overfit_capacity/checkpoints/<experiment>/`.
+Evaluation uses exact same 32 records, Turbo 8 steps/CFG 0/mu 1.15, fixed
+per-stem seeds, existing VAE/PCK/CLIP, and target RGB + pose control contact
+sheets. It has no optimizer/backward path.
 
-The summary includes baseline plus all branch checkpoint aggregates, absolute
-and percent deltas, externally precomputed PCK/CLIP/coverage, and descriptive
-Pearson/Spearman correlations across five checkpoint observations. It records
-that lower internal error and higher PCK should generally be negatively
-correlated; it does not treat five observations as conclusive.
-
-## Exact GH200 diagnostic command
-
-Run only after confirming the baseline `fixed_pose/*/step_001500.png` files
-are present at the baseline root; the command deliberately fails closed when
-they are absent.
+## GH200 commands — do not run from Codex
 
 ```bash
 cd /home/ubuntu/krea2-pose-controlnet
-PYTHONPATH=. python scripts/turbo_benchmark.py critic-alignment \
-  --output-root docs/evaluation/pose-reward-coord-exposure10pct-l1e5-t010-020 \
-  --sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3 \
-  --steps 1525 1550 1575 1600 \
-  --experiment-name pose-reward-coord-exposure10pct-l1e5-t010-020 \
-  --device cuda
+PYTHONPATH=. python scripts/run_overfit_capacity.py overfit32-coco-r64-mse
+PYTHONPATH=. python scripts/run_overfit_capacity.py overfit32-coco-r64-mse overfit32-danbooru-r64-mse overfit32-mixed-r64-mse
+PYTHONPATH=. python scripts/run_overfit_capacity.py $(PYTHONPATH=. python -c 'from pose_controlnet.overfit_capacity import OVERFIT_EXPERIMENTS; print(*OVERFIT_EXPERIMENTS)')
+PYTHONPATH=. python scripts/evaluate_overfit_capacity.py --experiment overfit32-coco-r64-mse --stage all
 ```
 
-Interpretation: A) internal critic improves and PCK improves = aligned /
-promising; B) internal critic improves and PCK worsens = reward misalignment;
-C) internal critic does not improve = auxiliary optimization/gradient
-effectiveness problem.
+Outputs: per-stem `control.png`, `target.png`, seven checkpoint PNGs,
+`training_set_overfit_metrics.json`, selection/full contact sheets,
+`overfit_summary.json`, and suite-level `capacity_comparison_summary.json`.
 
-## Checks completed this session
+Eight forward/backward microbatches occur per optimizer step, nominally ~4×
+fewer than accumulation 32. Until a 10–20-step measurement, treat the old
+30 sec/update only as a conservative ceiling: <=4.2 h train per 500-step run,
+plus 224 Turbo generations and PCK/CLIP scoring. Measure actual throughput:
 
-- PASS: focused CPU/no-network diagnostic, critic, and Turbo tests plus prior
-  relevant suites: 130 tests.
-- PASS: `PYTHONPATH=. python -m py_compile scripts/turbo_benchmark.py pose_controlnet/keypoint_critic.py tests/test_critic_alignment.py`.
-- PASS: `PYTHONPATH=. python scripts/turbo_benchmark.py critic-alignment --help`.
-- PASS: `git diff --check`.
+```bash
+python - <<'PY'
+import json, statistics
+p='/lambda/nfs/adhit/krea2-pose/overfit_capacity/checkpoints/overfit32-coco-r64-mse/metrics.jsonl'
+r=[json.loads(x) for x in open(p) if 'sec_per_step' in x][-20:]
+s=statistics.mean(x['sec_per_step'] for x in r); print({'mean_sec_per_step':s,'remaining_seconds':s*(500-r[-1]['step'])})
+PY
+```
 
-Changed this session: `scripts/turbo_benchmark.py`,
-`pose_controlnet/keypoint_critic.py`, `tests/test_critic_alignment.py`, and
-this handoff. No GH200 critic execution, training, image generation,
-checkpoint mutation, network call, commit, or push occurred.
+## Checks
+
+- PASS: py_compile all new capacity files.
+- PASS: `tests.test_overfit_capacity`, `test_train_mechanics`,
+  `test_turbo_evaluation`, and `test_post1500_evaluation` (68 tests).
+- PASS: CPU-only COCO `--preflight` (no model construction/output writes).
+- PASS: `git diff --check` before handoff update.
+
+Changed: manifests/helpers, selector, train/evaluate/runner/summary scripts,
+focused tests, and this handoff. Existing unrelated untracked critic/evaluation
+work remains untouched.
