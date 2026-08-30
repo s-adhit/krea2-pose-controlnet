@@ -2,99 +2,83 @@
 
 ## Current bounded objective
 
-The overfit-capacity evaluator has a fixed native-evaluation contract. This
-session changed only CPU-side evaluation, report, comparison, and paired
-geometry code. No training, generation, GPU evaluation, checkpoint/output
-mutation, deletion, commit, or push was performed.
+The authoritative exact-manifest Mixed-32 reference-pose sidecar required for
+quantitative scoring is built and CPU-verified. This session changed only
+sidecar construction/loading and score-only geometry selection. No training,
+generation, GPU evaluation, checkpoint/output mutation (other than the new
+requested immutable sidecar), deletion, commit, or push occurred.
 
-## Resolution policy in force
+## Exact sidecar
 
-- Low resolution is a training-only capacity axis. Training may use `native`
-  or `768`; the training CLI still owns `--resolution`.
-- Every capacity evaluation is `native`, independently of training resolution.
-  The evaluation CLI has no resolution or resolution-cache option.
-- Native evaluation reads the persisted original source size, resized size,
-  crop box, and bucket from the native latent shard for every stem. It rebuilds
-  RGB target and pose control with that exact shared geometry; it never reads
-  an alternate-resolution cache.
-- Evaluation records both fields explicitly: `training_resolution` is read
-  from checkpoint provenance, while `evaluation_resolution` is always
-  `native`. Evaluation resolution is never inferred from the training value.
+- Records: `data/manifests/overfit_capacity_reference_pose/overfit32-mixed-r64-mse.jsonl`
+- Metadata: `data/manifests/overfit_capacity_reference_pose/overfit32-mixed-r64-mse.jsonl.metadata.json`
+- Records SHA-256: `95ef6d7d6aa69bc7784f38340abf9e19285d097a4ebf306f8c06f0e3b9cfb3d4`
+- Input manifest SHA-256: `18ed9279a1bd05eece600ff950c6d42a4fb84efee7cbf24d82b28882920cc17d`
+- Authoritative numerical source: `/lambda/nfs/adhit/krea2-pose/pose_targets_v3/records.jsonl`
+  (SHA-256 `dfc32293f1bdb76de58e34a02f95a14e515b0080b7c2f60ddd4a28c6f9fb2d8f`).
+- Coverage: 32 records; 26 eligible authoritative targets (6 COCO, 7 HumanArt
+  painting, 7 HumanArt real human, 6 HumanArt sculpture); 6 Danbooru records
+  explicitly unavailable for numerical pose scoring.
+- Compatibility is explicitly limited to `overfit32-mixed-r64-mse` and
+  `overfit32-mixed-r64-mse-res768`, which share the exact manifest stems.
 
-## Completed and non-authoritative state
+The sidecar retains authoritative source-space person keypoints and source
+visibility data plus per-record provenance. It deliberately contains no old
+bucket/crop/resized coordinates. During score-only evaluation, source-space
+references are transformed from the exact native geometry persisted in
+`generation_results.json`; the 768 training cache is not used for scoring.
+Danbooru is excluded from numerical PCK rather than treated as a failure.
 
-- Completed 768-trained checkpoint root (read-only):
-  `/lambda/nfs/adhit/krea2-pose/overfit_capacity/checkpoints/overfit32-mixed-r64-mse-res768`
-  with exact checkpoints `0, 50, 100, 200, 300, 400, 500`.
-- Its training provenance remains `training_resolution = 768`; checkpoint
-  metadata and weights were not modified.
-- The earlier 768-geometry evaluation for that experiment was interrupted and
-  is non-authoritative. It must not be resumed or compared.
-- Canonical native-evaluation root:
-  `/lambda/nfs/adhit/krea2-pose/overfit_capacity/evaluation/overfit32-mixed-r64-mse-res768`.
-  The evaluator refuses incompatible/malformed/incomplete content there before
-  writing. Its error gives an archive command; do not delete artifacts.
+## Implementation and verification
 
-Read-only inspection confirmed that canonical directory currently contains a
-`training_set/` tree but no `generation_results.json`; it is incomplete and
-must be archived before native generation.
-
-If that refusal occurs, first confirm the archive destination does not exist,
-then an operator may preserve the old partial directory with:
-
-```bash
-mv -- /lambda/nfs/adhit/krea2-pose/overfit_capacity/evaluation/overfit32-mixed-r64-mse-res768 /lambda/nfs/adhit/krea2-pose/overfit_capacity/evaluation/overfit32-mixed-r64-mse-res768.partial-768-eval-archive
-```
-
-After that archive, foreground native generation (not from Codex) is:
-
-```bash
-cd /home/ubuntu/krea2-pose-controlnet
-PYTHONPATH=. python scripts/evaluate_overfit_capacity.py --experiment overfit32-mixed-r64-mse-res768 --stage generate
-```
-
-Then the foreground native qualitative report command is:
-
-```bash
-PYTHONPATH=. python scripts/evaluate_overfit_capacity.py --experiment overfit32-mixed-r64-mse-res768 --stage report
-```
-
-The report remains: pose control, target training RGB, then steps `0, 50,
-100, 200, 300, 400, 500`, all at native geometry. Future 768 pose-loss
-experiments follow the same native-evaluation rule. Comparison labels are
-`Native train / Native eval`, `768 train / Native eval`, and
-`768+pose train / Native eval`; entries without explicit native evaluation
-provenance are excluded.
-
-## Files changed this session
-
-- `pose_controlnet/paired_preprocessing.py`
-- `pose_controlnet/capacity_resolution.py`
-- `scripts/evaluate_overfit_capacity.py`
-- `scripts/run_overfit_capacity.py`
-- `scripts/summarize_overfit_capacity.py`
-- `tests/test_overfit_capacity.py`
-- `tests/test_overfit_evaluation_resolution.py`
-- `docs/CODEX_HANDOFF.md`
-
-## Verification
+- Added `scripts/build_overfit_capacity_reference_pose.py`.
+- Extended `pose_controlnet/reference_pose.py` with immutable generic
+  exact-manifest construction/loading while preserving existing COCO-sidecar
+  behavior.
+- `scripts/evaluate_overfit_capacity.py --stage score-only` now gets scoring
+  geometry from persisted native generation metadata. Existing Keypoint R-CNN
+  COCO_V1, confidence >= 0.5, deterministic Hungarian, bbox-diagonal PCK,
+  unmatched-reference, CLIP, and coverage semantics are unchanged.
+- Added `tests/test_overfit_mixed_reference_pose.py` for exact order, eligible
+  joins, Danbooru unavailability, fail-closed cases, source SHA, native
+  transform, no 768 leak, dual-experiment reuse, no detector builder path,
+  existing COCO compatibility, and evaluation-only scoring.
 
 PASS:
 
 ```bash
-python -m py_compile pose_controlnet/paired_preprocessing.py pose_controlnet/capacity_resolution.py scripts/evaluate_overfit_capacity.py scripts/summarize_overfit_capacity.py scripts/run_overfit_capacity.py tests/test_overfit_capacity.py tests/test_overfit_evaluation_resolution.py
-python -m unittest tests.test_capacity_experiment_axes tests.test_overfit_capacity tests.test_overfit_evaluation_resolution -v
-git diff --check
+python -m py_compile pose_controlnet/reference_pose.py scripts/build_overfit_capacity_reference_pose.py scripts/evaluate_overfit_capacity.py tests/test_capacity_reference_pose.py tests/test_overfit_evaluation_resolution.py tests/test_overfit_mixed_reference_pose.py
+python -m unittest tests.test_capacity_reference_pose tests.test_overfit_evaluation_resolution tests.test_overfit_mixed_reference_pose -v
 ```
 
-The 26 CPU tests cover native and 768 training provenance, fixed native
-evaluation, exact Mixed-32 order and checkpoint steps, paired persisted
-geometry, no evaluator 768/cache mode, stale-output refusal/archive guidance,
-safe valid-native reuse, report provenance, comparison exclusion, no
-optimizer/backward path, and unchanged 768 training ownership.
+A read-only CPU validation loaded the new sidecar against the already-generated
+native geometry for `overfit32-mixed-r64-mse-res768`: 32 geometry records, 26
+available targets, 6 unavailable targets, and the authoritative source SHA
+matched exactly. It did not instantiate a detector or score any images.
+
+## Operator commands
+
+Build (the target is immutable and will refuse overwrite):
+
+```bash
+cd /home/ubuntu/krea2-pose-controlnet
+PYTHONPATH=. python scripts/build_overfit_capacity_reference_pose.py --manifest configs/overfit_capacity/manifests/overfit32-mixed-r64-mse.jsonl --authoritative-source /lambda/nfs/adhit/krea2-pose/pose_targets_v3 --output data/manifests/overfit_capacity_reference_pose/overfit32-mixed-r64-mse.jsonl
+```
+
+Foreground native score-only evaluation (not run in this session):
+
+```bash
+cd /home/ubuntu/krea2-pose-controlnet
+PYTHONPATH=. python scripts/evaluate_overfit_capacity.py --experiment overfit32-mixed-r64-mse-res768 --stage score-only --reference-sidecar data/manifests/overfit_capacity_reference_pose/overfit32-mixed-r64-mse.jsonl
+```
+
+Print metrics after that score-only command completes:
+
+```bash
+cat /lambda/nfs/adhit/krea2-pose/overfit_capacity/evaluation/overfit32-mixed-r64-mse-res768/training_set_overfit_metrics.json
+```
 
 ## Exact next action
 
-An operator should archive the incompatible old canonical evaluation directory,
-then run the foreground native generation command above. Do not train or modify
-the completed checkpoints.
+An operator may run the foreground score-only command above. Do not train,
+regenerate, alter checkpoints, or run the 6000-step production job.

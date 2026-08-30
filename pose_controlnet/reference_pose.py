@@ -16,6 +16,8 @@ from typing import Any, Iterable, Mapping
 
 
 CAPACITY_REFERENCE_FORMAT_VERSION = 1
+EXACT_MANIFEST_REFERENCE_FORMAT_VERSION = 1
+EXACT_MANIFEST_REFERENCE_KIND = "exact_manifest_authoritative_pose_v1"
 
 
 COCO_17 = (
@@ -399,6 +401,203 @@ def _capacity_metadata_path(output: Path) -> Path:
     return output.with_suffix(output.suffix + ".metadata.json")
 
 
+def _manifest_domain(stem: str) -> tuple[str, str]:
+    """Return scorer source and exact source domain for a known PoseBridge stem."""
+    if stem.startswith("coco_"):
+        return "coco", "coco"
+    if stem.startswith("painting_humanart_"):
+        return "humanart", "humanart_painting"
+    if stem.startswith("real_human_humanart_"):
+        return "humanart", "humanart_real_human"
+    if stem.startswith("sculpture_humanart_"):
+        return "humanart", "humanart_sculpture"
+    if stem.startswith("danbooru_"):
+        return "danbooru", "danbooru"
+    raise ReferencePoseError(f"Unsupported capacity-manifest stem: {stem!r}")
+
+
+def _exact_manifest_stems(manifest_path: str | Path) -> tuple[str, ...]:
+    """Read one immutable capacity manifest without deriving any path layout."""
+    path = Path(manifest_path)
+    if not path.is_file():
+        raise ReferencePoseError(f"Exact capacity manifest is missing: {path}")
+    try:
+        rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    except json.JSONDecodeError as exc:
+        raise ReferencePoseError(f"Exact capacity manifest is invalid JSONL: {path}") from exc
+    stems = []
+    for index, row in enumerate(rows, 1):
+        file_name = row.get("file_name") if isinstance(row, Mapping) else None
+        if not isinstance(file_name, str) or Path(file_name).name != file_name or Path(file_name).suffix.lower() != ".jpg":
+            raise ReferencePoseError(f"Exact capacity manifest row {index} has an invalid bare .jpg file_name")
+        stems.append(Path(file_name).stem)
+    if len(stems) != 32 or len(set(stems)) != len(stems):
+        raise ReferencePoseError("Exact capacity manifest must contain exactly 32 unique stems")
+    return tuple(stems)
+
+
+def _source_people_for_exact_manifest(record: Mapping[str, Any], *, stem: str) -> list[dict[str, Any]]:
+    """Copy only source-space target data; never carry old training geometry forward."""
+    people = record.get("people")
+    if not isinstance(people, list):
+        raise ReferencePoseError(f"{stem}: authoritative target has no people list")
+    copied: list[dict[str, Any]] = []
+    for person_index, person in enumerate(people):
+        if not isinstance(person, Mapping):
+            raise ReferencePoseError(f"{stem}: authoritative person {person_index} is malformed")
+        points = person.get("keypoints_source")
+        if not isinstance(points, list) or len(points) != 17 or any(
+            not isinstance(point, list) or len(point) != 3 or not all(isinstance(value, (int, float)) for value in point)
+            for point in points
+        ):
+            raise ReferencePoseError(f"{stem}: authoritative person {person_index} lacks 17 source-space keypoints")
+        source_points = [[float(value) for value in point] for point in points]
+        copied.append({
+            "person_id": person.get("person_id"), "annotation_id": person.get("annotation_id"),
+            "bbox_source_xywh": person.get("bbox_source_xywh"),
+            "keypoints": source_points, "keypoints_source": source_points,
+            "source_visibility_or_confidence": [point[2] for point in source_points],
+            "source_visible_mask": [point[2] > 0 for point in source_points],
+        })
+    return copied
+
+
+def build_exact_manifest_reference_records(*, manifest_path: str | Path,
+                                           authoritative_records: Iterable[Mapping[str, Any]] | Mapping[str, Mapping[str, Any]],
+                                           authoritative_metadata: Mapping[str, Any],
+                                           compatible_experiments: Iterable[str]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Build source-space-only references for one exact 32-stem manifest.
+
+    This is intentionally independent of latent shards and of training
+    resolution.  Native evaluation geometry is supplied later by the persisted
+    generation result, immediately before PCK scoring.
+    """
+    manifest = Path(manifest_path)
+    stems = _exact_manifest_stems(manifest)
+    source_rows = list(authoritative_records.values()) if isinstance(authoritative_records, Mapping) else list(authoritative_records)
+    supplied_records: dict[str, Mapping[str, Any]] = {}
+    for source in source_rows:
+        stem = source.get("stem") if isinstance(source, Mapping) else None
+        if not isinstance(stem, str):
+            raise ReferencePoseError("Authoritative target lookup contains a record without a stem")
+        if stem in supplied_records:
+            raise ReferencePoseError(f"Authoritative target lookup contains duplicate stem: {stem}")
+        supplied_records[stem] = source
+    expected_sha = authoritative_metadata.get("records_sha256")
+    if not isinstance(expected_sha, str) or len(expected_sha) != 64:
+        raise ReferencePoseError("Authoritative target metadata lacks records_sha256")
+    output: list[dict[str, Any]] = []
+    available, unavailable = 0, 0
+    for stem in stems:
+        scorer_source, domain = _manifest_domain(stem)
+        if domain == "danbooru":
+            output.append({
+                "schema_version": EXACT_MANIFEST_REFERENCE_FORMAT_VERSION, "stem": stem,
+                "source": scorer_source, "source_domain": domain, "status": "unavailable",
+                "pose_scoring_available": False, "target_provenance": "unavailable",
+                "reason": "authoritative_numerical_pose_target_unavailable", "people": None,
+            })
+            unavailable += 1
+            continue
+        source = supplied_records.get(stem)
+        if source is None:
+            raise ReferencePoseError(f"{stem}: eligible manifest stem is missing from authoritative pose targets")
+        if source.get("stem") != stem or source.get("pose_reward_available") is not True:
+            raise ReferencePoseError(f"{stem}: authoritative pose target is mismatched or unavailable")
+        authoritative_domain = "coco" if scorer_source == "coco" else domain
+        if source.get("source") != authoritative_domain:
+            raise ReferencePoseError(f"{stem}: authoritative pose target source does not match manifest domain")
+        source_size = source.get("source_size")
+        if not isinstance(source_size, list) or len(source_size) != 2 or any(not isinstance(value, int) or value < 1 for value in source_size):
+            raise ReferencePoseError(f"{stem}: authoritative pose target lacks valid source dimensions")
+        people = _source_people_for_exact_manifest(source, stem=stem)
+        # Preserve immutable numerical provenance without carrying any prior
+        # bucket/crop coordinates that could leak a training resolution.
+        provenance = {
+            "authoritative_records_sha256": expected_sha,
+            "authoritative_records_file": authoritative_metadata.get("records_file"),
+            "source_record_sha256": hashlib.sha256(
+                json.dumps(source, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            ).hexdigest(),
+            "target_provenance": source.get("target_provenance"),
+            "annotation_source": source.get("annotation_source"),
+            "source_image_id": source.get("source_image_id"),
+            "source_image_name": source.get("source_image_name"),
+            "source_annotation_split": source.get("source_annotation_split"),
+            "provenance_metadata": source.get("provenance_metadata"),
+            "renderer": source.get("renderer"),
+        }
+        output.append({
+            "schema_version": EXACT_MANIFEST_REFERENCE_FORMAT_VERSION, "stem": stem,
+            "source": scorer_source, "source_domain": domain, "status": "available",
+            "pose_scoring_available": True, "target_provenance": "original_annotation",
+            "source_size": list(source_size), "joint_schema": source.get("joint_schema"),
+            "mode": "crowd" if source.get("sample_type") == "crowd" else "single",
+            "people": people, "provenance": provenance,
+        })
+        available += 1
+    identities = tuple(compatible_experiments)
+    if not identities or len(set(identities)) != len(identities):
+        raise ReferencePoseError("Compatible experiment identities must be a non-empty unique list")
+    metadata = {
+        "format_version": EXACT_MANIFEST_REFERENCE_FORMAT_VERSION,
+        "sidecar_kind": EXACT_MANIFEST_REFERENCE_KIND, "read_only": True,
+        "source_manifest": str(manifest.resolve()),
+        "source_manifest_sha256": hashlib.sha256(manifest.read_bytes()).hexdigest(),
+        "manifest_stems": list(stems), "compatible_experiments": list(identities),
+        "authoritative_source": {
+            "path": authoritative_metadata.get("source_path"),
+            "records_file": authoritative_metadata.get("records_file"),
+            "records_sha256": expected_sha,
+            "schema_version": authoritative_metadata.get("schema_version"),
+        },
+        "coverage": {"total": len(stems), "eligible_available": available, "explicitly_unavailable": unavailable},
+    }
+    return output, metadata
+
+
+def write_exact_manifest_reference_jsonl(records: Iterable[Mapping[str, Any]], output: str | Path,
+                                         *, metadata: Mapping[str, Any]) -> dict[str, Any]:
+    """Atomically publish a non-overwritable sidecar in exact manifest order."""
+    path = Path(output); metadata_path = _capacity_metadata_path(path)
+    if path.exists() or metadata_path.exists():
+        raise ReferencePoseError(f"Refusing to overwrite immutable capacity reference sidecar: {path}")
+    ordered = [dict(record) for record in records]
+    stems = [record.get("stem") for record in ordered]
+    if len(stems) != len(set(stems)) or any(not isinstance(stem, str) for stem in stems):
+        raise ReferencePoseError("Exact-manifest reference output has duplicate or invalid stems")
+    if list(metadata.get("manifest_stems", ())) != stems:
+        raise ReferencePoseError("Exact-manifest reference output does not preserve manifest stem order")
+    content = "".join(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n" for record in ordered)
+    digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    return _write_capacity_reference_files(path, metadata_path, content, {
+        "records_file": path.name, "records_sha256": digest, "record_count": len(ordered), **dict(metadata),
+    })
+
+
+def _write_capacity_reference_files(path: Path, metadata_path: Path, content: str,
+                                    published: Mapping[str, Any]) -> dict[str, Any]:
+    """Write both immutable files together after all caller validation."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent, text=True)
+    temporary_path = Path(temporary)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(content); handle.flush(); os.fsync(handle.fileno())
+        metadata_temporary = temporary_path.with_name(temporary_path.name + ".metadata")
+        metadata_temporary.write_text(json.dumps(dict(published), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        if path.exists() or metadata_path.exists():
+            raise ReferencePoseError(f"Refusing to overwrite immutable capacity reference sidecar: {path}")
+        os.replace(temporary_path, path); os.replace(metadata_temporary, metadata_path)
+    finally:
+        if temporary_path.exists():
+            temporary_path.unlink()
+        metadata_temporary = locals().get("metadata_temporary")
+        if isinstance(metadata_temporary, Path) and metadata_temporary.exists():
+            metadata_temporary.unlink()
+    return dict(published)
+
+
 def write_capacity_reference_jsonl(records: Iterable[Mapping[str, Any]], output: str | Path, *, metadata: Mapping[str, Any]) -> dict[str, Any]:
     """Atomically create a non-overwritable exact-manifest reference sidecar."""
     path = Path(output)
@@ -478,7 +677,7 @@ def build_exact_coco_capacity_reference_sidecar(*, experiment_name: str, latent_
 def load_exact_capacity_reference_sidecar(path: str | Path, *, experiment_name: str,
                                           expected_stems: Iterable[str],
                                           geometry_by_stem: Mapping[str, Mapping[str, Any]] | None = None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Load an exact COCO capacity sidecar and reject fallbacks or partial coverage."""
+    """Load an exact immutable capacity sidecar and reject partial coverage."""
     sidecar = Path(path)
     metadata_path = _capacity_metadata_path(sidecar)
     if not sidecar.is_file() or not metadata_path.is_file():
@@ -491,15 +690,49 @@ def load_exact_capacity_reference_sidecar(path: str | Path, *, experiment_name: 
     expected = tuple(expected_stems)
     if len(expected) != len(set(expected)):
         raise ReferencePoseError("Expected capacity manifest stems are not unique")
-    if metadata.get("format_version") != CAPACITY_REFERENCE_FORMAT_VERSION or metadata.get("read_only") is not True:
+    if metadata.get("read_only") is not True:
         raise ReferencePoseError("Capacity reference sidecar metadata has an unsupported schema")
-    if metadata.get("experiment") != experiment_name or metadata.get("source") != "coco":
-        raise ReferencePoseError("Capacity reference sidecar provenance is inconsistent with the requested COCO experiment")
     if metadata.get("records_sha256") != hashlib.sha256(raw).hexdigest() or metadata.get("record_count") != len(records):
         raise ReferencePoseError("Capacity reference sidecar integrity check failed")
     stems = [record.get("stem") for record in records]
     if len(stems) != len(set(stems)) or set(stems) != set(expected) or len(records) != len(expected):
         raise ReferencePoseError("Capacity reference sidecar does not exactly cover the requested manifest stems")
+    generic = metadata.get("sidecar_kind") == EXACT_MANIFEST_REFERENCE_KIND
+    if generic:
+        if metadata.get("format_version") != EXACT_MANIFEST_REFERENCE_FORMAT_VERSION:
+            raise ReferencePoseError("Exact-manifest reference sidecar metadata has an unsupported schema")
+        if experiment_name not in metadata.get("compatible_experiments", []):
+            raise ReferencePoseError("Exact-manifest reference sidecar is not declared compatible with the requested experiment")
+        if metadata.get("manifest_stems") != list(expected) or stems != list(expected):
+            raise ReferencePoseError("Exact-manifest reference sidecar manifest provenance is not the exact requested stem order")
+        source = metadata.get("authoritative_source")
+        if not isinstance(source, Mapping) or not isinstance(source.get("records_sha256"), str):
+            raise ReferencePoseError("Exact-manifest reference sidecar lacks authoritative source SHA provenance")
+        for record in records:
+            stem = record["stem"]
+            expected_source, domain = _manifest_domain(stem)
+            if (record.get("schema_version") != EXACT_MANIFEST_REFERENCE_FORMAT_VERSION
+                    or record.get("source") != expected_source or record.get("source_domain") != domain):
+                raise ReferencePoseError(f"{stem}: exact-manifest reference record provenance is inconsistent")
+            available = record.get("status") == "available"
+            if available != (record.get("pose_scoring_available") is True):
+                raise ReferencePoseError(f"{stem}: exact-manifest reference availability is inconsistent")
+            if domain == "danbooru":
+                if available or record.get("target_provenance") != "unavailable" or record.get("people") is not None:
+                    raise ReferencePoseError(f"{stem}: Danbooru must remain explicitly unavailable for numerical pose scoring")
+                continue
+            if not available or record.get("target_provenance") != "original_annotation" or not isinstance(record.get("people"), list):
+                raise ReferencePoseError(f"{stem}: eligible exact-manifest reference record is unavailable or malformed")
+            if geometry_by_stem is not None:
+                actual = geometry_by_stem.get(stem)
+                if actual is None or list(actual.get("source_size", ())) != record.get("source_size"):
+                    raise ReferencePoseError(f"{stem}: source dimensions cannot be reconciled with persisted native generation metadata")
+        return metadata, records
+
+    if metadata.get("format_version") != CAPACITY_REFERENCE_FORMAT_VERSION:
+        raise ReferencePoseError("Capacity reference sidecar metadata has an unsupported schema")
+    if metadata.get("experiment") != experiment_name or metadata.get("source") != "coco":
+        raise ReferencePoseError("Capacity reference sidecar provenance is inconsistent with the requested COCO experiment")
     if metadata.get("stems") != list(expected):
         raise ReferencePoseError("Capacity reference sidecar manifest provenance is not the exact requested stem order")
     for record in records:
