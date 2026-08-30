@@ -1,96 +1,100 @@
 # Project handoff
 
-## Current objective and live status
+## Current bounded objective
 
-The only active capacity task was fixing the COCO-32 save crash and providing
-an exact, fail-closed resume path. It is implemented and CPU-tested. Codex did
-**not** train, evaluate, alter existing checkpoints, delete run outputs, commit,
-or push.
+Authoritative COCO-32 pose-reference coverage and score-only rescoring for the
+completed `overfit32-coco-r64-mse` capacity evaluation are implemented and
+CPU-tested. No training, Turbo generation, checkpoint mutation, output
+deletion, commit, or push occurred in this session.
 
-The live `overfit32-coco-r64-mse` run completed optimizer step 150, then
-crashed before publishing a step-150 checkpoint. Root cause: the trainer used
-`global_step % 50 == 0` while `per_step_exposures()` correctly permits only
-scientific milestones `0, 50, 100, 200, 300, 400, 500`.
+## Confirmed completed experiment state
 
-## Scientific/architecture contract (unchanged)
+- Training and the seven-checkpoint Turbo generation are complete for the same
+  32 COCO training samples (224 generated PNGs total), steps `0, 50, 100, 200,
+  300, 400, 500`.
+- Checkpoints remain under
+  `/lambda/nfs/adhit/krea2-pose/overfit_capacity/checkpoints/overfit32-coco-r64-mse`.
+- Evaluation remains under
+  `/lambda/nfs/adhit/krea2-pose/overfit_capacity/evaluation/overfit32-coco-r64-mse`.
+- The old `data/manifests/diagnostic_reference_pose.json` has coverage **0/32**
+  for the exact COCO capacity stems. Its null PCK was an evaluation-coverage
+  failure, not a training outcome.
+- The verified v1 PoseBridge latent coverage for the exact stems is **32/32**.
+  The only geometry source is the explicit direct-shard root
+  `/lambda/nfs/adhit/krea2-pose/posebridge_latents/train`; only direct
+  `train-*.pt` files are considered. Text-conditioning archives, including
+  `text_conditioning_v1_backup` duplicate stems, are never geometry sources.
 
-- Fresh Krea-2 Raw base; fresh rank/alpha 64/64 Pose-Control LoRA, existing
-  28 × 8 LoRA targets, and `ControlInputLayer` only.
-- Flow-MSE only; no pose reward/critic; LR `1e-4` constant; warmup 0.
-- Microbatch 1 × accumulation 8 = effective batch 8; exact immutable COCO-32
-  manifest; deterministic cached-text 10% dropout; no spatial augmentation.
-- Terminal optimizer step remains exactly 500. Production `train.py` behavior
-  was not changed.
+## Implemented exact-reference contract
 
-## Save schedule and resume behavior
+- `pose_controlnet.reference_pose` resolves the immutable 32-stem manifest,
+  reads only direct verified v1 `train-*.pt` shards, preserves persisted
+  `source_size`, `resized_size`, `crop_box`, and `bucket` verbatim, and joins
+  only official `person_keypoints_train2017.json` / `person_keypoints_val2017.json`.
+- It fails closed for bad manifest cardinality, missing/duplicate requested
+  stems, malformed shards/geometry, non-COCO manifests, annotation failures,
+  output coverage failures, inconsistent geometry, and sidecar integrity or
+  provenance mismatches.
+- The immutable sidecar path is
+  `data/manifests/overfit_capacity_reference_pose/overfit32-coco-r64-mse.jsonl`
+  with adjacent `.jsonl.metadata.json`. Metadata records the experiment,
+  ordered stems, source manifest SHA-256, explicit latent root/shards, official
+  annotation paths/hashes, record/people counts, and records SHA-256.
+- Capacity scoring now requires `--reference-sidecar`; it cannot fall back to
+  `diagnostic_reference_pose.json`. It validates exact stem coverage and
+  sidecar geometry before calling the unchanged authoritative Keypoint R-CNN /
+  Hungarian / PCK implementation. Danbooru remains explicitly unavailable
+  without real authoritative targets.
+- `--stage score-only` consumes existing deterministic generation metadata and
+  all existing PNGs, then updates only `training_set_overfit_metrics.json` and
+  `overfit_summary.json` (preserving any qualitative-grid references). It does
+  not load checkpoints, build a Raw/Turbo model or VAE, sample, train, create
+  an optimizer, or call backward.
 
-`OVERFIT_CHECKPOINT_STEPS` is now the sole trainer save authority:
-`50, 100, 200, 300, 400, 500`. Step 0 remains the fresh-model reference
-checkpoint/evaluation point. Steps 150/250/350/450 cannot trigger a save.
-Every checkpoint save additionally asserts that its step is in the complete
-scientific list including step 0.
+## Operator commands (foreground; do not run from Codex)
 
-`scripts/train_overfit_capacity.py --resume PATH` is explicit only; normal
-invocation remains a fresh-LoRA run and still refuses an existing run directory.
-Resume only accepts a checkpoint in the named experiment's own directory and
-requires its metadata, exact manifest stems, experiment name, R64/224-target
-architecture audit, flow-MSE-only provenance, zero warmup, exact LR/config,
-authoritative embedded step/name, scheduler state, exact deterministic
-32-sample epoch/batch position, exposure accounting, and full checkpoint
-schema. It restores trainable model state, AdamW state, scheduler, global
-step, epoch/batch position, Python/NumPy/torch RNG, CUDA RNG when available,
-and flow-generator RNG before more work begins.
-
-Read-only audit of
-`/lambda/nfs/adhit/krea2-pose/overfit_capacity/checkpoints/overfit32-coco-r64-mse`
-found valid `step_000000.pt`, `step_000050.pt`, and `step_000100.pt` only.
-The latest valid exact-resume checkpoint is `step_000100.pt` (2,586,424,412
-bytes); its embedded progress is `global_step=100`, `epoch=24`,
-`batch_position=32`.
-
-Exact GH200 operator command (do not run from Codex):
+Build the sidecar only after supplying the real official COCO annotation
+path(s); use one or both as needed by the 32 stems:
 
 ```bash
 cd /home/ubuntu/krea2-pose-controlnet
-PYTHONPATH=. python scripts/train_overfit_capacity.py \
+PYTHONPATH=. python scripts/build_coco_reference_pose.py \
   --experiment overfit32-coco-r64-mse \
-  --resume /lambda/nfs/adhit/krea2-pose/overfit_capacity/checkpoints/overfit32-coco-r64-mse/step_000100.pt
+  --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents/train \
+  --annotations /path/to/person_keypoints_train2017.json /path/to/person_keypoints_val2017.json \
+  --output data/manifests/overfit_capacity_reference_pose/overfit32-coco-r64-mse.jsonl
 ```
 
-Completion checkpoint set: `step_000000.pt`, `step_000050.pt`,
-`step_000100.pt`, `step_000200.pt`, `step_000300.pt`, `step_000400.pt`, and
-`step_000500.pt`; no 150/250/350/450 checkpoints.
+Then rescore the already generated 224 PNGs, without generation:
 
-## Metrics and W&B
+```bash
+cd /home/ubuntu/krea2-pose-controlnet
+PYTHONPATH=. python scripts/evaluate_overfit_capacity.py \
+  --experiment overfit32-coco-r64-mse \
+  --stage score-only \
+  --reference-sidecar data/manifests/overfit_capacity_reference_pose/overfit32-coco-r64-mse.jsonl
+```
 
-The live `metrics.jsonl` has steps 1–150. On resume from step 100, the harness
-preserves the full pre-resume file verbatim as
-`metrics.pre_resume_after_step_000100.jsonl`, atomically retains only steps
-1–100 in authoritative `metrics.jsonl`, then appends re-executed 101–500.
-This prevents duplicate authoritative step records without discarding evidence
-of the interrupted tail. W&B run ID was not persisted by the original live
-run, so safe reuse cannot be proven: default W&B logging starts a continuation
-segment with the same display name. Local `metrics.jsonl` is authoritative.
+Expected updated machine-readable artifacts are
+`training_set_overfit_metrics.json` and `overfit_summary.json`; existing
+`checkpoint_selection_grid.png`, `full_training_set_contact_sheet.png`,
+`generation_results.json`, and all 224 generated images are reused unchanged.
 
 ## Files changed and checks
 
-- `pose_controlnet/overfit_capacity.py`: authoritative nonzero save schedule
-  helper and contract assertion.
-- `scripts/train_overfit_capacity.py`: explicit fail-closed exact resume,
-  state restoration, metrics reconciliation, and schedule-only saves.
-- `tests/test_overfit_capacity.py`: focused schedule, terminal, resume-state,
-  identity/manifest/non-overfit rejection, fresh-start, metrics, and scientific
-  contract tests.
-- `docs/CODEX_HANDOFF.md`: this state.
+- `pose_controlnet/reference_pose.py`
+- `scripts/build_coco_reference_pose.py`
+- `scripts/evaluate_overfit_capacity.py`
+- `tests/test_capacity_reference_pose.py`
+- `docs/CODEX_HANDOFF.md`
 
 PASS:
 
 ```bash
-python -m unittest tests.test_overfit_capacity -v  # 10 tests
-python -m unittest tests.test_train_mechanics -v   # 42 tests
-python -m py_compile scripts/train_overfit_capacity.py pose_controlnet/overfit_capacity.py tests/test_overfit_capacity.py
+python -m unittest tests.test_capacity_reference_pose tests.test_reference_pose tests.test_overfit_capacity tests.test_post1500_evaluation -v  # 32 tests
+python -m py_compile pose_controlnet/reference_pose.py scripts/build_coco_reference_pose.py scripts/evaluate_overfit_capacity.py tests/test_capacity_reference_pose.py
 ```
 
-Next action: operator may run the exact explicit resume command above. Do not
-start evaluation from Codex; do not run a fresh COCO capacity command against
-the existing checkpoint namespace.
+Next action: operator builds the exact immutable sidecar with official COCO
+annotations, then runs the foreground score-only command above. Completed
+training and generation remain valid and must not be repeated.

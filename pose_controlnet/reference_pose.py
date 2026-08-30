@@ -15,6 +15,9 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
+CAPACITY_REFERENCE_FORMAT_VERSION = 1
+
+
 COCO_17 = (
     "nose", "left_eye", "right_eye", "left_ear", "right_ear",
     "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
@@ -279,9 +282,13 @@ def build_coco_reference_records(samples: Iterable[Mapping[str, Any]], annotatio
         if required_annotation_id is not None and not people:
             raise ReferencePoseError(f"{stem}: required COCO person annotation {required_annotation_id} has no usable 17-keypoint record")
         records.append({
-            "stem": stem, "source": "coco", "source_image_id": image_id,
+            "schema_version": CAPACITY_REFERENCE_FORMAT_VERSION,
+            "stem": stem, "source": "coco", "status": "available",
+            "mode": "crowd" if required_annotation_id is None else "single", "source_image_id": image_id,
+            "source_size": list(source_size), "resized_size": list(resized_size), "crop_box": list(crop_box), "bucket": list(bucket),
             "source_dimensions": list(source_size), "joint_schema": {"name": "coco_17", "joints": list(COCO_17)},
-            "people": people,
+            "person_grouping": "one record per official COCO person; image-level list preserves COCO grouping",
+            "people": [{**person, "keypoints": person["keypoints_source"]} for person in people],
             "geometry": {"source_size": list(source_size), "resized_size": list(resized_size), "crop_box": list(crop_box), "bucket": list(bucket), "coordinate_transform": "x_bucket=x*(resized_width/source_width)-crop_left; y_bucket=y*(resized_height/source_height)-crop_top"},
             "provenance": {"dataset": "MS COCO 2017 person keypoints", "annotation_sha256": annotation_hashes},
         })
@@ -306,3 +313,206 @@ def write_reference_jsonl(records: Iterable[Mapping[str, Any]], output: str | Pa
         if os.path.exists(temporary):
             os.unlink(temporary)
     return digest
+
+
+def _capacity_geometry(sample: Mapping[str, Any], *, stem: str) -> dict[str, list[int]]:
+    """Return persisted paired geometry without recomputing or normalising it."""
+    fields = (("source_size", 2), ("resized_size", 2), ("crop_box", 4), ("bucket", 2))
+    geometry: dict[str, list[int]] = {}
+    for field, length in fields:
+        value = sample.get(field)
+        if not isinstance(value, (list, tuple)) or len(value) != length or any(not isinstance(item, int) for item in value):
+            raise ReferencePoseError(f"{stem}: verified latent record lacks compatible persisted {field}")
+        geometry[field] = list(value)
+    source_width, source_height = geometry["source_size"]
+    resized_width, resized_height = geometry["resized_size"]
+    left, top, right, bottom = geometry["crop_box"]
+    bucket_width, bucket_height = geometry["bucket"]
+    if min(source_width, source_height, resized_width, resized_height, bucket_width, bucket_height) < 1:
+        raise ReferencePoseError(f"{stem}: persisted geometry has non-positive dimensions")
+    if right - left != bucket_width or bottom - top != bucket_height or left < 0 or top < 0 or right > resized_width or bottom > resized_height:
+        raise ReferencePoseError(f"{stem}: persisted crop geometry is incompatible")
+    return geometry
+
+
+def resolve_exact_capacity_latent_samples(*, experiment_name: str, latent_root: str | Path,
+                                          manifest_path: str | Path | None = None) -> tuple[tuple[str, ...], list[dict[str, Any]], list[str]]:
+    """Resolve only one exact capacity manifest from direct verified ``train-*.pt`` shards.
+
+    This deliberately does not consult a shard-set parent, cached text-conditioning
+    archives, checkpoints, or any recursive descendant.  A duplicate requested
+    stem is ambiguous even if its payload happens to compare equal.
+    """
+    # Import locally: overfit_capacity imports pose_targets, which imports this module.
+    from pose_controlnet.overfit_capacity import OVERFIT_SAMPLE_COUNT, experiment, manifest_stems
+
+    spec = experiment(experiment_name)
+    selected_manifest = Path(manifest_path) if manifest_path is not None else spec.manifest
+    stems = manifest_stems(selected_manifest)
+    if len(stems) != OVERFIT_SAMPLE_COUNT or len(set(stems)) != OVERFIT_SAMPLE_COUNT:
+        raise ReferencePoseError(f"{experiment_name}: manifest is not exactly {OVERFIT_SAMPLE_COUNT} unique samples")
+    if spec.source != "coco" or any(not stem.startswith("coco_") for stem in stems):
+        raise ReferencePoseError(f"{experiment_name}: authoritative COCO reference construction requires a COCO-only manifest")
+
+    root = Path(latent_root)
+    shards = sorted(path for path in root.glob("train-*.pt") if path.is_file())
+    if not shards:
+        raise ReferencePoseError(f"No direct verified train-*.pt latent shards under explicit root: {root}")
+    try:
+        import torch
+    except ImportError as exc:  # pragma: no cover - production environment always includes torch
+        raise ReferencePoseError("PyTorch is required to read verified latent shards") from exc
+
+    wanted, resolved = set(stems), {}
+    used: list[str] = []
+    for shard in shards:
+        try:
+            payload = torch.load(shard, map_location="cpu", weights_only=False)
+        except Exception as exc:
+            raise ReferencePoseError(f"Unreadable verified latent shard: {shard}") from exc
+        if not isinstance(payload, dict) or payload.get("format_version") != 1 or payload.get("split") != "train" or not isinstance(payload.get("samples"), list):
+            raise ReferencePoseError(f"Invalid verified v1 train latent shard: {shard}")
+        shard_used = False
+        for sample in payload["samples"]:
+            if not isinstance(sample, Mapping):
+                raise ReferencePoseError(f"Malformed sample in verified latent shard: {shard}")
+            stem = sample.get("stem")
+            if stem not in wanted:
+                continue
+            if stem in resolved:
+                raise ReferencePoseError(f"Ambiguous requested stem {stem!r} appears in multiple latent records")
+            geometry = _capacity_geometry(sample, stem=stem)
+            # The copy contains only persisted metadata; latent tensors and captions
+            # cannot become accidental geometry/reference sources downstream.
+            resolved[stem] = {"stem": stem, **geometry}
+            shard_used = True
+        if shard_used:
+            used.append(str(shard.resolve()))
+    missing = sorted(wanted - set(resolved))
+    if missing:
+        raise ReferencePoseError(f"Requested capacity manifest stems missing from verified train latent shards: {missing[:8]}")
+    samples = [resolved[stem] for stem in stems]
+    return stems, samples, used
+
+
+def _capacity_metadata_path(output: Path) -> Path:
+    return output.with_suffix(output.suffix + ".metadata.json")
+
+
+def write_capacity_reference_jsonl(records: Iterable[Mapping[str, Any]], output: str | Path, *, metadata: Mapping[str, Any]) -> dict[str, Any]:
+    """Atomically create a non-overwritable exact-manifest reference sidecar."""
+    path = Path(output)
+    metadata_path = _capacity_metadata_path(path)
+    if path.exists() or metadata_path.exists():
+        raise ReferencePoseError(f"Refusing to overwrite immutable capacity reference sidecar: {path}")
+    ordered = sorted((dict(record) for record in records), key=lambda record: str(record.get("stem")))
+    stems = [record.get("stem") for record in ordered]
+    if len(stems) != len(set(stems)) or any(not isinstance(stem, str) for stem in stems):
+        raise ReferencePoseError("Capacity reference output has duplicate or invalid stems")
+    content = "".join(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n" for record in ordered)
+    digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    published = {
+        "format_version": CAPACITY_REFERENCE_FORMAT_VERSION, "read_only": True,
+        "records_file": path.name, "records_sha256": digest, "record_count": len(ordered), **dict(metadata),
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent, text=True)
+    temporary_path = Path(temporary)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(content); handle.flush(); os.fsync(handle.fileno())
+        metadata_temporary = temporary_path.with_name(temporary_path.name + ".metadata")
+        metadata_temporary.write_text(json.dumps(published, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        if path.exists() or metadata_path.exists():
+            raise ReferencePoseError(f"Refusing to overwrite immutable capacity reference sidecar: {path}")
+        os.replace(temporary_path, path); os.replace(metadata_temporary, metadata_path)
+    finally:
+        if temporary_path.exists():
+            temporary_path.unlink()
+        metadata_temporary = locals().get("metadata_temporary")
+        if isinstance(metadata_temporary, Path) and metadata_temporary.exists():
+            metadata_temporary.unlink()
+    return published
+
+
+def build_exact_coco_capacity_reference_sidecar(*, experiment_name: str, latent_root: str | Path,
+                                                annotation_paths: Iterable[str | Path], output: str | Path,
+                                                manifest_path: str | Path | None = None) -> dict[str, Any]:
+    """Build one exact COCO capacity sidecar from official labels and persisted geometry."""
+    selected_manifest = Path(manifest_path) if manifest_path is not None else None
+    stems, samples, shards = resolve_exact_capacity_latent_samples(
+        experiment_name=experiment_name, latent_root=latent_root, manifest_path=selected_manifest,
+    )
+    annotations = tuple(Path(path) for path in annotation_paths)
+    if not annotations:
+        raise ReferencePoseError("At least one official COCO person_keypoints annotation JSON is required")
+    permitted_names = {"person_keypoints_train2017.json", "person_keypoints_val2017.json"}
+    if any(path.name not in permitted_names for path in annotations):
+        raise ReferencePoseError("Capacity references require official COCO person_keypoints_train2017.json and/or person_keypoints_val2017.json annotations")
+    records = build_coco_reference_records(samples, annotations)
+    by_stem = {record["stem"]: record for record in records}
+    if len(records) != len(stems) or set(by_stem) != set(stems):
+        raise ReferencePoseError("Exact capacity reference output has missing or unexpected stems")
+    for stem, sample in zip(stems, samples):
+        record = by_stem[stem]
+        for field in ("source_size", "resized_size", "crop_box", "bucket"):
+            if record[field] != sample[field]:
+                raise ReferencePoseError(f"{stem}: authoritative record did not preserve persisted {field}")
+        record["experiment"] = experiment_name
+        record["manifest_stem_order"] = list(stems)
+    source_manifest = selected_manifest
+    if source_manifest is None:
+        from pose_controlnet.overfit_capacity import experiment
+        source_manifest = experiment(experiment_name).manifest
+    manifest_bytes = source_manifest.read_bytes()
+    annotation_hashes = {str(path.resolve()): hashlib.sha256(path.read_bytes()).hexdigest() for path in annotations}
+    return write_capacity_reference_jsonl(records, output, metadata={
+        "experiment": experiment_name, "source": "coco", "source_manifest": str(source_manifest.resolve()),
+        "source_manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(), "stems": list(stems),
+        "latent_root": str(Path(latent_root).resolve()), "latent_shards": shards,
+        "official_annotation_paths": [str(path.resolve()) for path in annotations], "official_annotation_sha256": annotation_hashes,
+        "output_record_count": len(records), "people_count": sum(len(record["people"]) for record in records),
+    })
+
+
+def load_exact_capacity_reference_sidecar(path: str | Path, *, experiment_name: str,
+                                          expected_stems: Iterable[str],
+                                          geometry_by_stem: Mapping[str, Mapping[str, Any]] | None = None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Load an exact COCO capacity sidecar and reject fallbacks or partial coverage."""
+    sidecar = Path(path)
+    metadata_path = _capacity_metadata_path(sidecar)
+    if not sidecar.is_file() or not metadata_path.is_file():
+        raise ReferencePoseError(f"Explicit immutable capacity reference sidecar and metadata are required: {sidecar}")
+    try:
+        raw = sidecar.read_bytes(); metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        records = [json.loads(line) for line in raw.decode("utf-8").splitlines() if line.strip()]
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ReferencePoseError(f"Unreadable capacity reference sidecar: {sidecar}") from exc
+    expected = tuple(expected_stems)
+    if len(expected) != len(set(expected)):
+        raise ReferencePoseError("Expected capacity manifest stems are not unique")
+    if metadata.get("format_version") != CAPACITY_REFERENCE_FORMAT_VERSION or metadata.get("read_only") is not True:
+        raise ReferencePoseError("Capacity reference sidecar metadata has an unsupported schema")
+    if metadata.get("experiment") != experiment_name or metadata.get("source") != "coco":
+        raise ReferencePoseError("Capacity reference sidecar provenance is inconsistent with the requested COCO experiment")
+    if metadata.get("records_sha256") != hashlib.sha256(raw).hexdigest() or metadata.get("record_count") != len(records):
+        raise ReferencePoseError("Capacity reference sidecar integrity check failed")
+    stems = [record.get("stem") for record in records]
+    if len(stems) != len(set(stems)) or set(stems) != set(expected) or len(records) != len(expected):
+        raise ReferencePoseError("Capacity reference sidecar does not exactly cover the requested manifest stems")
+    if metadata.get("stems") != list(expected):
+        raise ReferencePoseError("Capacity reference sidecar manifest provenance is not the exact requested stem order")
+    for record in records:
+        stem = record["stem"]
+        if record.get("schema_version") != CAPACITY_REFERENCE_FORMAT_VERSION or record.get("experiment") != experiment_name or record.get("source") != "coco" or record.get("status") != "available":
+            raise ReferencePoseError(f"{stem}: capacity reference record provenance is inconsistent")
+        if not isinstance(record.get("people"), list):
+            raise ReferencePoseError(f"{stem}: capacity reference record has no official COCO people")
+        if geometry_by_stem is not None:
+            actual = geometry_by_stem.get(stem)
+            if actual is None:
+                raise ReferencePoseError(f"{stem}: persisted generation geometry is unavailable")
+            for field in ("source_size", "resized_size", "crop_box", "bucket"):
+                if list(actual.get(field, ())) != record.get(field):
+                    raise ReferencePoseError(f"{stem}: reference geometry cannot be reconciled with persisted generation metadata")
+    return metadata, records
