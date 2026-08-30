@@ -111,7 +111,11 @@ def resize_center_crop_geometry(
     )
 
 
-def preprocess_pair(record: ManifestRecord) -> PreprocessedPair:
+def preprocess_pair(
+    record: ManifestRecord,
+    *,
+    buckets: Sequence[tuple[int, int]] = REFERENCE_KREA_BUCKETS,
+) -> PreprocessedPair:
     """Open one indexed pair, verify source dimensions, and apply one geometry."""
     try:
         with Image.open(record.rgb_path) as rgb_source, Image.open(record.control_path) as control_source:
@@ -122,7 +126,7 @@ def preprocess_pair(record: ManifestRecord) -> PreprocessedPair:
                     f"Source dimensions disagree for stem {record.stem!r}: "
                     f"RGB {rgb_size}, control {control_size}"
                 )
-            geometry = resize_center_crop_geometry(rgb_size, choose_bucket(rgb_size))
+            geometry = resize_center_crop_geometry(rgb_size, choose_bucket(rgb_size, buckets))
             rgb = _apply_geometry(rgb_source.convert("RGB"), geometry)
             control = _apply_geometry(control_source.convert("RGB"), geometry)
     except PairedPreprocessingError:
