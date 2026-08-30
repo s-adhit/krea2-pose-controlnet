@@ -20,6 +20,7 @@ from pose_controlnet.turbo_evaluation import (
     load_turbo_experiment_spec,
     normalize_turbo_steps,
     turbo_metadata,
+    turbo_scoring_geometry,
 )
 from scripts import turbo_benchmark
 
@@ -85,6 +86,33 @@ class TurboEvaluationTest(unittest.TestCase):
             self.assertEqual(config.output_root, root / "isolated-output")
             self.assertEqual(config.training_metadata["lambda_pose"], 1e-5)
             self.assertEqual(config.training_metadata["per_checkpoint"]["1550"]["microbatch_size"], 1)
+
+    def test_scoring_geometry_returns_all_validated_paired_fields(self):
+        sample = {
+            "stem": "coco_124949_crowd",
+            "source_size": [640, 427],
+            "resized_size": [1247, 832],
+            "crop_box": [15, 0, 1231, 832],
+            "bucket": [1216, 832],
+        }
+        geometry = turbo_scoring_geometry(sample)
+        self.assertEqual(geometry, {
+            "source_size": [640, 427],
+            "resized_size": [1247, 832],
+            "crop_box": [15, 0, 1231, 832],
+            "bucket": [1216, 832],
+        })
+        self.assertEqual(geometry["source_size"], [640, 427])
+        self.assertEqual(geometry["resized_size"], [1247, 832])
+        self.assertEqual(geometry["crop_box"], [15, 0, 1231, 832])
+        self.assertEqual(geometry["bucket"], [1216, 832])
+
+        malformed = {**sample, "bucket": [1216]}
+        with self.assertRaisesRegex(ValueError, "malformed"):
+            turbo_scoring_geometry(malformed)
+        stale = {**sample, "resized_size": [1246, 832]}
+        with self.assertRaisesRegex(ValueError, "disagrees with canonical"):
+            turbo_scoring_geometry(stale)
 
     def test_controlled_branch_metadata_rejects_inconsistent_runtime_values(self):
         with tempfile.TemporaryDirectory() as temporary:

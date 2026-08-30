@@ -78,6 +78,21 @@ class Post1500EvaluationTest(unittest.TestCase):
             score_authoritative_pck(sidecar=sidecar, geometry_by_stem={"coco_1_1": {"source_size": [20, 20]}},
                                     image_for=lambda stem: Path(f"{stem}.png"), detector=lambda _: [])
 
+    def test_pck_geometry_semantics_ignore_additional_bucket_metadata(self):
+        source = [[float(index), 0., 2. if index in (5, 6, 7, 9, 11, 13, 15) else 0.] for index in range(17)]
+        sidecar = {"records": [{"stem": "coco_1_1", "source": "coco", "status": "available", "mode": "single",
+                                "people": [{"annotation_id": 2, "keypoints": source}]}]}
+        three_fields = {"coco_1_1": {"source_size": [20, 20], "resized_size": [20, 20], "crop_box": [0, 0, 20, 20]}}
+        four_fields = {"coco_1_1": {**three_fields["coco_1_1"], "bucket": [20, 20]}}
+        with tempfile.TemporaryDirectory() as temp:
+            image = Path(temp) / "coco_1_1.png"; image.touch()
+            detector = lambda _: [{"keypoints": source}]
+            baseline = score_authoritative_pck(sidecar=sidecar, geometry_by_stem=three_fields,
+                                               image_for=lambda _: image, detector=detector)
+            with_bucket = score_authoritative_pck(sidecar=sidecar, geometry_by_stem=four_fields,
+                                                  image_for=lambda _: image, detector=detector)
+        self.assertEqual(with_bucket, baseline)
+
     def test_control_sensitivity_is_forward_only_and_repeatable(self):
         dataset, model = _Dataset(), _Model(); cfg = TrainConfig(raw_ckpt="raw", shard_dir="shards")
         def forward(_model, image, control, *_args, **_kwargs):

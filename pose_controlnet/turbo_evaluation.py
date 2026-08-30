@@ -423,6 +423,7 @@ def turbo_scoring_geometry(sample: Mapping[str, Any]) -> dict[str, list[int]]:
         "source_size": list(canonical.source_size),
         "resized_size": list(canonical.resized_size),
         "crop_box": list(canonical.crop_box),
+        "bucket": list(canonical.bucket),
     }
     persisted = {field: sample[field] for field in geometry}
     if persisted != geometry:

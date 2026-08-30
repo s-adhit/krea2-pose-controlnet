@@ -2,10 +2,9 @@
 
 ## Current bounded objective
 
-Authoritative COCO-32 pose-reference coverage and score-only rescoring for the
-completed `overfit32-coco-r64-mse` capacity evaluation are implemented and
-CPU-tested. No training, Turbo generation, checkpoint mutation, output
-deletion, commit, or push occurred in this session.
+The exact-reference geometry reconciliation bug blocking COCO-32 score-only
+evaluation is fixed and CPU-tested. Do not train, generate, run the GH200
+evaluation, alter checkpoints, commit, or push as part of this milestone.
 
 ## Confirmed completed experiment state
 
@@ -24,6 +23,13 @@ deletion, commit, or push occurred in this session.
   `/lambda/nfs/adhit/krea2-pose/posebridge_latents/train`; only direct
   `train-*.pt` files are considered. Text-conditioning archives, including
   `text_conditioning_v1_backup` duplicate stems, are never geometry sources.
+- The immutable exact COCO sidecar at
+  `data/manifests/overfit_capacity_reference_pose/overfit32-coco-r64-mse.jsonl`
+  now verifies as **32 records**, **74 people**, and SHA-256
+  `2c639f2c671162b711628052cd6f73daa88ed19f3ba001b26816d536e4ab2aef`.
+- Its `coco_124949_crowd` record has `source_size=[640,427]`,
+  `resized_size=[1247,832]`, `crop_box=[15,0,1231,832]`, and
+  `bucket=[1216,832]`.
 
 ## Implemented exact-reference contract
 
@@ -50,22 +56,19 @@ deletion, commit, or push occurred in this session.
   `overfit_summary.json` (preserving any qualitative-grid references). It does
   not load checkpoints, build a Raw/Turbo model or VAE, sample, train, create
   an optimizer, or call backward.
+- Root cause: `turbo_scoring_geometry()` required and canonicalized all four
+  persisted fields, but returned only `source_size`, `resized_size`, and
+  `crop_box`. The strict sidecar loader correctly compares all four, so its
+  missing actual `bucket` became `[]` and reconciliation necessarily failed.
+- Fix: `turbo_scoring_geometry()` now returns canonical `bucket` along with the
+  original three transform fields. The strict sidecar bucket check remains; it
+  is not inferred from generated image dimensions. All callers only pass this
+  mapping to the unchanged PCK scorer, which consumes the same original three
+  transform fields; no training or generation caller uses it.
 
-## Operator commands (foreground; do not run from Codex)
+## Exact next operator action (foreground; do not run from Codex)
 
-Build the sidecar only after supplying the real official COCO annotation
-path(s); use one or both as needed by the 32 stems:
-
-```bash
-cd /home/ubuntu/krea2-pose-controlnet
-PYTHONPATH=. python scripts/build_coco_reference_pose.py \
-  --experiment overfit32-coco-r64-mse \
-  --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents/train \
-  --annotations /path/to/person_keypoints_train2017.json /path/to/person_keypoints_val2017.json \
-  --output data/manifests/overfit_capacity_reference_pose/overfit32-coco-r64-mse.jsonl
-```
-
-Then rescore the already generated 224 PNGs, without generation:
+Rescore the existing 224 PNGs without generation:
 
 ```bash
 cd /home/ubuntu/krea2-pose-controlnet
@@ -80,21 +83,23 @@ Expected updated machine-readable artifacts are
 `checkpoint_selection_grid.png`, `full_training_set_contact_sheet.png`,
 `generation_results.json`, and all 224 generated images are reused unchanged.
 
-## Files changed and checks
+## Files changed in this geometry-fix session
 
-- `pose_controlnet/reference_pose.py`
-- `scripts/build_coco_reference_pose.py`
-- `scripts/evaluate_overfit_capacity.py`
+- `pose_controlnet/turbo_evaluation.py`
+- `tests/test_turbo_evaluation.py`
+- `tests/test_post1500_evaluation.py`
 - `tests/test_capacity_reference_pose.py`
 - `docs/CODEX_HANDOFF.md`
 
 PASS:
 
 ```bash
-python -m unittest tests.test_capacity_reference_pose tests.test_reference_pose tests.test_overfit_capacity tests.test_post1500_evaluation -v  # 32 tests
-python -m py_compile pose_controlnet/reference_pose.py scripts/build_coco_reference_pose.py scripts/evaluate_overfit_capacity.py tests/test_capacity_reference_pose.py
+python -m unittest tests.test_turbo_evaluation tests.test_capacity_reference_pose tests.test_post1500_evaluation tests.test_reference_pose tests.test_overfit_capacity tests.test_turbo_lr5e5_evaluation tests.test_turbo_timestep_evaluation -v  # 61 tests
+python -m py_compile pose_controlnet/turbo_evaluation.py tests/test_turbo_evaluation.py tests/test_capacity_reference_pose.py tests/test_post1500_evaluation.py
 ```
 
-Next action: operator builds the exact immutable sidecar with official COCO
-annotations, then runs the foreground score-only command above. Completed
-training and generation remain valid and must not be repeated.
+Regression coverage proves complete canonical geometry is returned; malformed
+and stale geometry fail; exact four-field sidecars reconcile; each
+source/resized/crop/bucket mismatch fails closed; bucket addition leaves PCK
+results unchanged; and score-only has no generation, checkpoint-loading,
+backward, training, or optimizer path.
