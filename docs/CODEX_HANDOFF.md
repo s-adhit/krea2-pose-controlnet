@@ -2,116 +2,110 @@
 
 ## Current bounded objective
 
-Production-throughput audit completed locally; no GH200 timing run has been
-performed. The locked candidate is 768 training, flow MSE plus
-`normalized_coordinate_huber`, `lambda_pose=0.04`, pose window `[0.10, 0.20]`,
-native-only evaluation, R64/alpha64, exactly 224 LoRA targets, trainable
-`ControlInputLayer`, frozen Krea-2 Raw base, AdamW `1e-4` / `(0.9,0.99)` / zero
-weight decay, warmup 200, and effective batch 32.
+Prepare the immutable, full 16,503-sample 768 paired-latent cache and matching
+768 pose-target sidecar required before the GH200 production-throughput matrix.
+The locked candidate remains 768, flow MSE plus `normalized_coordinate_huber`,
+`lambda_pose=0.04`, pose window `[0.10, 0.20]`, effective batch 32, R64/alpha64,
+224 LoRA targets, trainable ControlInputLayer, frozen Krea-2 Raw base, and
+native-only evaluation. No training science changed.
 
-## Throughput audit findings
+## Full 768 artifact contract
 
-- `train.py` reads cached paired image/control latents and cached text
-  conditioning; it performs no per-step VAE encoding or pixel preprocessing.
-  The candidate pose path necessarily retains an autograd VAE *decode* and
-  frozen fixed-box Keypoint R-CNN only for pose-active samples.
-- Training currently uses direct deterministic shard reads, not a DataLoader.
-  The new benchmark can compare that production baseline with worker/pinning/
-  prefetch candidates without changing the production default.
-- Attention already calls `scaled_dot_product_attention` under
-  `SDPBackend.CUDNN_ATTENTION`; no model-math rewrite is justified.
-- Existing `torch.compile` only wraps the rank-stable text MLP. It remains
-  opt-in and is benchmark-only until measured stable/faster.
-- Existing 768 cache support is scoped to Mixed-32. The benchmark deliberately
-  requires a separately prepared, immutable full-16,503-sample 768 latent root
-  and exact full-768 pose sidecar, and rejects native/mismatched geometry.
+- Dataset snapshot: `/lambda/nfs/adhit/krea2-pose/posebridge_hf`.
+- Authoritative project train manifest:
+  `data/manifests/train.jsonl` SHA
+  `0de42b99e40dea0726a9368a92d91ba950349999f2b2c590df85ac91df147542`.
+  Its ordered parsed records are exactly identical to the snapshot manifest;
+  the snapshot's raw-file SHA differs only in serialization, so both raw SHA
+  and exact parsed order are deliberately checked without conflating them.
+- Latent root (does **not** yet exist):
+  `/lambda/nfs/adhit/krea2-pose/posebridge_latents_768`.
+- Pose source: `/lambda/nfs/adhit/krea2-pose/pose_targets_v3`; its immutable
+  `records.jsonl` SHA is verified as
+  `dfc32293f1bdb76de58e34a02f95a14e515b0080b7c2f60ddd4a28c6f9fb2d8f`.
+- Pose output (does **not** yet exist):
+  `/lambda/nfs/adhit/krea2-pose/pose_targets_v3_768`.
+- `pose_controlnet/full_768_cache.py` is the production-only contract. It
+  re-encodes RGB/control pixels under the deterministic 64-pixel-aligned 768
+  bucket policy; it never reads/reuses native or Mixed-32 latents. Every shard
+  preserves source/resized/crop/bucket geometry and finite aligned float32
+  latents. `train_manifest_identity.json` stores all 16,503 ordered stems and
+  manifest/order digests; `shards.json` becomes `complete: true` only after all
+  planned shards validate.
+- Valid final shards can be reused on resume; partial/corrupt shards are
+  atomically rebuilt. A root with a conflicting manifest, policy, or shard plan
+  is refused rather than overwritten.
+- The new sidecar reprojections exact source-space keypoints/visibility from
+  v3 through each cached geometry. COCO/HumanArt must resolve; Danbooru stays
+  present but explicitly unavailable and has no fabricated people/keypoints.
+  Sidecar metadata binds the source SHA, cache contract, manifest identity,
+  ordered-stem hash, availability counts, and content SHA.
+- Estimated latent storage is about 20 GiB (paired 16-channel float32 latents,
+  plus small metadata); the pose sidecar should be roughly 190 MiB. Reserve at
+  least 25 GiB to leave build/temporary headroom.
 
-## Changes this session
+## Exact operator commands
 
-- Added `scripts/benchmark_production_trainer.py`: no checkpoint, generation,
-  evaluation, W&B, or data mutation; 10 warmup / 20 timed optimizer steps by
-  default; records forward/backward/optimizer/total/data-wait timing,
-  throughput, active pose fraction, VRAM, effective batch, and projections.
-- Added `pose_controlnet/throughput_benchmark.py`,
-  `scripts/estimate_training_runtime.py`, and
-  `scripts/summarize_production_benchmark.py`.
-- Added opt-in `--fused-adamw` (default off). It preserves AdamW parameters and
-  hyperparameters, rejects unsupported/non-CUDA use, and is not recommended
-  until the GH200 benchmark proves it.
-- Removed two unlogged control-RMS/std CUDA synchronizations from non-
-  diagnostic microbatches. Finite checks and diagnostic-step values remain.
-- Normal `train.py --resume` now verifies saved model/batch/optimizer/sampler/
-  numerical-runtime identity before restoring weights, optimizer, scheduler,
-  global step, Python/NumPy/torch/CUDA RNG, flow generator, epoch, and batch
-  position. Cadences and terminal max step remain operationally adjustable.
-
-## Benchmark matrix and exact GH200 commands
-
-Set the four read-only inputs to the actual full 768 artifacts; do not point
-them at Mixed-32 or native shards. `OUT` is a new benchmark-result directory.
+The cache build VAE-encodes 16,503 RGB/control pairs and therefore requires the
+GH200 CUDA environment. It is preprocessing only: no training, generation,
+evaluation, checkpointing, or throughput benchmark.
 
 ```bash
 cd /home/ubuntu/krea2-pose-controlnet
+export DATASET=/lambda/nfs/adhit/krea2-pose/posebridge_hf
+export TRAIN_MANIFEST=/home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl
+export LATENT_768=/lambda/nfs/adhit/krea2-pose/posebridge_latents_768
+export POSE_SOURCE=/lambda/nfs/adhit/krea2-pose/pose_targets_v3
+export POSE_768=/lambda/nfs/adhit/krea2-pose/pose_targets_v3_768
+PYTHONPATH=. python scripts/build_full_768_cache.py \
+  --dataset-root "$DATASET" --output-root "$LATENT_768" \
+  --train-manifest "$TRAIN_MANIFEST" \
+  --pose-source "$POSE_SOURCE" --pose-output "$POSE_768" --device cuda
+```
+
+The same command is the safe resume command. It reuses only fully valid final
+shards and refuses any scientifically conflicting root.
+
+```bash
+PYTHONPATH=. python scripts/verify_full_768_cache.py \
+  --dataset-root "$DATASET" --train-manifest "$TRAIN_MANIFEST" \
+  --latent-root "$LATENT_768" --pose-sidecar "$POSE_768"
+```
+
+The verifier is CPU/no-network/no-VAE. It checks exact manifest count/order,
+completion marker, every planned shard/tensor/geometry, actual source-size
+provenance, paired latent shape/finiteness, 768 policy only, sidecar identity,
+authoritative-source SHA, and Danbooru/eligible-target availability. The
+throughput runner invokes this verifier before CUDA/model work and now requires
+`--dataset-root "$DATASET"`.
+
+For the later benchmark, additionally export:
+
+```bash
 export RAW=/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors
-export LATENT_768='<full verified 16,503-sample 768 latent root>'
 export TEXT=/lambda/nfs/adhit/krea2-pose/text_conditioning
-export POSE_768='<immutable full-train 768 pose sidecar directory>'
-export OUT=/lambda/nfs/adhit/krea2-pose/throughput_benchmarks/2026-08-30
-mkdir -p "$OUT"
-bench () { PYTHONPATH=. python scripts/benchmark_production_trainer.py --raw-ckpt "$RAW" --latent-root "$LATENT_768" --text-conditioning-root "$TEXT" --pose-sidecar "$POSE_768" --output-json "$OUT/$1.json" --label "$1" "${@:2}"; }
+export DATASET=/lambda/nfs/adhit/krea2-pose/posebridge_hf
+export TRAIN_MANIFEST=/home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl
+export LATENT_768=/lambda/nfs/adhit/krea2-pose/posebridge_latents_768
+export POSE_768=/lambda/nfs/adhit/krea2-pose/pose_targets_v3_768
 ```
 
-Run one command at a time while a second terminal records
-`nvidia-smi dmon -s pucvmt -d 1` during the timed window:
+## This session
 
-```bash
-# A current production-equivalent baseline: the configured default is no checkpointing.
-bench A-baseline --gradient-checkpointing-blocks 0
-# B checkpointing on; compare its saved VRAM against recomputation cost.
-bench B-checkpoint-all --gradient-checkpointing-blocks 28
-# C one DataLoader/cache axis; retain direct-loader baseline as its own row.
-bench C-loader4 --gradient-checkpointing-blocks 0 --data-loader-workers 4 --persistent-workers --pin-memory --prefetch-factor 4
-# D fused AdamW axis.
-bench D-fused-adamw --gradient-checkpointing-blocks 0 --fused-adamw
-# E microbatch axes, always exactly effective batch 32.
-bench E-micro2-acc16 --gradient-checkpointing-blocks 0 --microbatch-size 2 --gradient-accumulation-steps 16
-bench E-micro4-acc8 --gradient-checkpointing-blocks 0 --microbatch-size 4 --gradient-accumulation-steps 8
-# F compile candidate; setup_seconds_including_compile is reported separately.
-bench F-compile --gradient-checkpointing-blocks 0 --compile
-# Pose incremental cost: same best single-axis configuration, flow-only only.
-bench pose-cost-flow-only --gradient-checkpointing-blocks 0 --objective flow_only
-# G only after individual rows: one measured combined candidate.
-bench G-combined --gradient-checkpointing-blocks 0 --data-loader-workers 4 --persistent-workers --pin-memory --prefetch-factor 4 --fused-adamw --microbatch-size 2 --gradient-accumulation-steps 16 --compile
-```
+- Added `pose_controlnet/full_768_cache.py`, `scripts/build_full_768_cache.py`,
+  `scripts/verify_full_768_cache.py`, and `tests/test_full_768_cache.py`.
+- Updated `scripts/benchmark_production_trainer.py` so an unverified full 768
+  cache/sidecar fails closed before GPU/model work; benchmark commands need the
+  new `--dataset-root "$DATASET"` argument.
+- PASS:
+  `PYTHONPATH=. python -m unittest tests.test_full_768_cache tests.test_shards tests.test_pose_targets tests.test_production_throughput_benchmark -v`
+- PASS:
+  `PYTHONPATH=. python -m py_compile pose_controlnet/full_768_cache.py scripts/build_full_768_cache.py scripts/verify_full_768_cache.py scripts/benchmark_production_trainer.py tests/test_full_768_cache.py`
+- No full cache/sidecar build was started; neither target root existed at
+  inspection. No long training, generation, evaluation, A-G benchmark,
+  commit, or push occurred.
 
-Compact summary and runtime projection commands:
+## Next action
 
-```bash
-PYTHONPATH=. python scripts/summarize_production_benchmark.py --inputs "$OUT"/*.json
-PYTHONPATH=. python scripts/estimate_training_runtime.py --seconds-per-optimizer-step '<measured optimizer_step_seconds_mean>' --effective-batch-size 32 --training-samples 16503
-```
-
-## Safety and remaining decision
-
-Every row hard-locks effective batch 32, 768 bucket geometry, candidate loss
-name/lambda/window, seed 42, R64 architecture and audited trainable parameter
-set. The runner loads fresh Raw+LoRA weights for each row, emits the exact
-trainable names/count, uses the same cached-caption dropout and timestep path,
-and does not detach pose gradients. Fused AdamW changes only the optimizer
-kernel; checkpointing/compile/data settings do not alter loss definitions.
-Do not enable any option in the production command until its isolated row and
-the final combined row have been compared for finite loss/gradients, matching
-trainable list, pose active fraction, and acceptable numerical tolerance.
-
-PASS (CPU/no-network):
-
-```bash
-PYTHONPATH=. python -m unittest tests.test_production_throughput_benchmark tests.test_train_mechanics tests.test_pose_reward_tools tests.test_overfit_capacity -v
-PYTHONPATH=. python -m py_compile train.py pose_controlnet/config.py pose_controlnet/throughput_benchmark.py scripts/benchmark_production_trainer.py scripts/estimate_training_runtime.py scripts/summarize_production_benchmark.py scripts/train_pose_reward_smoke.py scripts/train_overfit_capacity.py tests/test_production_throughput_benchmark.py
-git diff --check
-```
-
-No long production training, generation, evaluation, checkpoint write,
-commit, or push occurred. Next action: provision/verify the full 768 cache and
-matching immutable full pose sidecar, then run A through F individually before
-the one G combined benchmark and paste the compact JSON summary back.
+Run the exact build command on the GH200 host, then the verifier. Do not begin
+the A-G throughput matrix until that verifier reports PASS.
