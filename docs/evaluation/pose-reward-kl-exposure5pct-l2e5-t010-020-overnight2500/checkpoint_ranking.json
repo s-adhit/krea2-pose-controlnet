@@ -1,0 +1,235 @@
+{
+  "composite_winner_declared": false,
+  "experiment_name": "pose-reward-kl-exposure5pct-l2e5-t010-020-overnight2500",
+  "includes_baseline": true,
+  "ranking": {
+    "clip_mean_cosine_similarity": [
+      {
+        "checkpoint_step": 1800,
+        "rank": 1,
+        "value": 0.33940435575712474
+      },
+      {
+        "checkpoint_step": 2000,
+        "rank": 2,
+        "value": 0.33751642818110145
+      },
+      {
+        "checkpoint_step": 2400,
+        "rank": 3,
+        "value": 0.33726123526665813
+      },
+      {
+        "checkpoint_step": 1500,
+        "rank": 4,
+        "value": 0.33684297981215466
+      },
+      {
+        "checkpoint_step": 1900,
+        "rank": 5,
+        "value": 0.33680119245708956
+      },
+      {
+        "checkpoint_step": 2300,
+        "rank": 6,
+        "value": 0.33522389601929303
+      },
+      {
+        "checkpoint_step": 2100,
+        "rank": 7,
+        "value": 0.3350036446090177
+      },
+      {
+        "checkpoint_step": 2200,
+        "rank": 8,
+        "value": 0.33462584234066123
+      },
+      {
+        "checkpoint_step": 1700,
+        "rank": 9,
+        "value": 0.3346224974519618
+      },
+      {
+        "checkpoint_step": 2500,
+        "rank": 10,
+        "value": 0.33398407269024327
+      },
+      {
+        "checkpoint_step": 1600,
+        "rank": 11,
+        "value": 0.32988564193247694
+      }
+    ],
+    "pck_005": [
+      {
+        "checkpoint_step": 1500,
+        "rank": 1,
+        "value": 0.05461165048543689
+      },
+      {
+        "checkpoint_step": 1800,
+        "rank": 2,
+        "value": 0.05218446601941747
+      },
+      {
+        "checkpoint_step": 2100,
+        "rank": 3,
+        "value": 0.05218446601941747
+      },
+      {
+        "checkpoint_step": 2200,
+        "rank": 4,
+        "value": 0.04854368932038835
+      },
+      {
+        "checkpoint_step": 1600,
+        "rank": 5,
+        "value": 0.04611650485436893
+      },
+      {
+        "checkpoint_step": 2500,
+        "rank": 6,
+        "value": 0.043689320388349516
+      },
+      {
+        "checkpoint_step": 2300,
+        "rank": 7,
+        "value": 0.0412621359223301
+      },
+      {
+        "checkpoint_step": 2400,
+        "rank": 8,
+        "value": 0.0412621359223301
+      },
+      {
+        "checkpoint_step": 1700,
+        "rank": 9,
+        "value": 0.04004854368932039
+      },
+      {
+        "checkpoint_step": 2000,
+        "rank": 10,
+        "value": 0.038834951456310676
+      },
+      {
+        "checkpoint_step": 1900,
+        "rank": 11,
+        "value": 0.03762135922330097
+      }
+    ],
+    "pck_010": [
+      {
+        "checkpoint_step": 1500,
+        "rank": 1,
+        "value": 0.1808252427184466
+      },
+      {
+        "checkpoint_step": 2200,
+        "rank": 2,
+        "value": 0.17718446601941748
+      },
+      {
+        "checkpoint_step": 2400,
+        "rank": 3,
+        "value": 0.15898058252427186
+      },
+      {
+        "checkpoint_step": 1800,
+        "rank": 4,
+        "value": 0.15169902912621358
+      },
+      {
+        "checkpoint_step": 2300,
+        "rank": 5,
+        "value": 0.15169902912621358
+      },
+      {
+        "checkpoint_step": 1900,
+        "rank": 6,
+        "value": 0.14927184466019416
+      },
+      {
+        "checkpoint_step": 2500,
+        "rank": 7,
+        "value": 0.14805825242718446
+      },
+      {
+        "checkpoint_step": 1600,
+        "rank": 8,
+        "value": 0.14684466019417475
+      },
+      {
+        "checkpoint_step": 2000,
+        "rank": 9,
+        "value": 0.14684466019417475
+      },
+      {
+        "checkpoint_step": 1700,
+        "rank": 10,
+        "value": 0.1383495145631068
+      },
+      {
+        "checkpoint_step": 2100,
+        "rank": 11,
+        "value": 0.13713592233009708
+      }
+    ],
+    "pck_020": [
+      {
+        "checkpoint_step": 2200,
+        "rank": 1,
+        "value": 0.4186893203883495
+      },
+      {
+        "checkpoint_step": 1500,
+        "rank": 2,
+        "value": 0.41262135922330095
+      },
+      {
+        "checkpoint_step": 1800,
+        "rank": 3,
+        "value": 0.404126213592233
+      },
+      {
+        "checkpoint_step": 2400,
+        "rank": 4,
+        "value": 0.4016990291262136
+      },
+      {
+        "checkpoint_step": 2500,
+        "rank": 5,
+        "value": 0.3932038834951456
+      },
+      {
+        "checkpoint_step": 2300,
+        "rank": 6,
+        "value": 0.3883495145631068
+      },
+      {
+        "checkpoint_step": 1900,
+        "rank": 7,
+        "value": 0.37985436893203883
+      },
+      {
+        "checkpoint_step": 2000,
+        "rank": 8,
+        "value": 0.3725728155339806
+      },
+      {
+        "checkpoint_step": 1600,
+        "rank": 9,
+        "value": 0.3713592233009709
+      },
+      {
+        "checkpoint_step": 2100,
+        "rank": 10,
+        "value": 0.36529126213592233
+      },
+      {
+        "checkpoint_step": 1700,
+        "rank": 11,
+        "value": 0.3604368932038835
+      }
+    ]
+  }
+}

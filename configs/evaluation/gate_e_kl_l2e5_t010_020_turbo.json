@@ -1,0 +1,59 @@
+{
+  "experiment_name": "gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32",
+  "checkpoint_root": "/lambda/nfs/adhit/krea2-pose/checkpoints/gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32",
+  "hf_repo_id": "adhit-420/Krea-2-PoseControl-LoRA-checkpoints",
+  "hf_namespace": "gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32/full/",
+  "checkpoint_validation": {
+    "mode": "direct_local",
+    "expected_sha256": {
+      "1700": "b454cfff01e6c2608415abc54d910682be9705d1ea337b342511fe1586828415"
+    }
+  },
+  "output_root": "docs/evaluation/gate-e-kl-l2e5-t010-020",
+  "steps": [1550, 1600, 1650, 1700],
+  "baseline": {
+    "checkpoint_step": 1500,
+    "output_root": "docs/evaluation/turbo-8step-cfg0-lr5e5",
+    "label": "LR-only 1500 @ 5e-5"
+  },
+  "labels": {
+    "checkpoint_template": "Gate-E {step}"
+  },
+  "training_metadata": {
+    "lambda_pose": 2e-05,
+    "pose_timestep_window": [0.1, 0.2],
+    "microbatch_size": 1,
+    "gradient_accumulation_steps": 32,
+    "final_step": 1700,
+    "step_1700_sha256": "b454cfff01e6c2608415abc54d910682be9705d1ea337b342511fe1586828415",
+    "resumed_exposure": {
+      "active_samples": 20,
+      "eligible_samples": 2504,
+      "active_fraction_percent": 0.7987,
+      "optimizer_steps_with_active_sample": 18,
+      "optimizer_steps": 90
+    }
+  },
+  "turbo_contract": {
+    "model": "Krea-2 Turbo",
+    "steps": 8,
+    "cfg": 0.0,
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "control_scale": 1.0
+  },
+  "diagnostics": {
+    "canonical_manifest": "data/manifests/diagnostic_val.jsonl",
+    "canonical_reference_spec": "docs/evaluation/turbo-8step-cfg0/turbo_spec.json",
+    "expected_count": 24,
+    "seed": 420200
+  },
+  "paths": {
+    "latent_root": "/lambda/nfs/adhit/krea2-pose/posebridge_latents",
+    "text_conditioning_root": "/lambda/nfs/adhit/krea2-pose/text_conditioning",
+    "turbo_ckpt": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+    "reference_sidecar": "data/manifests/diagnostic_reference_pose.json",
+    "clip_model_id": "openai/clip-vit-base-patch32"
+  }
+}

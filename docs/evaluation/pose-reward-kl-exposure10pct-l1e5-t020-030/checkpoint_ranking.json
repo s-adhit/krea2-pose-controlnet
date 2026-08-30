@@ -1,0 +1,115 @@
+{
+  "composite_winner_declared": false,
+  "experiment_name": "pose-reward-kl-exposure10pct-l1e5-t020-030",
+  "includes_baseline": true,
+  "ranking": {
+    "clip_mean_cosine_similarity": [
+      {
+        "checkpoint_step": 1500,
+        "rank": 1,
+        "value": 0.33684297981215466
+      },
+      {
+        "checkpoint_step": 1550,
+        "rank": 2,
+        "value": 0.33375058838532506
+      },
+      {
+        "checkpoint_step": 1525,
+        "rank": 3,
+        "value": 0.3335657122396077
+      },
+      {
+        "checkpoint_step": 1575,
+        "rank": 4,
+        "value": 0.3332815761129378
+      },
+      {
+        "checkpoint_step": 1600,
+        "rank": 5,
+        "value": 0.3311672178125433
+      }
+    ],
+    "pck_005": [
+      {
+        "checkpoint_step": 1500,
+        "rank": 1,
+        "value": 0.05461165048543689
+      },
+      {
+        "checkpoint_step": 1550,
+        "rank": 2,
+        "value": 0.05218446601941747
+      },
+      {
+        "checkpoint_step": 1600,
+        "rank": 3,
+        "value": 0.04975728155339806
+      },
+      {
+        "checkpoint_step": 1575,
+        "rank": 4,
+        "value": 0.04854368932038835
+      },
+      {
+        "checkpoint_step": 1525,
+        "rank": 5,
+        "value": 0.04247572815533981
+      }
+    ],
+    "pck_010": [
+      {
+        "checkpoint_step": 1500,
+        "rank": 1,
+        "value": 0.1808252427184466
+      },
+      {
+        "checkpoint_step": 1550,
+        "rank": 2,
+        "value": 0.16140776699029127
+      },
+      {
+        "checkpoint_step": 1575,
+        "rank": 3,
+        "value": 0.15776699029126215
+      },
+      {
+        "checkpoint_step": 1600,
+        "rank": 4,
+        "value": 0.1553398058252427
+      },
+      {
+        "checkpoint_step": 1525,
+        "rank": 5,
+        "value": 0.14320388349514562
+      }
+    ],
+    "pck_020": [
+      {
+        "checkpoint_step": 1500,
+        "rank": 1,
+        "value": 0.41262135922330095
+      },
+      {
+        "checkpoint_step": 1525,
+        "rank": 2,
+        "value": 0.4077669902912621
+      },
+      {
+        "checkpoint_step": 1575,
+        "rank": 3,
+        "value": 0.4029126213592233
+      },
+      {
+        "checkpoint_step": 1550,
+        "rank": 4,
+        "value": 0.39684466019417475
+      },
+      {
+        "checkpoint_step": 1600,
+        "rank": 5,
+        "value": 0.38349514563106796
+      }
+    ]
+  }
+}

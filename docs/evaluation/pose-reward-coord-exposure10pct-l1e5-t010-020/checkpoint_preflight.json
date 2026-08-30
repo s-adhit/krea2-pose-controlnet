@@ -1,0 +1,145 @@
+{
+  "checkpoint_validation": {
+    "expected_sha256": {
+      "1600": "8acedb7208e89f0f998d41671506916bee2bd00ab3f87dd320ad949236925263"
+    },
+    "mode": "direct_local"
+  },
+  "checkpoints": [
+    {
+      "checkpoint_step": 1525,
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/recovery/pose-reward-coord-exposure10pct-l1e5-t010-020/pose-reward-coord-exposure10pct-l1e5-t010-020/full/step_001525.pt"
+    },
+    {
+      "checkpoint_step": 1550,
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/recovery/pose-reward-coord-exposure10pct-l1e5-t010-020/pose-reward-coord-exposure10pct-l1e5-t010-020/full/step_001550.pt"
+    },
+    {
+      "checkpoint_step": 1575,
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/recovery/pose-reward-coord-exposure10pct-l1e5-t010-020/pose-reward-coord-exposure10pct-l1e5-t010-020/full/step_001575.pt"
+    },
+    {
+      "checkpoint_step": 1600,
+      "expected_sha256": "8acedb7208e89f0f998d41671506916bee2bd00ab3f87dd320ad949236925263",
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/recovery/pose-reward-coord-exposure10pct-l1e5-t010-020/pose-reward-coord-exposure10pct-l1e5-t010-020/full/step_001600.pt"
+    }
+  ],
+  "control_scale": 1.0,
+  "diagnostic_sample_count": 24,
+  "experiment_name": "pose-reward-coord-exposure10pct-l1e5-t010-020",
+  "hf_namespace": "pose-reward-coord-exposure10pct-l1e5-t010-020/full/",
+  "hf_repo_id": "",
+  "local_checkpoint_root": "/lambda/nfs/adhit/krea2-pose/recovery/pose-reward-coord-exposure10pct-l1e5-t010-020/pose-reward-coord-exposure10pct-l1e5-t010-020/full",
+  "metadata": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "reused_baseline": {
+    "checkpoint_step": 1500,
+    "regenerated": false,
+    "source": "docs/evaluation/turbo-8step-cfg0-lr5e5/pck_clip_results.json"
+  },
+  "stems": [
+    "coco_156320_crowd",
+    "coco_299468_426600",
+    "coco_379542_449327",
+    "coco_64240_crowd",
+    "danbooru_anime_11903560",
+    "danbooru_anime_11910154",
+    "danbooru_anime_11917323",
+    "painting_humanart_10000000000555",
+    "painting_humanart_10000000000838",
+    "painting_humanart_1000000000218",
+    "painting_humanart_1000000001225",
+    "painting_humanart_1000000002653",
+    "painting_humanart_6000000000319",
+    "painting_humanart_6000000002434",
+    "painting_humanart_9000000000608",
+    "painting_humanart_9000000002722",
+    "real_human_humanart_15000000000201",
+    "real_human_humanart_15000000002196",
+    "real_human_humanart_17000000000288",
+    "real_human_humanart_17000000001552",
+    "real_human_humanart_17000000001695",
+    "sculpture_humanart_14000000000243",
+    "sculpture_humanart_14000000001143",
+    "sculpture_humanart_14000000004479"
+  ],
+  "training_metadata": {
+    "forced_pose_exposure_probability": 0.1,
+    "forced_sampler_policy": "final-window-uniform-v1",
+    "gradient_accumulation_steps": 32,
+    "hf_subdir": "pose-reward-coord-exposure10pct-l1e5-t010-020",
+    "lambda_pose": 1e-05,
+    "microbatch_size": 1,
+    "parent_checkpoint": {
+      "filename": "step_001500.pt",
+      "global_step": 1500,
+      "sha256": "6f83449f2843414c9cd7205f6ded95bada6e8d0c17af3d612a48443a5ed75da0"
+    },
+    "per_checkpoint": {
+      "1525": {
+        "checkpoint_sha256": "3d29b24809b47cf594744d8f95be68273f6504b1b9bffeab2015f1513cdb4731",
+        "cumulative_pose_counters": {
+          "eligible_samples_seen": 695,
+          "forced_samples": 62,
+          "naturally_active_samples": 9,
+          "total_active_samples": 71
+        },
+        "gradient_accumulation_steps": 32,
+        "microbatch_size": 1,
+        "save_every_steps": 25,
+        "target_global_step": 1600
+      },
+      "1550": {
+        "checkpoint_sha256": "a3a1b3b43b26ef24d04d6cefb84dc4171f9c7e63c5a086aab93583b212637794",
+        "cumulative_pose_counters": {
+          "eligible_samples_seen": 1396,
+          "forced_samples": 133,
+          "naturally_active_samples": 13,
+          "total_active_samples": 146
+        },
+        "gradient_accumulation_steps": 32,
+        "microbatch_size": 1,
+        "save_every_steps": 25,
+        "target_global_step": 1600
+      },
+      "1575": {
+        "checkpoint_sha256": "147b81d83ee8ad7416bc0960b257764263c43424c1bc5c4e73fc7c89bf822c26",
+        "cumulative_pose_counters": {
+          "eligible_samples_seen": 2092,
+          "forced_samples": 192,
+          "naturally_active_samples": 20,
+          "total_active_samples": 212
+        },
+        "gradient_accumulation_steps": 32,
+        "microbatch_size": 1,
+        "save_every_steps": 25,
+        "target_global_step": 1600
+      },
+      "1600": {
+        "checkpoint_sha256": "8acedb7208e89f0f998d41671506916bee2bd00ab3f87dd320ad949236925263",
+        "cumulative_pose_counters": {
+          "eligible_samples_seen": 2786,
+          "forced_samples": 266,
+          "naturally_active_samples": 28,
+          "total_active_samples": 294
+        },
+        "gradient_accumulation_steps": 32,
+        "microbatch_size": 1,
+        "save_every_steps": 25,
+        "target_global_step": 1600
+      }
+    },
+    "pose_loss": "normalized_coordinate_huber",
+    "pose_loss_temperature": 1.0,
+    "pose_timestep_window": [
+      0.1,
+      0.2
+    ]
+  }
+}

@@ -1,0 +1,319 @@
+{
+  "baseline": {
+    "checkpoint_label": "LR-only 1500 @ 5e-5",
+    "checkpoint_step": 1500,
+    "output_root": "docs/evaluation/turbo-8step-cfg0-lr5e5"
+  },
+  "checkpoints": [
+    {
+      "checkpoint_label": "LR-only 1500 @ 5e-5",
+      "checkpoint_step": 1500,
+      "clip_mean_cosine_similarity": 0.33684297981215466,
+      "critic_loss": {
+        "mean": 0.02199203325879006,
+        "median": 0.018926873803138733
+      },
+      "detection_coverage": 0.9230769230769231,
+      "eligible_sample_count": 21,
+      "joint_coverage": 0.9271844660194175,
+      "normalized_coordinate_error": {
+        "mean": 0.24513225009044012,
+        "median": 0.23328639566898346
+      },
+      "pck_005": 0.05461165048543689,
+      "pck_010": 0.1808252427184466,
+      "pck_020": 0.41262135922330095,
+      "total_valid_joints": 830
+    },
+    {
+      "checkpoint_label": "Coordinate Huber 1e-5 10pct t010-020 1525",
+      "checkpoint_step": 1525,
+      "clip_mean_cosine_similarity": 0.33356246811908524,
+      "critic_loss": {
+        "mean": 0.020316610179309334,
+        "median": 0.017995931208133698
+      },
+      "detection_coverage": 0.9038461538461539,
+      "eligible_sample_count": 21,
+      "joint_coverage": 0.9065533980582524,
+      "normalized_coordinate_error": {
+        "mean": 0.2389282144251324,
+        "median": 0.2352248877286911
+      },
+      "pck_005": 0.04733009708737864,
+      "pck_010": 0.1529126213592233,
+      "pck_020": 0.39805825242718446,
+      "total_valid_joints": 830
+    },
+    {
+      "checkpoint_label": "Coordinate Huber 1e-5 10pct t010-020 1550",
+      "checkpoint_step": 1550,
+      "clip_mean_cosine_similarity": 0.33407004605493934,
+      "critic_loss": {
+        "mean": 0.021252187944593885,
+        "median": 0.01804206892848015
+      },
+      "detection_coverage": 0.9038461538461539,
+      "eligible_sample_count": 21,
+      "joint_coverage": 0.9065533980582524,
+      "normalized_coordinate_error": {
+        "mean": 0.2432506283124288,
+        "median": 0.23587004840373993
+      },
+      "pck_005": 0.04854368932038835,
+      "pck_010": 0.16262135922330098,
+      "pck_020": 0.40898058252427183,
+      "total_valid_joints": 830
+    },
+    {
+      "checkpoint_label": "Coordinate Huber 1e-5 10pct t010-020 1575",
+      "checkpoint_step": 1575,
+      "clip_mean_cosine_similarity": 0.3341087922625456,
+      "critic_loss": {
+        "mean": 0.02267368772022781,
+        "median": 0.020125173032283783
+      },
+      "detection_coverage": 0.9038461538461539,
+      "eligible_sample_count": 21,
+      "joint_coverage": 0.9065533980582524,
+      "normalized_coordinate_error": {
+        "mean": 0.25029430857726503,
+        "median": 0.23916319012641907
+      },
+      "pck_005": 0.032766990291262135,
+      "pck_010": 0.14441747572815533,
+      "pck_020": 0.3932038834951456,
+      "total_valid_joints": 830
+    },
+    {
+      "checkpoint_label": "Coordinate Huber 1e-5 10pct t010-020 1600",
+      "checkpoint_step": 1600,
+      "clip_mean_cosine_similarity": 0.33364414424223243,
+      "critic_loss": {
+        "mean": 0.02187527237193925,
+        "median": 0.01869998872280121
+      },
+      "detection_coverage": 0.9038461538461539,
+      "eligible_sample_count": 21,
+      "joint_coverage": 0.9065533980582524,
+      "normalized_coordinate_error": {
+        "mean": 0.2456849983760289,
+        "median": 0.2374940812587738
+      },
+      "pck_005": 0.05339805825242718,
+      "pck_010": 0.14441747572815533,
+      "pck_020": 0.36893203883495146,
+      "total_valid_joints": 830
+    }
+  ],
+  "correlations": {
+    "critic_loss": {
+      "pck_005": {
+        "pearson": -0.3731969886816621,
+        "spearman": 0.0
+      },
+      "pck_010": {
+        "pearson": -0.08022541969099535,
+        "spearman": -0.20519567041703082
+      },
+      "pck_020": {
+        "pearson": -0.181983488583704,
+        "spearman": -0.1
+      }
+    },
+    "expected_direction": "negative: lower internal critic error is better while higher external PCK is better",
+    "normalized_coordinate_error": {
+      "pck_005": {
+        "pearson": -0.5164622996306654,
+        "spearman": -0.1
+      },
+      "pck_010": {
+        "pearson": -0.2267174823327762,
+        "spearman": -0.5642880936468347
+      },
+      "pck_020": {
+        "pearson": -0.23144570772363893,
+        "spearman": -0.5
+      }
+    },
+    "observation_count": 5,
+    "status": "diagnostic_descriptive_not_statistically_conclusive"
+  },
+  "critic_contract": {
+    "coordinate_mapping": "authoritative_fixed_roi_cell_center",
+    "coordinate_normalization": "both_prediction_and_target_inside_same_roi",
+    "critic_identifier": "torchvision/keypointrcnn_resnet50_fpn:COCO_V1",
+    "heatmap_input": "raw_logits_spatial_softmax",
+    "huber_delta": 1.0,
+    "phase1_unavailable": "excluded",
+    "pose_loss": "normalized_coordinate_huber",
+    "temperature": 1.0,
+    "valid_mask": "reward_joint_valid_only"
+  },
+  "deltas_vs_baseline": {
+    "1525": {
+      "clip_mean_cosine_similarity": {
+        "absolute": -0.003280511693069421,
+        "percent": -0.9738993803281415
+      },
+      "critic_loss": {
+        "absolute": -0.0016754230794807264,
+        "percent": -7.618318232631226
+      },
+      "detection_coverage": {
+        "absolute": -0.019230769230769273,
+        "percent": -2.083333333333338
+      },
+      "joint_coverage": {
+        "absolute": -0.020631067961165095,
+        "percent": -2.2251308900523608
+      },
+      "normalized_coordinate_error": {
+        "absolute": -0.006204035665307722,
+        "percent": -2.5308932884264634
+      },
+      "pck_005": {
+        "absolute": -0.007281553398058249,
+        "percent": -13.333333333333329
+      },
+      "pck_010": {
+        "absolute": -0.027912621359223316,
+        "percent": -15.436241610738264
+      },
+      "pck_020": {
+        "absolute": -0.014563106796116498,
+        "percent": -3.529411764705881
+      },
+      "total_valid_joints": {
+        "absolute": 0.0,
+        "percent": 0.0
+      }
+    },
+    "1550": {
+      "clip_mean_cosine_similarity": {
+        "absolute": -0.0027729337572153234,
+        "percent": -0.8232125718522292
+      },
+      "critic_loss": {
+        "absolute": -0.0007398453141961754,
+        "percent": -3.3641514883598336
+      },
+      "detection_coverage": {
+        "absolute": -0.019230769230769273,
+        "percent": -2.083333333333338
+      },
+      "joint_coverage": {
+        "absolute": -0.020631067961165095,
+        "percent": -2.2251308900523608
+      },
+      "normalized_coordinate_error": {
+        "absolute": -0.001881621778011322,
+        "percent": -0.7675945442988871
+      },
+      "pck_005": {
+        "absolute": -0.006067961165048541,
+        "percent": -11.111111111111107
+      },
+      "pck_010": {
+        "absolute": -0.018203883495145623,
+        "percent": -10.067114093959727
+      },
+      "pck_020": {
+        "absolute": -0.0036407766990291246,
+        "percent": -0.8823529411764702
+      },
+      "total_valid_joints": {
+        "absolute": 0.0,
+        "percent": 0.0
+      }
+    },
+    "1575": {
+      "clip_mean_cosine_similarity": {
+        "absolute": -0.0027341875496090795,
+        "percent": -0.811709821333916
+      },
+      "critic_loss": {
+        "absolute": 0.0006816544614377494,
+        "percent": 3.099551794126616
+      },
+      "detection_coverage": {
+        "absolute": -0.019230769230769273,
+        "percent": -2.083333333333338
+      },
+      "joint_coverage": {
+        "absolute": -0.020631067961165095,
+        "percent": -2.2251308900523608
+      },
+      "normalized_coordinate_error": {
+        "absolute": 0.005162058486824911,
+        "percent": 2.1058259306641207
+      },
+      "pck_005": {
+        "absolute": -0.021844660194174755,
+        "percent": -40.0
+      },
+      "pck_010": {
+        "absolute": -0.036407766990291274,
+        "percent": -20.13422818791947
+      },
+      "pck_020": {
+        "absolute": -0.01941747572815533,
+        "percent": -4.705882352941175
+      },
+      "total_valid_joints": {
+        "absolute": 0.0,
+        "percent": 0.0
+      }
+    },
+    "1600": {
+      "clip_mean_cosine_similarity": {
+        "absolute": -0.0031988355699222315,
+        "percent": -0.9496518442231179
+      },
+      "critic_loss": {
+        "absolute": -0.00011676088685080854,
+        "percent": -0.5309235643509226
+      },
+      "detection_coverage": {
+        "absolute": -0.019230769230769273,
+        "percent": -2.083333333333338
+      },
+      "joint_coverage": {
+        "absolute": -0.020631067961165095,
+        "percent": -2.2251308900523608
+      },
+      "normalized_coordinate_error": {
+        "absolute": 0.0005527482855887667,
+        "percent": 0.2254898265670198
+      },
+      "pck_005": {
+        "absolute": -0.0012135922330097082,
+        "percent": -2.2222222222222214
+      },
+      "pck_010": {
+        "absolute": -0.036407766990291274,
+        "percent": -20.13422818791947
+      },
+      "pck_020": {
+        "absolute": -0.043689320388349495,
+        "percent": -10.588235294117643
+      },
+      "total_valid_joints": {
+        "absolute": 0.0,
+        "percent": 0.0
+      }
+    }
+  },
+  "experiment_name": "pose-reward-coord-exposure10pct-l1e5-t010-020",
+  "format_version": 1,
+  "phase1_excluded_stems": [
+    "danbooru_anime_11903560",
+    "danbooru_anime_11910154",
+    "danbooru_anime_11917323"
+  ],
+  "read_only": true,
+  "sidecar": {
+    "path": "/lambda/nfs/adhit/krea2-pose/pose_targets_v3",
+    "records_sha256": "dfc32293f1bdb76de58e34a02f95a14e515b0080b7c2f60ddd4a28c6f9fb2d8f"
+  }
+}

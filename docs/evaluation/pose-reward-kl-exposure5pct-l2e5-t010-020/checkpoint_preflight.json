@@ -1,0 +1,94 @@
+{
+  "checkpoint_validation": {
+    "expected_sha256": {
+      "1700": "acb9e43e5134a2d4e916285acac3244750d23ff18c215886dd4b1a3e65f3511f"
+    },
+    "mode": "direct_local"
+  },
+  "checkpoints": [
+    {
+      "checkpoint_step": 1550,
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l2e5-t010-020/step_001550.pt"
+    },
+    {
+      "checkpoint_step": 1600,
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l2e5-t010-020/step_001600.pt"
+    },
+    {
+      "checkpoint_step": 1650,
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l2e5-t010-020/step_001650.pt"
+    },
+    {
+      "checkpoint_step": 1700,
+      "expected_sha256": "acb9e43e5134a2d4e916285acac3244750d23ff18c215886dd4b1a3e65f3511f",
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l2e5-t010-020/step_001700.pt"
+    }
+  ],
+  "control_scale": 1.0,
+  "diagnostic_sample_count": 24,
+  "experiment_name": "pose-reward-kl-exposure5pct-l2e5-t010-020",
+  "hf_namespace": "pose-reward-kl-exposure5pct-l2e5-t010-020/full/",
+  "hf_repo_id": "adhit-420/Krea-2-PoseControl-LoRA-checkpoints",
+  "local_checkpoint_root": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-reward-kl-exposure5pct-l2e5-t010-020",
+  "metadata": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "reused_baseline": {
+    "checkpoint_step": 1500,
+    "regenerated": false,
+    "source": "docs/evaluation/turbo-8step-cfg0-lr5e5/pck_clip_results.json"
+  },
+  "stems": [
+    "coco_156320_crowd",
+    "coco_299468_426600",
+    "coco_379542_449327",
+    "coco_64240_crowd",
+    "danbooru_anime_11903560",
+    "danbooru_anime_11910154",
+    "danbooru_anime_11917323",
+    "painting_humanart_10000000000555",
+    "painting_humanart_10000000000838",
+    "painting_humanart_1000000000218",
+    "painting_humanart_1000000001225",
+    "painting_humanart_1000000002653",
+    "painting_humanart_6000000000319",
+    "painting_humanart_6000000002434",
+    "painting_humanart_9000000000608",
+    "painting_humanart_9000000002722",
+    "real_human_humanart_15000000000201",
+    "real_human_humanart_15000000002196",
+    "real_human_humanart_17000000000288",
+    "real_human_humanart_17000000001552",
+    "real_human_humanart_17000000001695",
+    "sculpture_humanart_14000000000243",
+    "sculpture_humanart_14000000001143",
+    "sculpture_humanart_14000000004479"
+  ],
+  "training_metadata": {
+    "exposure": {
+      "eligible_samples_seen": 5567,
+      "forced_fraction_of_eligible": 0.05029638943775822,
+      "forced_samples": 280,
+      "naturally_active_samples": 53,
+      "optimizer_steps": 200,
+      "optimizer_steps_with_pose": 159,
+      "total_active_fraction_of_eligible": 0.05981677743847674,
+      "total_active_samples": 333
+    },
+    "final_step": 1700,
+    "forced_pose_exposure_probability": 0.05,
+    "gradient_accumulation_steps": 32,
+    "lambda_pose": 2e-05,
+    "microbatch_size": 1,
+    "pose_timestep_window": [
+      0.1,
+      0.2
+    ],
+    "step_1700_sha256": "acb9e43e5134a2d4e916285acac3244750d23ff18c215886dd4b1a3e65f3511f"
+  }
+}

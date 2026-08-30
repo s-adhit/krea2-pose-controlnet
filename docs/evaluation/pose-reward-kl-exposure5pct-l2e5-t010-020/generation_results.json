@@ -1,0 +1,241 @@
+{
+  "checkpoints": [
+    1550,
+    1600,
+    1650,
+    1700
+  ],
+  "control_scale": 1.0,
+  "experiment_name": "pose-reward-kl-exposure5pct-l2e5-t010-020",
+  "generated_steps": {
+    "coco_156320_crowd": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "coco_299468_426600": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "coco_379542_449327": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "coco_64240_crowd": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "danbooru_anime_11903560": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "danbooru_anime_11910154": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "danbooru_anime_11917323": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "painting_humanart_10000000000555": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "painting_humanart_10000000000838": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "painting_humanart_1000000000218": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "painting_humanart_1000000001225": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "painting_humanart_1000000002653": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "painting_humanart_6000000000319": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "painting_humanart_6000000002434": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "painting_humanart_9000000000608": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "painting_humanart_9000000002722": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "real_human_humanart_15000000000201": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "real_human_humanart_15000000002196": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "real_human_humanart_17000000000288": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "real_human_humanart_17000000001552": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "real_human_humanart_17000000001695": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "sculpture_humanart_14000000000243": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "sculpture_humanart_14000000001143": [
+      1550,
+      1600,
+      1650,
+      1700
+    ],
+    "sculpture_humanart_14000000004479": [
+      1550,
+      1600,
+      1650,
+      1700
+    ]
+  },
+  "metadata": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "raw_to_turbo_control_compatibility": {
+    "1550": {
+      "control_lora_key_count": 450,
+      "raw_training_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors",
+      "shape_mismatches": 0,
+      "shared_official_mmdit_config": true
+    },
+    "1600": {
+      "control_lora_key_count": 450,
+      "raw_training_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors",
+      "shape_mismatches": 0,
+      "shared_official_mmdit_config": true
+    },
+    "1650": {
+      "control_lora_key_count": 450,
+      "raw_training_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors",
+      "shape_mismatches": 0,
+      "shared_official_mmdit_config": true
+    },
+    "1700": {
+      "control_lora_key_count": 450,
+      "raw_training_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors",
+      "shape_mismatches": 0,
+      "shared_official_mmdit_config": true
+    }
+  },
+  "stems": [
+    "coco_156320_crowd",
+    "coco_299468_426600",
+    "coco_379542_449327",
+    "coco_64240_crowd",
+    "danbooru_anime_11903560",
+    "danbooru_anime_11910154",
+    "danbooru_anime_11917323",
+    "painting_humanart_10000000000555",
+    "painting_humanart_10000000000838",
+    "painting_humanart_1000000000218",
+    "painting_humanart_1000000001225",
+    "painting_humanart_1000000002653",
+    "painting_humanart_6000000000319",
+    "painting_humanart_6000000002434",
+    "painting_humanart_9000000000608",
+    "painting_humanart_9000000002722",
+    "real_human_humanart_15000000000201",
+    "real_human_humanart_15000000002196",
+    "real_human_humanart_17000000000288",
+    "real_human_humanart_17000000001552",
+    "real_human_humanart_17000000001695",
+    "sculpture_humanart_14000000000243",
+    "sculpture_humanart_14000000001143",
+    "sculpture_humanart_14000000004479"
+  ],
+  "turbo_base_checkpoint_report": {
+    "bytes": 26283332608,
+    "checkpoint_name": "Turbo",
+    "config": {
+      "bias": false,
+      "channels": 16,
+      "features": 6144,
+      "heads": 48,
+      "kvheads": 12,
+      "layers": 28,
+      "multiplier": 4,
+      "patch": 2,
+      "tdim": 256,
+      "theta": 1000.0,
+      "txtdim": 2560,
+      "txtheads": 20,
+      "txtkvheads": 20,
+      "txtlayers": 12
+    },
+    "missing_keys": 0,
+    "path": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+    "shape_mismatches": 0,
+    "tensor_count": 430,
+    "unexpected_keys": 0
+  }
+}
