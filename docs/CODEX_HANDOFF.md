@@ -1,54 +1,86 @@
 # Project handoff
 
-## Current bounded objective
+## Current status
 
-Prepare the immutable, full 16,503-sample 768 paired-latent cache and matching
-768 pose-target sidecar required before the GH200 production-throughput matrix.
-The locked candidate remains 768, flow MSE plus `normalized_coordinate_huber`,
-`lambda_pose=0.04`, pose window `[0.10, 0.20]`, effective batch 32, R64/alpha64,
-224 LoRA targets, trainable ControlInputLayer, frozen Krea-2 Raw base, and
-native-only evaluation. No training science changed.
+The bounded manifest-identity preflight fix for the full 16,503-sample 768
+cache builder is complete. No cache, pose sidecar, training, generation,
+evaluation, or throughput benchmark was run this session.
 
-## Full 768 artifact contract
+## Full 768 manifest identity contract
 
-- Dataset snapshot: `/lambda/nfs/adhit/krea2-pose/posebridge_hf`.
-- Authoritative project train manifest:
-  `data/manifests/train.jsonl` SHA
-  `0de42b99e40dea0726a9368a92d91ba950349999f2b2c590df85ac91df147542`.
-  Its ordered parsed records are exactly identical to the snapshot manifest;
-  the snapshot's raw-file SHA differs only in serialization, so both raw SHA
-  and exact parsed order are deliberately checked without conflating them.
-- Latent root (does **not** yet exist):
-  `/lambda/nfs/adhit/krea2-pose/posebridge_latents_768`.
-- Pose source: `/lambda/nfs/adhit/krea2-pose/pose_targets_v3`; its immutable
-  `records.jsonl` SHA is verified as
-  `dfc32293f1bdb76de58e34a02f95a14e515b0080b7c2f60ddd4a28c6f9fb2d8f`.
-- Pose output (does **not** yet exist):
-  `/lambda/nfs/adhit/krea2-pose/pose_targets_v3_768`.
-- `pose_controlnet/full_768_cache.py` is the production-only contract. It
-  re-encodes RGB/control pixels under the deterministic 64-pixel-aligned 768
-  bucket policy; it never reads/reuses native or Mixed-32 latents. Every shard
-  preserves source/resized/crop/bucket geometry and finite aligned float32
-  latents. `train_manifest_identity.json` stores all 16,503 ordered stems and
-  manifest/order digests; `shards.json` becomes `complete: true` only after all
-  planned shards validate.
-- Valid final shards can be reused on resume; partial/corrupt shards are
-  atomically rebuilt. A root with a conflicting manifest, policy, or shard plan
-  is refused rather than overwritten.
-- The new sidecar reprojections exact source-space keypoints/visibility from
-  v3 through each cached geometry. COCO/HumanArt must resolve; Danbooru stays
-  present but explicitly unavailable and has no fabricated people/keypoints.
-  Sidecar metadata binds the source SHA, cache contract, manifest identity,
-  ordered-stem hash, availability counts, and content SHA.
-- Estimated latent storage is about 20 GiB (paired 16-channel float32 latents,
-  plus small metadata); the pose sidecar should be roughly 190 MiB. Reserve at
-  least 25 GiB to leave build/temporary headroom.
+- Authoritative project manifest:
+  `data/manifests/train.jsonl`.
+- Snapshot manifest:
+  `/lambda/nfs/adhit/krea2-pose/posebridge_hf/manifests/train.jsonl`.
+- Both must parse to exactly 16,503 JSON-object records.
+- The complete parsed records (including `conditioning_image`) must match
+  exactly and in order. This is the scientific manifest identity.
+- The ordered `file_name` values from the snapshot must exactly match the
+  resolved snapshot `ManifestRecord` order; the corresponding unique ordered
+  stem list is separately hashed and persisted.
+- `manifest_records_sha256` is the canonical, key-order-independent digest of
+  the ordered parsed records. It and `ordered_stems_sha256` bind cache and
+  sidecar metadata.
+- Raw SHA-256 values for the project and snapshot files are recorded only as
+  separate provenance fields (`authoritative_train_manifest_raw_sha256` and
+  `snapshot_train_manifest_raw_sha256`). They may differ when JSON formatting,
+  key ordering, or line endings differ; they are not used as scientific
+  identity or cache-conflict keys.
+- Any changed record content, changed stem, changed row order, malformed row,
+  count mismatch, or disagreement with resolved snapshot order fails closed.
 
-## Exact operator commands
+## Root cause and correction
 
-The cache build VAE-encodes 16,503 RGB/control pairs and therefore requires the
-GH200 CUDA environment. It is preprocessing only: no training, generation,
-evaluation, checkpointing, or throughput benchmark.
+`_identity` compared raw project JSON objects against dictionaries rebuilt
+from `ManifestRecord`. The resolver intentionally retains only `file_name` and
+`text`, while both legitimate manifests also contain `conditioning_image`.
+Thus every legitimate three-field raw record differed from a reconstructed
+two-field record even though the project and snapshot manifests parsed to the
+same ordered records.
+
+`pose_controlnet/full_768_cache.py` now parses both manifest files directly
+and compares their complete ordered JSON records before any cache root or VAE
+work. It retains raw hashes as provenance and uses a canonical parsed-record
+digest for artifact identity.
+
+## Files changed this session
+
+- `pose_controlnet/full_768_cache.py`
+- `tests/test_full_768_cache.py`
+- `docs/CODEX_HANDOFF.md`
+
+## Verification
+
+PASS:
+
+```bash
+PYTHONPATH=. python - <<'PY'
+from pathlib import Path
+from pose_controlnet.dataset_index import validate_posebridge_snapshot
+from pose_controlnet.full_768_cache import _identity
+root = Path('/lambda/nfs/adhit/krea2-pose/posebridge_hf')
+snapshot = validate_posebridge_snapshot(root)
+print(_identity(snapshot.records_by_split['train'],
+                Path('data/manifests/train.jsonl').resolve(),
+                root / 'manifests/train.jsonl')['sample_count'])
+PY
+```
+
+This printed `16503`; the parsed-record and ordered-stem digests were stable,
+while the two raw SHA values differed as expected.
+
+PASS:
+
+```bash
+PYTHONPATH=. python -m unittest tests.test_full_768_cache tests.test_dataset_index tests.test_shards -v
+PYTHONPATH=. python -m py_compile pose_controlnet/full_768_cache.py scripts/build_full_768_cache.py scripts/verify_full_768_cache.py tests/test_full_768_cache.py
+```
+
+The focused identity tests prove acceptance of formatting-only raw differences
+without VAE loading, and rejection of reordering, changed stems, changed
+`conditioning_image`, and conflicting resolved order.
+
+## Exact safe retry command
 
 ```bash
 cd /home/ubuntu/krea2-pose-controlnet
@@ -63,49 +95,5 @@ PYTHONPATH=. python scripts/build_full_768_cache.py \
   --pose-source "$POSE_SOURCE" --pose-output "$POSE_768" --device cuda
 ```
 
-The same command is the safe resume command. It reuses only fully valid final
-shards and refuses any scientifically conflicting root.
-
-```bash
-PYTHONPATH=. python scripts/verify_full_768_cache.py \
-  --dataset-root "$DATASET" --train-manifest "$TRAIN_MANIFEST" \
-  --latent-root "$LATENT_768" --pose-sidecar "$POSE_768"
-```
-
-The verifier is CPU/no-network/no-VAE. It checks exact manifest count/order,
-completion marker, every planned shard/tensor/geometry, actual source-size
-provenance, paired latent shape/finiteness, 768 policy only, sidecar identity,
-authoritative-source SHA, and Danbooru/eligible-target availability. The
-throughput runner invokes this verifier before CUDA/model work and now requires
-`--dataset-root "$DATASET"`.
-
-For the later benchmark, additionally export:
-
-```bash
-export RAW=/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors
-export TEXT=/lambda/nfs/adhit/krea2-pose/text_conditioning
-export DATASET=/lambda/nfs/adhit/krea2-pose/posebridge_hf
-export TRAIN_MANIFEST=/home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl
-export LATENT_768=/lambda/nfs/adhit/krea2-pose/posebridge_latents_768
-export POSE_768=/lambda/nfs/adhit/krea2-pose/pose_targets_v3_768
-```
-
-## This session
-
-- Added `pose_controlnet/full_768_cache.py`, `scripts/build_full_768_cache.py`,
-  `scripts/verify_full_768_cache.py`, and `tests/test_full_768_cache.py`.
-- Updated `scripts/benchmark_production_trainer.py` so an unverified full 768
-  cache/sidecar fails closed before GPU/model work; benchmark commands need the
-  new `--dataset-root "$DATASET"` argument.
-- PASS:
-  `PYTHONPATH=. python -m unittest tests.test_full_768_cache tests.test_shards tests.test_pose_targets tests.test_production_throughput_benchmark -v`
-- PASS:
-  `PYTHONPATH=. python -m py_compile pose_controlnet/full_768_cache.py scripts/build_full_768_cache.py scripts/verify_full_768_cache.py scripts/benchmark_production_trainer.py tests/test_full_768_cache.py`
-- No full cache/sidecar build was started; neither target root existed at
-  inspection. No long training, generation, evaluation, A-G benchmark,
-  commit, or push occurred.
-
-## Next action
-
-Run the exact build command on the GH200 host, then the verifier. Do not begin
-the A-G throughput matrix until that verifier reports PASS.
+This command has not been run in this session. Do not start the throughput
+matrix until its cache verifier passes.
