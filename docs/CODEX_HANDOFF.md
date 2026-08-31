@@ -2,101 +2,144 @@
 
 ## Current objective and status
 
-The production launcher is `scripts/train_production.py`, separate from the
-bounded Gate-F `train.py` path. The locked production run is not authorized to
-start from Codex.
+`pose-control-production-3000` now has an explicit provenance-safe cooldown
+continuation path. It is a new scientific run, never an exact-resume disguise.
+No cooldown training, real GPU evaluation, real image generation, network
+action, checkpoint upload, commit, or push occurred in this session.
 
-This session added the dual-mode production milestone Turbo evaluation harness.
-No training, evaluation, image generation, network access, checkpoint upload,
-commit, or push occurred.
-
-`scripts/evaluate_production_milestones.py` evaluates exactly the six local
-production milestones `500, 1000, 1500, 2000, 2500, 3000` in both isolated
-modes:
-
-- `native`: the historical primary benchmark. It retains the immutable native
-  diagnostic latents, cached text, fixed stems/prompts/seeds, and the exact
-  persisted paired geometry.
-- `dynamic-768`: the deployment/generalization benchmark. It resolves the
-  original diagnostic pair, selects only the shared nine-bucket 768 policy,
-  applies the shared resize-to-cover/center-crop geometry, VAE-encodes the
-  resulting paired control, and maps source keypoints through that exact
-  geometry before PCK.
-
-The output contract is strict and mode-separated:
+Required parent checkpoint:
 
 ```text
-<output>/step_000500/native/
-<output>/step_000500/dynamic-768/
-...
-<output>/step_003000/native/
-<output>/step_003000/dynamic-768/
+/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-3000/step_003000.pt
 ```
 
-Partial artifacts fail closed rather than being overwritten. Each sample
-metadata file records mode and geometry. The cross-checkpoint JSON and CSV
-summaries both retain an explicit `mode` field/column, so the primary native
-series cannot be conflated with dynamic-768.
+The new run is `pose-control-production-cooldown-3000-to5000`, in its own
+directory and its own W&B run. Every new checkpoint and `run_metadata.json`
+persist the parent absolute path/SHA-256/run name/global step plus the
+continuation schedule.
 
-## Locked production recipe
+## Locked cooldown science
 
-- Dataset snapshot: `/lambda/nfs/adhit/krea2-pose/posebridge_hf`
-- Production train cache: `/lambda/nfs/adhit/krea2-pose/posebridge_latents_768`
-- Historical diagnostic latent cache: `/lambda/nfs/adhit/krea2-pose/posebridge_latents`
-- Text cache: `/lambda/nfs/adhit/krea2-pose/text_conditioning`
-- Frozen Raw backbone + ControlInputLayer + rank/alpha-64 LoRA, existing 224
-  target topology.
-- Objective: flow MSE plus `normalized_coordinate_huber`, `lambda_pose=0.04`,
-  natural pose window `[0.10, 0.20]`, forced exposure 0.
-- AdamW `1e-4`, betas `(0.9, 0.99)`, weight decay 0, max-grad norm 1, 200-step
-  warmup; microbatch 1, accumulation 32, BF16, seed 42.
-- GH200 loader setting: workers 4, persistent workers, pinned memory,
-  prefetch factor 4. Gradient checkpointing, compile, and fused AdamW remain
-  disabled.
+All parent science remains locked: dynamic 768 policy; frozen Raw backbone;
+ControlInputLayer; R64/alpha64 LoRA; 224 target topology; flow MSE +
+`normalized_coordinate_huber`; `lambda_pose=0.04`; natural pose window
+`[0.10,0.20]`; forced exposure 0; AdamW `(0.9,0.99)`, zero decay, max norm 1;
+microbatch 1 / accumulation 32; BF16; four persistent pinned workers with
+prefetch 4; no checkpointing, compile, or fused AdamW; seed/RNG/data position.
 
-Production checkpoints save every 250 steps; HF mirrors every 500 steps yield
-the exact six milestone checkpoints above.
+Only the scheduler changes. It runs global steps 3001..5000 (2,000 updates),
+with no warmup and cosine `1e-4` to `1e-5`. For update `s`, `i=s-3001`:
 
-## Completed verification
-
-Latest CPU/no-network PASS:
-
-```bash
-PYTHONPATH=. python -m unittest tests.test_production_milestone_evaluation -v
-PYTHONPATH=. python -m py_compile pose_controlnet/evaluation_geometry.py pose_controlnet/production_milestone_evaluation.py pose_controlnet/turbo_evaluation.py scripts/evaluate_production_milestones.py tests/test_production_milestone_evaluation.py
+```text
+lr = 1e-5 + (1e-4 - 1e-5) * 0.5 * (1 + cos(pi * i / 1999))
 ```
 
-These tests prove the exact shared 768 bucket selector/geometry is reused,
-deterministic aspect-ratio mapping, exact reference-coordinate transformation,
-unchanged native persisted geometry, non-overwriting mode roots, and explicit
-summary mode rows. `pose_controlnet/evaluation_geometry.py` now owns the
-lightweight persisted-geometry validation shared by Turbo and the new harness;
-its Turbo behavior is unchanged.
+Thus step 3001 uses `1e-4` and step 5000 uses `1e-5` exactly. Global checkpoint
+names are `3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000`.
 
-## Exact foreground dual-mode milestone evaluation command (do not run from Codex)
+The launcher requires `--continue-from`, `--lr-schedule cosine`, and
+`--lr-final 1e-5` together. It rejects any parent other than step 3000,
+immutable science/artifact identity mismatch, absent Adam state, or malformed
+deterministic position. It restores weights, AdamW moments, Python/NumPy/Torch
+RNG, timestep-generator state, and data position, replacing only the scheduler.
+Ordinary exact `--resume` retains its prior fail-closed behavior. Restart this
+continuation with the same flags plus `--resume auto`; it can resume the new
+continuation W&B run but never the parent W&B run.
+
+W&B: project `Krea-2-PoseControl-Lora`, entity `adhit-projects`, name
+`pose-control-production-cooldown-3000-to5000`. HF is optional; the command
+below uses private `adhit-420/Krea-2-PoseControl-LoRA-checkpoints`, mirror
+cadence 500 global steps: `3500, 4000, 4500, 5000`.
+
+## Exact foreground cooldown command (do not run from Codex)
 
 ```bash
 cd /home/ubuntu/krea2-pose-controlnet
-HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python scripts/evaluate_production_milestones.py evaluate --checkpoint-root /lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-3000 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/pose-control-production-3000 --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning --turbo-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors --reference-sidecar /home/ubuntu/krea2-pose-controlnet/data/manifests/diagnostic_reference_pose.json --diagnostic-manifest /home/ubuntu/krea2-pose-controlnet/data/manifests/diagnostic_val.jsonl --canonical-reference-spec /home/ubuntu/krea2-pose-controlnet/docs/evaluation/turbo-8step-cfg0/turbo_spec.json --modes native dynamic-768
+PYTHONPATH=. python scripts/train_production.py \
+  --run-name pose-control-production-cooldown-3000-to5000 \
+  --max-steps 5000 --save-every 250 --diagnostics-every 50 \
+  --continue-from /lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-3000/step_003000.pt \
+  --continue-from-step 3000 --lr-schedule cosine --lr-final 1e-5 \
+  --wandb --wandb-project Krea-2-PoseControl-Lora --wandb-entity adhit-projects \
+  --wandb-name pose-control-production-cooldown-3000-to5000 \
+  --hf-repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints --hf-mirror-every-steps 500
 ```
 
-The command uses Turbo’s pinned 8-step, CFG 0, `mu=1.15`, control-scale 1.0
-contract. It uses the existing detector with threshold 0.5, unchanged Hungarian
-matching/bbox-diagonal PCK semantics, unmatched-reference failures, and the
-existing CLIP scoring helper. The offline variables require local model caches
-and prevent a network fallback.
+## Completed 3k milestone results
 
-## Files changed this session
+Native (`PCK@.05/.10/.20`, coverage, CLIP):
 
-- `pose_controlnet/evaluation_geometry.py`
-- `pose_controlnet/production_milestone_evaluation.py`
-- `pose_controlnet/turbo_evaluation.py`
-- `scripts/evaluate_production_milestones.py`
-- `tests/test_production_milestone_evaluation.py`
-- `docs/CODEX_HANDOFF.md`
+```text
+500:  .057039 / .183252 / .419903, .903846, .337271
+1000: .055825 / .157767 / .405340, .903846, .337827
+1500: .057039 / .184466 / .459951, .903846, .339513
+2000: .047330 / .160194 / .422330, .923077, .339663
+2500: .063107 / .188107 / .468447, .923077, .337012
+3000: .425971 / .605583 / .713592, .884615, .333933
+```
 
-## Next action
+Dynamic-768 at 3000: PCK `.356796 / .557039 / .691748`, coverage `.846154`,
+CLIP `.334231`. The major pose transition appears at step 3000 in both modes;
+the cooldown curve should verify and explain it. Hypothesis: lower-LR
+continuation may preserve/improve pose with stable/better image quality, trade
+image quality for pose, or degrade both.
 
-After review and only once all six local milestone checkpoints and local Turbo/
-CLIP model caches exist, run the exact foreground command above from the GH200
-host shell. Do not replace the native primary benchmark with dynamic-768.
+## Evaluation and dynamic contact sheets (do not run from Codex)
+
+The harness accepts explicit positive checkpoint lists; historical six-step
+defaults are unchanged. Evaluate cooldown checkpoints in both modes:
+
+```bash
+cd /home/ubuntu/krea2-pose-controlnet
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python scripts/evaluate_production_milestones.py evaluate \
+  --checkpoint-root /lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000 \
+  --output-root /lambda/nfs/adhit/krea2-pose/evaluation/pose-control-production-cooldown-3000-to5000 \
+  --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
+  --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
+  --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
+  --turbo-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors \
+  --reference-sidecar /home/ubuntu/krea2-pose-controlnet/data/manifests/diagnostic_reference_pose.json \
+  --diagnostic-manifest /home/ubuntu/krea2-pose-controlnet/data/manifests/diagnostic_val.jsonl \
+  --canonical-reference-spec /home/ubuntu/krea2-pose-controlnet/docs/evaluation/turbo-8step-cfg0/turbo_spec.json \
+  --steps 3500 4000 4500 5000 --modes native dynamic-768
+```
+
+Render source-preserving continuous sheets (no metric/model work):
+
+```bash
+PYTHONPATH=. python scripts/evaluate_production_milestones.py contact-sheet \
+  --evaluation-root /lambda/nfs/adhit/krea2-pose/evaluation/pose-control-production-cooldown-3000-to5000 \
+  --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
+  --steps 3500 4000 4500 5000 --modes native dynamic-768 \
+  --output-dir docs/evaluation/pose-control-production-cooldown-3000-to5000
+```
+
+The command reuses the existing renderer and produces
+`native_full_contact_sheet.png` and `dynamic768_full_contact_sheet.png`. Stem
+order comes from `generation_results.json`, must agree at every requested
+step/mode, and missing source/generated images fail loudly.
+
+## Verification and next decision
+
+CPU/no-network PASS:
+
+```bash
+PYTHONPATH=. python -m unittest tests.test_production_training tests.test_production_milestone_evaluation -v
+PYTHONPATH=. python -m py_compile pose_controlnet/production_training.py pose_controlnet/production_milestone_evaluation.py scripts/evaluate_production_milestones.py tests/test_production_training.py tests/test_production_milestone_evaluation.py
+```
+
+Tests cover Adam-moment restoration; no second warmup; cosine endpoints and
+monotonicity; global checkpoint/HF scheduling; parent provenance/identity
+failure; checkpoint reload; new W&B identity; exact-resume regressions;
+arbitrary contact-sheet steps/modes; stem order; source pair resolution;
+isolated output names; and missing image failure.
+
+After evaluating 3000 baseline and 3500/4000/4500/5000 in native and
+dynamic-768, choose among: A stable/better pose with stable CLIP; B preserved
+pose with better image/CLIP; C pose/image tradeoff; D both degrade (3000 was
+optimal). Do not add pose-loss annealing or flow-only finishing first.
+
+Files changed this session: `pose_controlnet/production_training.py`,
+`pose_controlnet/production_milestone_evaluation.py`,
+`scripts/evaluate_production_milestones.py`, their two test files, and this
+handoff.
