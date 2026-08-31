@@ -1,99 +1,103 @@
 # Project handoff
 
-## Current status
+## Current objective and status
 
-The bounded manifest-identity preflight fix for the full 16,503-sample 768
-cache builder is complete. No cache, pose sidecar, training, generation,
-evaluation, or throughput benchmark was run this session.
+The full-dataset production launcher is implemented at
+`scripts/train_production.py`. It is separate from the bounded Gate-F
+`train.py` entry point and never enables or uses `--allow-extended-training`.
 
-## Full 768 manifest identity contract
+No real training, generation, evaluation, long GPU benchmark, commit, or push
+occurred this session. The full 16,503-sample 768 cache and pose sidecar were
+not opened or modified by these CPU/no-network tests.
 
-- Authoritative project manifest:
-  `data/manifests/train.jsonl`.
-- Snapshot manifest:
-  `/lambda/nfs/adhit/krea2-pose/posebridge_hf/manifests/train.jsonl`.
-- Both must parse to exactly 16,503 JSON-object records.
-- The complete parsed records (including `conditioning_image`) must match
-  exactly and in order. This is the scientific manifest identity.
-- The ordered `file_name` values from the snapshot must exactly match the
-  resolved snapshot `ManifestRecord` order; the corresponding unique ordered
-  stem list is separately hashed and persisted.
-- `manifest_records_sha256` is the canonical, key-order-independent digest of
-  the ordered parsed records. It and `ordered_stems_sha256` bind cache and
-  sidecar metadata.
-- Raw SHA-256 values for the project and snapshot files are recorded only as
-  separate provenance fields (`authoritative_train_manifest_raw_sha256` and
-  `snapshot_train_manifest_raw_sha256`). They may differ when JSON formatting,
-  key ordering, or line endings differ; they are not used as scientific
-  identity or cache-conflict keys.
-- Any changed record content, changed stem, changed row order, malformed row,
-  count mismatch, or disagreement with resolved snapshot order fails closed.
+## Locked production recipe
 
-## Root cause and correction
+- Dataset snapshot: `/lambda/nfs/adhit/krea2-pose/posebridge_hf`
+- Authoritative manifest: `data/manifests/train.jsonl`
+- Cache: `/lambda/nfs/adhit/krea2-pose/posebridge_latents_768`
+- Text cache: `/lambda/nfs/adhit/krea2-pose/text_conditioning`
+- Pose sidecar: `/lambda/nfs/adhit/krea2-pose/pose_targets_v3_768`
+- Raw checkpoint: `/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors`
+- Frozen Krea-2 Raw + ControlInputLayer + rank/alpha 64 LoRA, existing 224
+  target topology.
+- Objective: existing flow MSE plus `normalized_coordinate_huber`,
+  `lambda_pose=0.04`, natural pose window `[0.10, 0.20]`, forced exposure 0.
+- AdamW `lr=1e-4`, betas `(0.9, 0.99)`, weight decay 0, existing max-grad
+  norm `1.0`, 200 optimizer-step warmup.
+- Microbatch 1, accumulation 32, effective batch 32; seed 42; BF16.
+- Selected GH200 runtime: loader workers 4, persistent workers, pinned memory,
+  prefetch factor 4; gradient checkpointing/compile/fused AdamW all disabled.
 
-`_identity` compared raw project JSON objects against dictionaries rebuilt
-from `ManifestRecord`. The resolver intentionally retains only `file_name` and
-`text`, while both legitimate manifests also contain `conditioning_image`.
-Thus every legitimate three-field raw record differed from a reconstructed
-two-field record even though the project and snapshot manifests parsed to the
-same ordered records.
+The launcher exposes the runtime controls but fail-closes overrides: this is a
+locked production recipe, not a new experiment interface. `--max-steps` and
+`--run-name` are required; 3000 steps are accepted without the Gate-F 100-step
+limit. Checkpoints default to every 250 optimizer steps.
 
-`pose_controlnet/full_768_cache.py` now parses both manifest files directly
-and compares their complete ordered JSON records before any cache root or VAE
-work. It retains raw hashes as provenance and uses a canonical parsed-record
-digest for artifact identity.
+Benchmark conclusion: baseline was about 19.646 sec/optimizer step; loader4
+about 15.786 sec/step. Microbatch 2 was slower, compile was neutral/slightly
+slower, and flow-only had no meaningful advantage. Therefore loader4 is the
+production setting.
 
-## Files changed this session
+## Preflight, checkpoint, and resume contract
 
-- `pose_controlnet/full_768_cache.py`
-- `tests/test_full_768_cache.py`
-- `docs/CODEX_HANDOFF.md`
+Before CUDA/model/optimizer construction, `verify_full_768_cache` validates
+the complete cache and authoritative pose sidecar. It fails closed on cache
+completion, count, immutable manifest identity/order, 768 geometry policy,
+cache-contract, sidecar membership/geometry, and sidecar-record identity.
 
-## Verification
+`run_metadata.json` and every atomic `step_*.pt` record the scientific recipe,
+cache contract SHA, sidecar records SHA, manifest record/order hashes, raw
+checkpoint/text-cache hashes, optimizer/scheduler/loader configs, code revision
+when available, current/max step, and run name. Checkpoints include trainable
+ControlInput/LoRA state, optimizer, scheduler, global step, epoch/batch/sample
+position, accumulation position, Python/NumPy/Torch CPU/CUDA RNG, and the
+flow/timestep generator state. Resume restores all state and rejects changed
+recipe, artifact identities, position metadata, missing generator state, or a
+checkpoint beyond the requested maximum. `--resume auto` is local-only and
+has no network dependency.
 
-PASS:
-
-```bash
-PYTHONPATH=. python - <<'PY'
-from pathlib import Path
-from pose_controlnet.dataset_index import validate_posebridge_snapshot
-from pose_controlnet.full_768_cache import _identity
-root = Path('/lambda/nfs/adhit/krea2-pose/posebridge_hf')
-snapshot = validate_posebridge_snapshot(root)
-print(_identity(snapshot.records_by_split['train'],
-                Path('data/manifests/train.jsonl').resolve(),
-                root / 'manifests/train.jsonl')['sample_count'])
-PY
-```
-
-This printed `16503`; the parsed-record and ordered-stem digests were stable,
-while the two raw SHA values differed as expected.
+## Verification completed this session
 
 PASS:
 
 ```bash
-PYTHONPATH=. python -m unittest tests.test_full_768_cache tests.test_dataset_index tests.test_shards -v
-PYTHONPATH=. python -m py_compile pose_controlnet/full_768_cache.py scripts/build_full_768_cache.py scripts/verify_full_768_cache.py tests/test_full_768_cache.py
+PYTHONPATH=. python -m unittest tests.test_production_training tests.test_production_throughput_benchmark -v
+PYTHONPATH=. python -m py_compile pose_controlnet/production_training.py scripts/train_production.py tests/test_production_training.py
 ```
 
-The focused identity tests prove acceptance of formatting-only raw differences
-without VAE loading, and rejection of reordering, changed stems, changed
-`conditioning_image`, and conflicting resolved order.
+The tests cover the locked CLI/defaults, batch 32, 200-step warmup, exact LR
+and pose recipe, loader4 defaults, disabled runtime alternatives, max-step
+3000, verifier-before-CUDA behavior, bad-cache rejection, bad-sidecar resume
+rejection, metadata identity, local-only resume, and deterministic resume
+position/RNG restoration.
 
-## Exact safe retry command
+## Exact 3000-step operator commands (do not run from Codex)
 
 ```bash
 cd /home/ubuntu/krea2-pose-controlnet
-export DATASET=/lambda/nfs/adhit/krea2-pose/posebridge_hf
-export TRAIN_MANIFEST=/home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl
-export LATENT_768=/lambda/nfs/adhit/krea2-pose/posebridge_latents_768
-export POSE_SOURCE=/lambda/nfs/adhit/krea2-pose/pose_targets_v3
-export POSE_768=/lambda/nfs/adhit/krea2-pose/pose_targets_v3_768
-PYTHONPATH=. python scripts/build_full_768_cache.py \
-  --dataset-root "$DATASET" --output-root "$LATENT_768" \
-  --train-manifest "$TRAIN_MANIFEST" \
-  --pose-source "$POSE_SOURCE" --pose-output "$POSE_768" --device cuda
+tmux new-session -d -s pose-production-3000 "cd /home/ubuntu/krea2-pose-controlnet && mkdir -p /lambda/nfs/adhit/krea2-pose/production-logs && set -o pipefail && PYTHONPATH=. python scripts/train_production.py --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf --train-manifest /home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents_768 --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning --pose-sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3_768 --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints --run-name pose-control-production-3000 --max-steps 3000 --save-every 250 --diagnostics-every 50 2>&1 | tee /lambda/nfs/adhit/krea2-pose/production-logs/pose-control-production-3000.log"
+
+tmux attach -t pose-production-3000
+tail -F /lambda/nfs/adhit/krea2-pose/production-logs/pose-control-production-3000.log
+watch -n 10 'ls -lh /lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-3000; tail -n 2 /lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-3000/metrics.jsonl'
 ```
 
-This command has not been run in this session. Do not start the throughput
-matrix until its cache verifier passes.
+Resume after an interruption:
+
+```bash
+cd /home/ubuntu/krea2-pose-controlnet
+PYTHONPATH=. python scripts/train_production.py --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf --train-manifest /home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents_768 --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning --pose-sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3_768 --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints --run-name pose-control-production-3000 --max-steps 3000 --save-every 250 --diagnostics-every 50 --resume auto
+```
+
+## Files changed this session
+
+- `pose_controlnet/production_training.py`
+- `scripts/train_production.py`
+- `tests/test_production_training.py`
+- `docs/CODEX_HANDOFF.md`
+
+## Next action
+
+Review the launcher and test patch, then perform the outstanding real GH200
+preflight/stability and service gates before asking for authorization to launch
+the 3000-step run.
