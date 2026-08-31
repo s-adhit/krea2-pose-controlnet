@@ -3,6 +3,7 @@ import random
 import shutil
 import tempfile
 import threading
+import time
 import unittest
 import sys
 from dataclasses import asdict
@@ -414,6 +415,61 @@ class TrainMechanicsTest(unittest.TestCase):
             self.assertEqual(api.checkpoint_uploads, ["run/full/step_000600.pt", "run/full/step_000700.pt"])
             self.assertIn("run/full/step_000600.pt.complete.json", api.files)
             self.assertIn("run/full/step_000700.pt.complete.json", api.files)
+
+    def test_hf_mirror_draining_stop_waits_for_slow_final_upload_beyond_legacy_timeout(self):
+        class SlowApi:
+            def __init__(self): self.started, self.release = threading.Event(), threading.Event()
+            def create_repo(self, *args, **kwargs): pass
+            def upload_file(self, *, path_in_repo, **kwargs):
+                if path_in_repo.endswith(".pt"):
+                    self.started.set(); self.release.wait()
+        with tempfile.TemporaryDirectory() as temporary:
+            checkpoint = save_training_state(Path(temporary) / "step_000010.pt", self.full_state(10))
+            api = SlowApi(); mirror = HFTrainingCheckpointMirror(repo_id="user/private", run_name="run", api=api)
+            mirror.start(); self.assertTrue(mirror.submit(checkpoint, reason="step")); self.assertTrue(api.started.wait(1))
+            result: list[bool] = []
+            stopper = threading.Thread(target=lambda: result.append(mirror.stop(drain=True, timeout=None)))
+            stopper.start(); self.assertTrue(stopper.is_alive())
+            api.release.set(); stopper.join(1)
+            self.assertFalse(stopper.is_alive()); self.assertEqual(result, [True])
+
+    def test_hf_mirror_draining_stop_preserves_multiple_upload_and_marker_order(self):
+        class OrderedApi:
+            def __init__(self): self.uploads = []
+            def create_repo(self, *args, **kwargs): pass
+            def upload_file(self, *, path_in_repo, **kwargs): self.uploads.append(path_in_repo)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            first = save_training_state(root / "step_000005.pt", self.full_state(5))
+            second = save_training_state(root / "step_000010.pt", self.full_state(10))
+            api = OrderedApi(); mirror = HFTrainingCheckpointMirror(repo_id="user/private", run_name="run", api=api)
+            mirror.start(); self.assertTrue(mirror.submit(first, reason="step")); self.assertTrue(mirror.submit(second, reason="step"))
+            self.assertTrue(mirror.stop(drain=True, timeout=1))
+            self.assertEqual(api.uploads, [
+                "run/full/step_000005.pt", "run/full/step_000005.pt.complete.json",
+                "run/full/step_000010.pt", "run/full/step_000010.pt.complete.json",
+            ])
+
+    def test_hf_mirror_draining_stop_reports_failed_upload_and_completes(self):
+        class FailingApi:
+            def create_repo(self, *args, **kwargs): pass
+            def upload_file(self, **kwargs): raise OSError("simulated offline")
+        with tempfile.TemporaryDirectory() as temporary:
+            checkpoint = save_training_state(Path(temporary) / "step_000010.pt", self.full_state(10))
+            results = []
+            mirror = HFTrainingCheckpointMirror(repo_id="user/private", run_name="run", api=FailingApi(),
+                                                max_attempts=1, on_result=lambda *result: results.append(result))
+            mirror.start(); self.assertTrue(mirror.submit(checkpoint, reason="step"))
+            self.assertTrue(mirror.stop(drain=True, timeout=1))
+            self.assertTrue(checkpoint.exists()); self.assertIn("simulated offline", mirror.last_error)
+            self.assertEqual([(success, step, reason) for success, step, _error, reason in results],
+                             [(False, 10, "step")])
+
+    def test_hf_mirror_draining_stop_with_no_work_is_prompt(self):
+        mirror = HFTrainingCheckpointMirror(repo_id="user/private", run_name="run")
+        mirror.start(); started = time.monotonic()
+        self.assertTrue(mirror.stop(drain=True, timeout=1))
+        self.assertLess(time.monotonic() - started, 1)
 
     def test_hf_mirror_deduplicates_timed_and_step_requests_after_success(self):
         class MemoryApi:

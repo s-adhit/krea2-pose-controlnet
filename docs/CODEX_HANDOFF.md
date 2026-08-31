@@ -6,18 +6,27 @@ The full-dataset production launcher is implemented at
 `scripts/train_production.py`. It is separate from the bounded Gate-F
 `train.py` entry point and never enables or uses `--allow-extended-training`.
 
-Observed real GH200 smoke: steps 1–5 completed and atomically wrote
-`step_000005.pt`; `--resume auto` restored it and completed steps 6–7, writing
-`step_000007.pt`. This verified basic model/optimizer/local-checkpoint/resume
-operation but exposed restarted pose cumulative counters. Production checkpoints
-now persist/restore `eligible_samples_seen`, `naturally_active_samples`,
-`forced_samples`, and `total_active_samples`; legacy checkpoints can recover
-their exact checkpoint-step counters from local `metrics.jsonl`. This does not
-alter activation or timestep sampling.
+Observed real 10-step production-service smoke atomically saved local
+`step_000005.pt` and `step_000010.pt`, and queued the configured step-10 HF
+mirror, but no remote checkpoint/marker appeared. Root cause: the mirror worker
+was daemonized and `stop()` placed its sentinel then joined for only 30 seconds;
+a roughly 2.5-GB final upload could still be in progress when normal process
+exit killed the worker.
 
-No real training, generation, evaluation, long GPU benchmark, commit, or push
-occurred in the W&B-entity support session. The full 16,503-sample 768 cache
-and pose sidecar were not opened or modified by its CPU/no-network tests.
+`HFTrainingCheckpointMirror.stop(drain=True, timeout=None)` now stops new
+submissions, appends its sentinel after all accepted FIFO work, and waits until
+every queued upload has reached its existing terminal success/failure result.
+The worker calls `Queue.task_done()` for every request. Production calls this
+explicit draining mode in its `finally` block. The legacy `stop()` form remains
+bounded at 30 seconds for older trainers and returns `False` plus a visible
+shutdown failure record if it times out. The production drain has no hidden
+30-second cutoff. Upload ordering remains full checkpoint followed by its
+`.complete.json` marker; local checkpoints remain authoritative after failure;
+invalid/temp files remain rejected.
+
+No training, generation, evaluation, long GPU job, real HF upload, commit, or
+push occurred in this shutdown-fix session. The full 16,503-sample 768 cache
+and pose sidecar were not opened or modified.
 
 ## Locked production recipe
 
@@ -85,8 +94,10 @@ published and deserialize-validated `step_*.pt` files are queued. The existing
 private-repo helper uploads the full checkpoint then its checksum completion
 marker; the checkpoint contains the production provenance. Failures are retried
 and reported while the local checkpoint remains authoritative. Temp/incomplete
-files are rejected. Local saves every 250 plus HF every 500 gives exact 3000
-milestones: `500, 1000, 1500, 2000, 2500, 3000`.
+files are rejected. At normal production exit, the accepted queue is drained
+without a fixed join timeout before the process returns. Local saves every 250
+plus HF every 500 gives exact 3000 milestones: `500, 1000, 1500, 2000, 2500,
+3000`.
 
 ## Verification completed this session
 
@@ -95,6 +106,44 @@ PASS:
 ```bash
 PYTHONPATH=. python -m unittest tests.test_production_training.ProductionTrainingTests.test_wandb_cli_enablement_and_local_checkpoint_resume_identity tests.test_production_training.ProductionTrainingTests.test_cli_defaults_are_the_locked_loader4_recipe -v
 PYTHONPATH=. python -m py_compile pose_controlnet/production_training.py scripts/train_production.py tests/test_production_training.py
+```
+
+Shutdown-fix verification (CPU/mock/no-network), all PASS:
+
+```bash
+PYTHONPATH=. python -m unittest tests.test_train_mechanics.TrainMechanicsTest.test_hf_mirror_queues_exact_paths_while_upload_is_in_flight tests.test_train_mechanics.TrainMechanicsTest.test_hf_mirror_draining_stop_waits_for_slow_final_upload_beyond_legacy_timeout tests.test_train_mechanics.TrainMechanicsTest.test_hf_mirror_draining_stop_preserves_multiple_upload_and_marker_order tests.test_train_mechanics.TrainMechanicsTest.test_hf_mirror_draining_stop_reports_failed_upload_and_completes tests.test_train_mechanics.TrainMechanicsTest.test_hf_mirror_draining_stop_with_no_work_is_prompt tests.test_production_training.ProductionTrainingTests.test_production_trainer_uses_draining_hf_mirror_shutdown -v
+PYTHONPATH=. python -m unittest tests.test_train_mechanics tests.test_production_training -v
+PYTHONPATH=. python -m py_compile pose_controlnet/checkpointing.py pose_controlnet/production_training.py tests/test_train_mechanics.py tests/test_production_training.py scripts/mirror_checkpoint.py
+git diff --check
+```
+
+The 66-test combined suite covers queued-work draining, a blocked final upload,
+multiple FIFO checkpoint/marker pairs, terminal upload failure with intact local
+checkpoint, prompt empty shutdown, existing checkpointing behavior, production
+draining invocation, temp-file rejection, and local-authority behavior.
+
+## Direct operator recovery check (do not run from Codex)
+
+Mirror the existing valid step-10 checkpoint synchronously; this helper waits
+for the full upload, then the completion marker, then verifies the result:
+
+```bash
+cd /home/ubuntu/krea2-pose-controlnet
+PYTHONPATH=. python scripts/mirror_checkpoint.py mirror --repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints --run-name pose-control-service-smoke-10 --checkpoint /lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-service-smoke-10/step_000010.pt
+```
+
+Verify both expected remote files and the marker/checksum/state contract:
+
+```bash
+cd /home/ubuntu/krea2-pose-controlnet
+PYTHONPATH=. python scripts/mirror_checkpoint.py status --repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints --run-name pose-control-service-smoke-10 --checkpoint /lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-service-smoke-10/step_000010.pt
+```
+
+Expected remote paths:
+
+```text
+pose-control-service-smoke-10/full/step_000010.pt
+pose-control-service-smoke-10/full/step_000010.pt.complete.json
 ```
 
 Earlier production coverage also passed:
@@ -140,11 +189,14 @@ PYTHONPATH=. python scripts/train_production.py --dataset-root /lambda/nfs/adhit
 ## Files changed this session
 
 - `pose_controlnet/production_training.py`
+- `pose_controlnet/checkpointing.py`
+- `tests/test_train_mechanics.py`
 - `tests/test_production_training.py`
 - `docs/CODEX_HANDOFF.md`
 
 ## Next action
 
-Run the corrected 10-step service smoke with `--wandb-entity adhit-420`, then
-continue the outstanding real GH200 preflight/stability and service gates before
-asking for authorization to launch the 3000-step run.
+After reviewing this patch, run only the direct synchronous operator mirror
+command above against the already-existing `step_000010.pt`, then run its
+status command and confirm both remote paths are `true`/`valid_complete: true`.
+Do not retrain solely to validate this shutdown fix.

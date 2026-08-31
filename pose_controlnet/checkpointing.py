@@ -151,6 +151,8 @@ class HFTrainingCheckpointMirror:
         self._queued: set[Path] = set(); self._completed: set[Path] = set(); self._reasons: dict[Path, str] = {}
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None; self._last_submission = float("-inf")
+        self._stopping = False
+        self._worker_stopped = threading.Event()
         self.last_success_time: float | None = None; self.last_success_step: int | None = None; self.last_error: str | None = None
 
     def start(self) -> None:
@@ -179,11 +181,11 @@ class HFTrainingCheckpointMirror:
         if path is None:
             return False
         with self._lock:
-            if path in self._queued or path in self._completed:
+            if self._stopping or path in self._queued or path in self._completed:
                 return False
             self._queued.add(path)
             self._reasons[path] = reason
-        self._pending.put((path, reason))
+            self._pending.put((path, reason))
         return True
 
     def maybe_submit(self, checkpoint: str | Path) -> bool:
@@ -195,12 +197,13 @@ class HFTrainingCheckpointMirror:
             return False
         now = time.monotonic()
         with self._lock:
-            if (now - self._last_submission < self.interval_seconds or path in self._queued
+            if (self._stopping or now - self._last_submission < self.interval_seconds or path in self._queued
                     or path in self._completed):
                 return False
             self._last_submission = now; self._queued.add(path)
             self._reasons[path] = "timed"
-        self._pending.put((path, "timed")); return True
+            self._pending.put((path, "timed"))
+        return True
 
     def prune_local(self, run_dir: str | Path) -> None:
         """Apply retention without deleting queued or required milestone sources."""
@@ -288,17 +291,52 @@ class HFTrainingCheckpointMirror:
     def _worker(self) -> None:
         while True:
             request = self._pending.get()
-            if request is None: return
-            checkpoint, reason = request
-            try: self._upload(checkpoint, reason)
+            try:
+                if request is None:
+                    self._worker_stopped.set()
+                    return
+                checkpoint, reason = request
+                self._upload(checkpoint, reason)
             finally:
-                with self._lock:
-                    self._queued.discard(checkpoint)
-                    self._reasons.pop(checkpoint, None)
+                if request is not None:
+                    checkpoint, _reason = request
+                    with self._lock:
+                        self._queued.discard(checkpoint)
+                        self._reasons.pop(checkpoint, None)
+                self._pending.task_done()
 
-    def stop(self) -> None:
-        if self._thread is not None:
-            self._pending.put(None); self._thread.join(timeout=30)
+    def stop(self, *, drain: bool = False, timeout: float | None = 30.0) -> bool:
+        """Stop the worker and report whether it reached a terminal state.
+
+        ``drain=True`` accepts no more work, places the sentinel after every
+        already accepted request, and waits for all those requests to report a
+        success or failure result before returning.  Production shutdown uses
+        ``timeout=None`` through this mode so a large final checkpoint cannot
+        be silently abandoned after the legacy 30-second join timeout.
+
+        The default preserves the legacy bounded shutdown behavior.  A timeout
+        returns ``False`` and records a visible shutdown failure; it never
+        claims that outstanding work completed.
+        """
+        with self._lock:
+            thread = self._thread
+            if thread is None:
+                return True
+            if not self._stopping:
+                self._stopping = True
+                self._pending.put(None)
+        if drain:
+            stopped = self._worker_stopped.wait(timeout=timeout)
+        else:
+            thread.join(timeout=timeout)
+            stopped = not thread.is_alive()
+        if not stopped:
+            self._record(False, None,
+                         "HF mirror shutdown timed out; queued checkpoint work is still in progress locally",
+                         "shutdown")
+            return False
+        thread.join()
+        return True
 
 
 def newest_valid_hf_checkpoint(*, repo_id: str, run_name: str, download_dir: str | Path,
