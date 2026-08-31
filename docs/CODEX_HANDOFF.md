@@ -6,9 +6,18 @@ The full-dataset production launcher is implemented at
 `scripts/train_production.py`. It is separate from the bounded Gate-F
 `train.py` entry point and never enables or uses `--allow-extended-training`.
 
+Observed real GH200 smoke: steps 1–5 completed and atomically wrote
+`step_000005.pt`; `--resume auto` restored it and completed steps 6–7, writing
+`step_000007.pt`. This verified basic model/optimizer/local-checkpoint/resume
+operation but exposed restarted pose cumulative counters. Production checkpoints
+now persist/restore `eligible_samples_seen`, `naturally_active_samples`,
+`forced_samples`, and `total_active_samples`; legacy checkpoints can recover
+their exact checkpoint-step counters from local `metrics.jsonl`. This does not
+alter activation or timestep sampling.
+
 No real training, generation, evaluation, long GPU benchmark, commit, or push
-occurred this session. The full 16,503-sample 768 cache and pose sidecar were
-not opened or modified by these CPU/no-network tests.
+occurred in the observability/counter-fix session. The full 16,503-sample 768
+cache and pose sidecar were not opened or modified by its CPU/no-network tests.
 
 ## Locked production recipe
 
@@ -56,6 +65,27 @@ recipe, artifact identities, position metadata, missing generator state, or a
 checkpoint beyond the requested maximum. `--resume auto` is local-only and
 has no network dependency.
 
+## Optional production observability
+
+W&B is disabled by default (`--no-wandb`) and, when disabled, does not import
+or initialize W&B. `--wandb` enables a failure-isolated mirror;
+`--wandb-project` defaults to `Krea-2-PoseControl-Lora` and `--wandb-name`
+defaults to the run name. It mirrors the already-collected JSONL step metrics,
+including losses, learning rate, gradient norm, timing, pose/cumulative
+counters, and timestep diagnostics, without new CUDA synchronization. The W&B
+run ID is checkpointed: a local resume with W&B enabled passes that ID with
+`resume="allow"` to continue the same remote run. Init/log/finish failures only
+disable W&B for that process; local JSONL/checkpoints continue.
+
+HF mirroring is disabled by default (`--hf-repo-id ''`,
+`--hf-mirror-every-steps 0`). With both options supplied, only atomically
+published and deserialize-validated `step_*.pt` files are queued. The existing
+private-repo helper uploads the full checkpoint then its checksum completion
+marker; the checkpoint contains the production provenance. Failures are retried
+and reported while the local checkpoint remains authoritative. Temp/incomplete
+files are rejected. Local saves every 250 plus HF every 500 gives exact 3000
+milestones: `500, 1000, 1500, 2000, 2500, 3000`.
+
 ## Verification completed this session
 
 PASS:
@@ -63,19 +93,21 @@ PASS:
 ```bash
 PYTHONPATH=. python -m unittest tests.test_production_training tests.test_production_throughput_benchmark -v
 PYTHONPATH=. python -m py_compile pose_controlnet/production_training.py scripts/train_production.py tests/test_production_training.py
+PYTHONPATH=. python -m unittest tests.test_production_training tests.test_train_mechanics tests.test_pose_reward_wandb -v
 ```
 
-The tests cover the locked CLI/defaults, batch 32, 200-step warmup, exact LR
-and pose recipe, loader4 defaults, disabled runtime alternatives, max-step
-3000, verifier-before-CUDA behavior, bad-cache rejection, bad-sidecar resume
-rejection, metadata identity, local-only resume, and deterministic resume
-position/RNG restoration.
+The focused CPU/no-network tests cover the locked CLI/defaults, batch 32,
+200-step warmup, exact LR/pose recipe, loader4 defaults, disabled runtime
+alternatives, scientific resume identity, default-off W&B/HF behavior, W&B
+checkpoint run-ID continuity, exact 500-step HF milestones, nonfatal HF
+failure/local authority, temp-checkpoint rejection, and cumulative-counter
+continuity.
 
 ## Exact 3000-step operator commands (do not run from Codex)
 
 ```bash
 cd /home/ubuntu/krea2-pose-controlnet
-tmux new-session -d -s pose-production-3000 "cd /home/ubuntu/krea2-pose-controlnet && mkdir -p /lambda/nfs/adhit/krea2-pose/production-logs && set -o pipefail && PYTHONPATH=. python scripts/train_production.py --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf --train-manifest /home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents_768 --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning --pose-sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3_768 --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints --run-name pose-control-production-3000 --max-steps 3000 --save-every 250 --diagnostics-every 50 2>&1 | tee /lambda/nfs/adhit/krea2-pose/production-logs/pose-control-production-3000.log"
+tmux new-session -d -s pose-production-3000 "cd /home/ubuntu/krea2-pose-controlnet && mkdir -p /lambda/nfs/adhit/krea2-pose/production-logs && set -o pipefail && PYTHONPATH=. python scripts/train_production.py --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf --train-manifest /home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents_768 --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning --pose-sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3_768 --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints --run-name pose-control-production-3000 --max-steps 3000 --save-every 250 --diagnostics-every 50 --wandb --wandb-project Krea-2-PoseControl-Lora --wandb-name pose-control-production-3000 --hf-repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints --hf-mirror-every-steps 500 2>&1 | tee /lambda/nfs/adhit/krea2-pose/production-logs/pose-control-production-3000.log"
 
 tmux attach -t pose-production-3000
 tail -F /lambda/nfs/adhit/krea2-pose/production-logs/pose-control-production-3000.log
@@ -86,7 +118,7 @@ Resume after an interruption:
 
 ```bash
 cd /home/ubuntu/krea2-pose-controlnet
-PYTHONPATH=. python scripts/train_production.py --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf --train-manifest /home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents_768 --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning --pose-sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3_768 --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints --run-name pose-control-production-3000 --max-steps 3000 --save-every 250 --diagnostics-every 50 --resume auto
+PYTHONPATH=. python scripts/train_production.py --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf --train-manifest /home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents_768 --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning --pose-sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3_768 --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints --run-name pose-control-production-3000 --max-steps 3000 --save-every 250 --diagnostics-every 50 --wandb --wandb-project Krea-2-PoseControl-Lora --wandb-name pose-control-production-3000 --hf-repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints --hf-mirror-every-steps 500 --resume auto
 ```
 
 ## Files changed this session
