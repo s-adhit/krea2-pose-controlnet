@@ -16,8 +16,8 @@ their exact checkpoint-step counters from local `metrics.jsonl`. This does not
 alter activation or timestep sampling.
 
 No real training, generation, evaluation, long GPU benchmark, commit, or push
-occurred in the observability/counter-fix session. The full 16,503-sample 768
-cache and pose sidecar were not opened or modified by its CPU/no-network tests.
+occurred in the W&B-entity support session. The full 16,503-sample 768 cache
+and pose sidecar were not opened or modified by its CPU/no-network tests.
 
 ## Locked production recipe
 
@@ -70,7 +70,9 @@ has no network dependency.
 W&B is disabled by default (`--no-wandb`) and, when disabled, does not import
 or initialize W&B. `--wandb` enables a failure-isolated mirror;
 `--wandb-project` defaults to `Krea-2-PoseControl-Lora` and `--wandb-name`
-defaults to the run name. It mirrors the already-collected JSONL step metrics,
+defaults to the run name. `--wandb-entity` defaults to `None`; when supplied,
+it is passed explicitly to `wandb.init(entity=...)` and recorded in the local
+run/checkpoint metadata. It mirrors the already-collected JSONL step metrics,
 including losses, learning rate, gradient norm, timing, pose/cumulative
 counters, and timestep diagnostics, without new CUDA synchronization. The W&B
 run ID is checkpointed: a local resume with W&B enabled passes that ID with
@@ -91,6 +93,13 @@ milestones: `500, 1000, 1500, 2000, 2500, 3000`.
 PASS:
 
 ```bash
+PYTHONPATH=. python -m unittest tests.test_production_training.ProductionTrainingTests.test_wandb_cli_enablement_and_local_checkpoint_resume_identity tests.test_production_training.ProductionTrainingTests.test_cli_defaults_are_the_locked_loader4_recipe -v
+PYTHONPATH=. python -m py_compile pose_controlnet/production_training.py scripts/train_production.py tests/test_production_training.py
+```
+
+Earlier production coverage also passed:
+
+```bash
 PYTHONPATH=. python -m unittest tests.test_production_training tests.test_production_throughput_benchmark -v
 PYTHONPATH=. python -m py_compile pose_controlnet/production_training.py scripts/train_production.py tests/test_production_training.py
 PYTHONPATH=. python -m unittest tests.test_production_training tests.test_train_mechanics tests.test_pose_reward_wandb -v
@@ -99,15 +108,22 @@ PYTHONPATH=. python -m unittest tests.test_production_training tests.test_train_
 The focused CPU/no-network tests cover the locked CLI/defaults, batch 32,
 200-step warmup, exact LR/pose recipe, loader4 defaults, disabled runtime
 alternatives, scientific resume identity, default-off W&B/HF behavior, W&B
-checkpoint run-ID continuity, exact 500-step HF milestones, nonfatal HF
+entity propagation and checkpoint run-ID continuity, exact 500-step HF milestones, nonfatal HF
 failure/local authority, temp-checkpoint rejection, and cumulative-counter
 continuity.
+
+## Exact corrected 10-step service-smoke command (do not run from Codex)
+
+```bash
+cd /home/ubuntu/krea2-pose-controlnet
+PYTHONPATH=. python scripts/train_production.py --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf --train-manifest /home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents_768 --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning --pose-sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3_768 --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints --run-name pose-control-service-smoke-10 --max-steps 10 --save-every 5 --diagnostics-every 1 --wandb --wandb-project Krea-2-PoseControl-Lora --wandb-entity adhit-420 --wandb-name pose-control-service-smoke-10
+```
 
 ## Exact 3000-step operator commands (do not run from Codex)
 
 ```bash
 cd /home/ubuntu/krea2-pose-controlnet
-tmux new-session -d -s pose-production-3000 "cd /home/ubuntu/krea2-pose-controlnet && mkdir -p /lambda/nfs/adhit/krea2-pose/production-logs && set -o pipefail && PYTHONPATH=. python scripts/train_production.py --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf --train-manifest /home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents_768 --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning --pose-sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3_768 --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints --run-name pose-control-production-3000 --max-steps 3000 --save-every 250 --diagnostics-every 50 --wandb --wandb-project Krea-2-PoseControl-Lora --wandb-name pose-control-production-3000 --hf-repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints --hf-mirror-every-steps 500 2>&1 | tee /lambda/nfs/adhit/krea2-pose/production-logs/pose-control-production-3000.log"
+tmux new-session -d -s pose-production-3000 "cd /home/ubuntu/krea2-pose-controlnet && mkdir -p /lambda/nfs/adhit/krea2-pose/production-logs && set -o pipefail && PYTHONPATH=. python scripts/train_production.py --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf --train-manifest /home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents_768 --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning --pose-sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3_768 --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints --run-name pose-control-production-3000 --max-steps 3000 --save-every 250 --diagnostics-every 50 --wandb --wandb-project Krea-2-PoseControl-Lora --wandb-entity adhit-420 --wandb-name pose-control-production-3000 --hf-repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints --hf-mirror-every-steps 500 2>&1 | tee /lambda/nfs/adhit/krea2-pose/production-logs/pose-control-production-3000.log"
 
 tmux attach -t pose-production-3000
 tail -F /lambda/nfs/adhit/krea2-pose/production-logs/pose-control-production-3000.log
@@ -118,18 +134,17 @@ Resume after an interruption:
 
 ```bash
 cd /home/ubuntu/krea2-pose-controlnet
-PYTHONPATH=. python scripts/train_production.py --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf --train-manifest /home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents_768 --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning --pose-sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3_768 --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints --run-name pose-control-production-3000 --max-steps 3000 --save-every 250 --diagnostics-every 50 --wandb --wandb-project Krea-2-PoseControl-Lora --wandb-name pose-control-production-3000 --hf-repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints --hf-mirror-every-steps 500 --resume auto
+PYTHONPATH=. python scripts/train_production.py --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf --train-manifest /home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents_768 --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning --pose-sidecar /lambda/nfs/adhit/krea2-pose/pose_targets_v3_768 --raw-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors --checkpoint-dir /lambda/nfs/adhit/krea2-pose/checkpoints --run-name pose-control-production-3000 --max-steps 3000 --save-every 250 --diagnostics-every 50 --wandb --wandb-project Krea-2-PoseControl-Lora --wandb-entity adhit-420 --wandb-name pose-control-production-3000 --hf-repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints --hf-mirror-every-steps 500 --resume auto
 ```
 
 ## Files changed this session
 
 - `pose_controlnet/production_training.py`
-- `scripts/train_production.py`
 - `tests/test_production_training.py`
 - `docs/CODEX_HANDOFF.md`
 
 ## Next action
 
-Review the launcher and test patch, then perform the outstanding real GH200
-preflight/stability and service gates before asking for authorization to launch
-the 3000-step run.
+Run the corrected 10-step service smoke with `--wandb-entity adhit-420`, then
+continue the outstanding real GH200 preflight/stability and service gates before
+asking for authorization to launch the 3000-step run.
