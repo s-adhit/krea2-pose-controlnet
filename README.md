@@ -8,31 +8,27 @@ Skeleton-conditioned pose control for Krea-2 using a Control-LoRA-style adaptati
 
 ## Showcase
 
-The public showcase is curated from A4300 generations and is presented as:
+### Fantasy Mage
 
-**pose condition → generated interpretation**
+| Pose condition | Generation |
+|---|---|
+| <img src="docs/assets/showcase/final/fantasy-mage/condition.png" width="320"> | <img src="docs/assets/showcase/final/fantasy-mage/generation.png" width="320"> |
 
-Current accepted examples:
+### Gojo-inspired Mural
 
-- Original fantasy mage
-- Gojo-inspired street mural
-- Dark-fantasy jester
+| Pose condition | Generation |
+|---|---|
+| <img src="docs/assets/showcase/final/gojo-mural/condition.png" width="320"> | <img src="docs/assets/showcase/final/gojo-mural/generation.png" width="320"> |
 
-Final curated assets live under:
+### Dark-fantasy Jester
 
-```text
-docs/assets/showcase/final/
-```
+| Pose condition | Generation |
+|---|---|
+| <img src="docs/assets/showcase/final/jester/condition.png" width="320"> | <img src="docs/assets/showcase/final/jester/generation.png" width="320"> |
 
-The README hero grid will be assembled from approved condition/generation pairs only.
-
-### Current curated showcase
-
-| Example | Condition | Generation |
-|---|---|---|
-| Fantasy mage | `docs/assets/showcase/final/fantasy-mage/condition.png` | `docs/assets/showcase/final/fantasy-mage/generation.png` |
-| Gojo-inspired mural | `docs/assets/showcase/final/gojo-mural/condition.png` | `docs/assets/showcase/final/gojo-mural/generation.png` |
-| Dark-fantasy jester | `docs/assets/showcase/final/jester/condition.png` | `docs/assets/showcase/final/jester/generation.png` |
+<p align="center">
+  <strong>Pose condition → generated interpretation</strong>
+</p>
 
 > Franchise-inspired examples are fan-art-style demonstrations only. They are not official affiliations, endorsements, or claims about training data.
 
