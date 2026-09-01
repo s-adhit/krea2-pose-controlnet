@@ -49,8 +49,8 @@ def pose_active_mask(timesteps: torch.Tensor, pose_reward_available: torch.Tenso
 def combine_flow_and_pose_loss(flow_loss: torch.Tensor, pose_loss: torch.Tensor | None,
                                active_count: int, lambda_pose: float) -> torch.Tensor:
     """Apply pose loss only when a graph was actually constructed."""
-    if not math.isfinite(lambda_pose) or lambda_pose <= 0:
-        raise ValueError("lambda_pose must be finite and positive when pose reward is enabled")
+    if not math.isfinite(lambda_pose) or lambda_pose < 0:
+        raise ValueError("lambda_pose must be finite and non-negative when pose reward is enabled")
     if active_count < 0:
         raise ValueError("active_count must be non-negative")
     if active_count == 0:
@@ -59,6 +59,11 @@ def combine_flow_and_pose_loss(flow_loss: torch.Tensor, pose_loss: torch.Tensor 
         return flow_loss
     if pose_loss is None:
         raise ValueError("pose_loss is required when samples are pose-active")
+    if lambda_pose == 0:
+        # The finishing anneal intentionally reaches an exact zero endpoint.
+        # Keep the active-reference integrity check above, but make its
+        # optimization contribution identically zero without an epsilon.
+        return flow_loss
     return flow_loss + float(lambda_pose) * pose_loss
 
 

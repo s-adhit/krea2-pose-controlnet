@@ -1,79 +1,44 @@
 # Project handoff
 
-## Current objective
+## Current objective and state
 
-The finishing-continuation inclusive step boundary was hardened and
-regression-tested. No training, real evaluation, image generation, network
-activity, upload, commit, or push occurred during this maintenance session.
+The finishing pose-anneal endpoint is repaired. Its fixed scientific contract
+is unchanged: global update 4001 uses `lambda_pose=.04`; update 4500 uses
+literal `lambda_pose=0.0`. The final update now legally executes, optimizing
+the flow-matching loss alone, and the existing final checkpoint condition
+writes `step_004500.pt`.
 
-The ready next experiment is a matched 500-update finishing A/B from:
+The only code semantic change is in
+`combine_flow_and_pose_loss`: a finite `lambda_pose == 0` is accepted after
+the existing active-reference consistency checks and returns the original
+`flow_loss` tensor unchanged. Positive values retain the prior
+`flow_loss + lambda_pose * pose_loss` calculation. Negative, NaN, and infinite
+values fail closed. A zero-active batch still requires `pose_loss is None`.
 
-```text
-/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt
-```
+The ordinary locked production recipe remains `.04`; the constant-lambda
+finishing control branch remains `.04` through update 4500. The cooldown
+branch and exact-resume identity checks are unchanged and still fail closed.
+No training, real evaluation, image generation, network activity, upload,
+commit, or push occurred in this maintenance session.
 
-Step 4000 is the preferred balanced branch point: it retains the observed pose
-gain without entering the less-settled 4250+ tail. No training, real
-evaluation, image generation, network activity, upload, commit, or push
-occurred while implementing this experiment.
+## Exact finishing contract
 
-Both branches preserve dynamic-768; frozen Raw; ControlInputLayer; R64/alpha64
-LoRA; 224 targets; flow MSE plus unchanged normalized-coordinate Huber pose
-term; natural pose window `[.10,.20]`; forced exposure 0; AdamW
-`(.9,.99)`/zero decay/max norm 1; microbatch 1/accumulation 32; BF16; four
-persistent pinned workers/prefetch 4; and checkpointing/compile/fused AdamW
-off. Parent Adam moments, RNG, timestep generator, and deterministic data
-position are restored; there is no new warmup.
+Both finish branches run updates `4001..4500` inclusive from the fixed step
+4000 cooldown parent. The finishing linear schedule is
+`lambda_pose(s)=.04*(1-(s-4001)/499)`, so it is exactly `0.0` at update 4500.
+The LR remains the existing cosine schedule from `2e-5` to `5e-6`. Final
+checkpoint/mirror milestones remain `4100, 4200, 4300, 4400, 4500`.
 
-## Exact A/B contract
+The production loop now calls a small `checkpoint_due` helper with its
+pre-existing condition: checkpoint on save cadence, final `max_steps`, or
+controlled stop. This makes the real step-4500 checkpoint boundary directly
+CPU-testable without changing its behavior.
 
-Both run global updates `4001..4500` and save/may mirror at `4100 4200 4300
-4400 4500`. Let `i=s-4001` and `f=i/499` for optimizer update `s`.
+## Existing anneal branch recovery (do not run from Codex)
 
-```text
-lr(s) = 5e-6 + (2e-5 - 5e-6) * 0.5 * (1 + cos(pi * f))
-```
-
-This is exactly `2e-5` at 4001 and `5e-6` at 4500; it replaces only the parent
-scheduler. Branch A (`finish-control`) uses `lambda_pose(s)=.04`. Branch B
-(`finish-pose-anneal`) uses `lambda_pose(s)=.04*(1-f)` in the existing
-coordinate-loss call: `.04` at 4001, `0` at 4500, and
-`.032064/.024048/.016032/.008016` at 4100/4200/4300/4400.
-
-The LR and lambda states are checkpointed, so `--resume auto` restores the
-next update exactly. Every finishing checkpoint and `run_metadata.json`
-persists parent absolute path/SHA-256/run/step, branch type, schedules and
-endpoints, continuation length, global numbering, and immutable
-science/artifact identities. Finishing accepts only the named step-4000
-cooldown artifact with matching 3k→5k provenance. It starts a new W&B run;
-only exact resume of that branch may reuse its own id. Existing ordinary and
-cooldown exact-resume checks remain fail-closed.
-
-`max_steps` is an inclusive absolute optimizer-step ceiling. The launcher now
-materializes the exact outstanding update sequence before it plans
-microbatches and drives the optimizer loop from it. Thus a parent at 4000
-with `--max-steps 4500` executes exactly `4001..4500`, with assertions before
-and after every optimizer update that preserve the intended global number.
-Ordinary training remains `1..max_steps`; cooldown remains `3001..5000`.
-
-## Foreground launches (do not run from Codex)
-
-Branch A:
-
-```bash
-cd /home/ubuntu/krea2-pose-controlnet
-PYTHONPATH=. python scripts/train_production.py \
-  --run-name pose-control-finish-control-4000-to4500 \
-  --max-steps 4500 --save-every 100 --diagnostics-every 50 \
-  --continue-from /lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt \
-  --continue-from-step 4000 --lr-schedule cosine --lr-start 2e-5 --lr-final 5e-6 \
-  --pose-lambda-schedule constant \
-  --wandb --wandb-project Krea-2-PoseControl-Lora --wandb-entity adhit-projects \
-  --wandb-name pose-control-finish-control-4000-to4500 \
-  --hf-repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints --hf-mirror-every-steps 100
-```
-
-Branch B:
+The latest valid local branch checkpoint is expected to be step 4400. Recover
+only from persisted checkpoint state; the unsaved in-memory 4499 state cannot
+be recovered. This replays updates `4401..4500` deterministically:
 
 ```bash
 cd /home/ubuntu/krea2-pose-controlnet
@@ -85,67 +50,34 @@ PYTHONPATH=. python scripts/train_production.py \
   --pose-lambda-schedule linear --pose-lambda-final 0 \
   --wandb --wandb-project Krea-2-PoseControl-Lora --wandb-entity adhit-projects \
   --wandb-name pose-control-finish-anneal-4000-to4500 \
-  --hf-repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints --hf-mirror-every-steps 100
+  --hf-repo-id adhit-420/Krea-2-PoseControl-LoRA-checkpoints --hf-mirror-every-steps 100 \
+  --resume auto
 ```
 
-For a restart add `--resume auto` to the identical branch command; do not use
-it on a first launch. Remove both `--hf-*` options to keep HF disabled.
-
-For recovery of an existing branch, use that same branch command with
-`--resume auto`. It selects the newest valid local checkpoint in the named
-branch directory, not the 4000 parent, so it runs only the remaining updates
-through 4500 while preserving weights, Adam moments, RNG, data position,
-LR/pose scheduler state, W&B branch identity, and continuation provenance.
-
-## Evaluation plan only (do not run from Codex)
-
-Run this for each `<branch>` (`pose-control-finish-control-4000-to4500` and
-`pose-control-finish-anneal-4000-to4500`):
-
-```bash
-cd /home/ubuntu/krea2-pose-controlnet
-HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python scripts/evaluate_production_milestones.py evaluate \
-  --checkpoint-root /lambda/nfs/adhit/krea2-pose/checkpoints/<branch> \
-  --output-root /lambda/nfs/adhit/krea2-pose/evaluation/<branch> \
-  --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
-  --latent-root /lambda/nfs/adhit/krea2-pose/posebridge_latents \
-  --text-conditioning-root /lambda/nfs/adhit/krea2-pose/text_conditioning \
-  --turbo-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors \
-  --reference-sidecar /home/ubuntu/krea2-pose-controlnet/data/manifests/diagnostic_reference_pose.json \
-  --diagnostic-manifest /home/ubuntu/krea2-pose-controlnet/data/manifests/diagnostic_val.jsonl \
-  --canonical-reference-spec /home/ubuntu/krea2-pose-controlnet/docs/evaluation/turbo-8step-cfg0/turbo_spec.json \
-  --steps 4100 4200 4300 4400 4500 --modes native dynamic-768
-```
-
-Dynamic-768 contact sheet for each branch:
-
-```bash
-PYTHONPATH=. python scripts/evaluate_production_milestones.py contact-sheet \
-  --evaluation-root /lambda/nfs/adhit/krea2-pose/evaluation/<branch> \
-  --dataset-root /lambda/nfs/adhit/krea2-pose/posebridge_hf \
-  --steps 4100 4200 4300 4400 4500 --modes dynamic-768 \
-  --output-dir docs/evaluation/<branch>
-```
-
-Use `--modes native dynamic-768` for full sheets. Compare against parent 4000:
-native PCK `.548544/.656553/.739078`, coverage `.884615`, CLIP `.327484`;
-dynamic-768 PCK `.495146/.649272/.734223`, coverage `.865385`, CLIP `.331195`.
-Anneal improving CLIP/visual quality with retained pose supports anneal;
-substantial pose loss favors control or parent; both degrading leaves parent
-4000 preferred; unexpected control improvement warrants studying the lower-LR
-effect. Do not add a flow-only branch.
+W&B may reject replayed metric rows below an already-recorded remote step; its
+failure-isolated mirror must not affect optimizer execution or local checkpoint
+creation. Do not clean up remote history as part of recovery.
 
 ## Verification this session
 
-PASS: `PYTHONPATH=. python -m unittest tests.test_production_training -v`
-(28 CPU/no-network tests). Added coverage proves 500 exact updates from
-4000, first/last 4001/4500, no 4501, final LR/lambda endpoints, step-4500
-save/HF cadence, scheduler resume from 4400, fail-closed resume identity, and
-unchanged ordinary/cooldown semantics. PASS: `python -m py_compile
-pose_controlnet/production_training.py tests/test_production_training.py`.
-PASS: `git diff --check`.
+PASS: `PYTHONPATH=. python -m unittest tests.test_pose_reward_tools
+tests.test_pose_reward_wandb tests.test_production_training -v` — 59 CPU,
+no-network tests. New coverage proves `.04` combination behavior, exact-zero
+flow-only behavior with active and inactive pose examples, negative/NaN/Inf
+rejection, literal zero at step 4500, optimizer update 4500, the live
+checkpoint condition, and atomic save/reload of `step_004500.pt`. Existing
+production/cooldown/finishing tests prove the unchanged control branch,
+ordinary/cooldown update semantics, and fail-closed exact resume.
 
-Files changed: `pose_controlnet/production_training.py`,
+PASS: `python -m py_compile pose_controlnet/pose_reward_tools.py
+pose_controlnet/production_training.py tests/test_pose_reward_tools.py
+tests/test_production_training.py`.
+
+Files changed this session: `pose_controlnet/pose_reward_tools.py`,
+`pose_controlnet/production_training.py`, `tests/test_pose_reward_tools.py`,
 `tests/test_production_training.py`, and this handoff. The pre-existing
 untracked `docs/evaluation/pose-control-finish-control-4000-to4500/` remains
-untouched. Next action: review; launch only with explicit authorization.
+untouched.
+
+Next action: review the patch, then run the recovery command above only with
+explicit training authorization.

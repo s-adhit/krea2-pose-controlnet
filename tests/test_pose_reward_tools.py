@@ -106,8 +106,14 @@ class PoseRewardToolsTest(unittest.TestCase):
         self.assertTrue(torch.equal(pose_active_window(t, available, .10, .20), torch.tensor([True, False, False])))
         flow, pose = torch.tensor(2.0), torch.tensor(3.0)
         self.assertEqual(float(combine_flow_and_pose_loss(flow, None, 0, .1)), 2.0)
-        self.assertAlmostEqual(float(combine_flow_and_pose_loss(flow, pose, 1, .1)), 2.3)
+        self.assertTrue(torch.equal(combine_flow_and_pose_loss(flow, pose, 1, .04), flow + .04 * pose))
+        self.assertIs(combine_flow_and_pose_loss(flow, pose, 1, 0.0), flow)
+        self.assertIs(combine_flow_and_pose_loss(flow, None, 0, 0.0), flow)
         with self.assertRaises(ValueError): combine_flow_and_pose_loss(flow, None, 1, .1)
+        for invalid in (-.01, float("nan"), float("inf")):
+            with self.subTest(lambda_pose=invalid):
+                with self.assertRaisesRegex(ValueError, "finite and non-negative"):
+                    combine_flow_and_pose_loss(flow, pose, 1, invalid)
         self.assertFalse(should_build_pose_graph(torch.empty(0, dtype=torch.long)))
         self.assertTrue(should_build_pose_graph(torch.tensor([0])))
 

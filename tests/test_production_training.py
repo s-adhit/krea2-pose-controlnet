@@ -13,6 +13,7 @@ import torch
 
 import train
 from pose_controlnet.checkpointing import load_training_state, save_training_state
+from pose_controlnet.pose_reward_tools import combine_flow_and_pose_loss
 from pose_controlnet.production_training import (
     PRODUCTION_METADATA_KEY,
     CooldownContinuation,
@@ -23,6 +24,7 @@ from pose_controlnet.production_training import (
     _production_checkpoint_metadata,
     build_train_config,
     build_arg_parser,
+    checkpoint_due,
     cooldown_continuation_from_args,
     empty_pose_cumulative_counters,
     pose_cumulative_counters_from_checkpoint,
@@ -451,6 +453,42 @@ class ProductionTrainingTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "scheduler"):
             validate_resume_identity(incompatible, args=args, recipe=ProductionRecipe(), identities=self.identities(),
                                      continuation_metadata=provenance)
+
+    def test_finishing_zero_endpoint_reaches_optimizer_and_checkpoint_path(self):
+        """CPU regression for the production loop's exact step-4500 boundary."""
+        args = self.finishing_args("anneal")
+        parameter = torch.nn.Parameter(torch.tensor(1.0))
+        optimizer = torch.optim.AdamW([parameter], lr=1e-4, betas=(.9, .99), weight_decay=0.)
+        pose = PoseLambdaContinuationScheduler(parent_step=4000, continuation_steps=500, schedule="linear",
+                                               start_value=.04, final_value=0.)
+        scheduler = CosineContinuationScheduler(optimizer, parent_step=4000, continuation_steps=500,
+                                                start_lr=2e-5, final_lr=5e-6, pose_lambda_scheduler=pose)
+        for _ in range(499):
+            scheduler.step()
+        self.assertEqual((scheduler.step_count, scheduler.current_pose_lambda), (4499, 0.0))
+
+        flow_loss, pose_loss = parameter.square(), parameter * 3
+        total_loss = combine_flow_and_pose_loss(flow_loss, pose_loss, active_count=1,
+                                                lambda_pose=scheduler.current_pose_lambda)
+        self.assertIs(total_loss, flow_loss)
+        total_loss.backward()
+        train.optimizer_update(optimizer, scheduler, [parameter], max_grad_norm=1.0)
+        self.assertEqual(scheduler.step_count, 4500)
+        self.assertNotEqual(float(parameter.detach()), 1.0)
+
+        global_step = scheduler.step_count
+        self.assertTrue(checkpoint_due(global_step=global_step, save_every=args.save_every,
+                                       max_steps=args.max_steps, stopped=False))
+        continuation = cooldown_continuation_from_args(args, recipe_from_args(args))
+        provenance = continuation.metadata(parent_run_name=FINISH_PARENT_RUN_NAME, parent_sha256="parent-sha")
+        metadata = _production_checkpoint_metadata(args=args, recipe=ProductionRecipe(), identities=self.identities(),
+                                                   current_step=global_step, continuation_metadata=provenance)
+        metadata["data_position"] = {"epoch": 0, "batch_position": 0, "sample_position": 0}
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = save_training_state(Path(directory) / "step_004500.pt", self.full_state(global_step, metadata),
+                                             overwrite=False)
+            self.assertEqual((checkpoint.name, load_training_state(checkpoint)["global_step"]),
+                             ("step_004500.pt", 4500))
 
     def test_ordinary_and_cooldown_update_sequences_remain_global_max_inclusive(self):
         ordinary = optimizer_update_steps(completed_global_step=0, max_steps=3000)

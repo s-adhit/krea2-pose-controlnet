@@ -633,6 +633,11 @@ def optimizer_update_steps(*, completed_global_step: int, max_steps: int) -> tup
     return tuple(range(completed_global_step + 1, max_steps + 1))
 
 
+def checkpoint_due(*, global_step: int, save_every: int, max_steps: int, stopped: bool) -> bool:
+    """Return the production loop's completed-update checkpoint condition."""
+    return global_step % save_every == 0 or global_step == max_steps or stopped
+
+
 def production_wandb_mirror(*, args: argparse.Namespace, recipe: ProductionRecipe,
                             identities: Mapping[str, Any], resume_state: Mapping[str, Any] | None = None,
                             wandb_module: Any | None = None,
@@ -1009,7 +1014,8 @@ def run(args: argparse.Namespace, *, verifier: Callable[[argparse.Namespace], di
                 metrics["lora_grad_norms"] = lora_norms
             with metrics_path.open("a", encoding="utf-8") as stream: stream.write(json.dumps(metrics, sort_keys=True) + "\n")
             wandb.log(metrics, step=global_step)
-            if global_step % cfg.save_every == 0 or global_step == cfg.max_steps or stopped:
+            if checkpoint_due(global_step=global_step, save_every=cfg.save_every,
+                              max_steps=cfg.max_steps, stopped=stopped):
                 path = save_training_state(run_dir / f"step_{global_step:06d}.pt", checkpoint_state(
                     model=model, optimizer=optimizer, scheduler=scheduler, global_step=global_step, epoch=epoch,
                     batch_position=batch_position, generator=generator, cfg=cfg, args=args, recipe=recipe,
