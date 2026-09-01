@@ -1,0 +1,46 @@
+{
+  "cfg": 0.0,
+  "checkpoint_step": 4300,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      1152,
+      512
+    ],
+    "crop_box": [
+      24,
+      0,
+      1176,
+      512
+    ],
+    "resized_size": [
+      1201,
+      512
+    ],
+    "source_size": [
+      3095,
+      1319
+    ]
+  },
+  "geometry_mode": "production-dynamic-768",
+  "height": 512,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_path": "/lambda/nfs/adhit/krea2-pose/inference-smokes/a4300_krea_prompts_no_pose/t3_crimson_portrait.png",
+  "pose_image": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_00/real_human_humanart_15000000002196.png",
+  "pose_lora_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+  "prompt": "portrait of a young East Asian woman with straight black hair and loose strands sweeping across fair skin, wearing a light grey collared shirt with a black tie. A vibrant bouquet of pink and orange lilies with lush green leaves sits in the foreground. The background is a solid striking crimson red. Soft directional studio lighting creates a high-contrast composition with shallow depth of field.",
+  "seed": 42,
+  "steps": 8,
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 1152
+}
