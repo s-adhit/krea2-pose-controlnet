@@ -2,8 +2,8 @@
 
 ## Current objective and canonical surfaces
 
-Final production-dependency cleanup completed locally; no training, GPU
-inference/evaluation, network access, commit, or push occurred.
+Final production-dependency cleanup and README rewrite completed locally; no
+training, GPU inference/evaluation, network access, commit, or push occurred.
 
 - Canonical training entrypoint: `scripts/train_production.py`, backed by
   `pose_controlnet/production_training.py`.
@@ -72,8 +72,7 @@ PYTHONPATH=. python -m unittest tests.test_inference \
 ```
 
 94 tests passed. Run `git diff --check` after reviewing the final working tree
-before staging. No checkpoint, manifest, source dataset, or README change was
-made.
+before staging. No checkpoint, manifest, or source dataset was changed.
 
 Final dependency-cleanup verification:
 
@@ -109,6 +108,9 @@ historical only.
 
 ## Next action
 
-Run `git diff --check`, review, and stage the cleanup. A redistribution/legal
-decision for the Human-Art-derived committed imagery remains explicitly
-pending; do not delete or history-rewrite it without approval.
+Review and stage the dependency cleanup plus the rewritten top-level README.
+The README documents the current Raw-to-Turbo pose-control workflow,
+parent-4000/A4300 candidate status, prompt guidance, and commented-only
+showcase placeholders; no assets were created. A redistribution/legal decision
+for the Human-Art-derived committed imagery remains explicitly pending; do not
+delete or history-rewrite it without approval.

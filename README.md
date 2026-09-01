@@ -1,72 +1,228 @@
-# Krea2-Pose-ControlNet
+# Krea-2 Pose Control-LoRA
 
-LoRA-based pose-conditioned image generation on top of Krea-2's 13B RAW DiT.
-Pose skeleton maps are channel-concatenated with the noisy latent, following
-the same mechanism Krea-2's own depth-ControlNet uses — trained with an
-original recipe against `pose_controlnet/`, not a fork of the reference
-training code.
+Skeleton-conditioned image generation for Krea-2. This project adapts Krea-2 with a Control-LoRA-style control path so a rendered pose skeleton supplies body geometry while text supplies compatible appearance, style, clothing, materials, lighting, and environment.
 
-## Structure
+<!-- Hero placeholder — add curated assets before enabling this image row.
+![Pose condition](docs/assets/showcase/hero_pose.png) → multiple stylized generations
+-->
 
-- `base_model/` — `mmdit.py` / `k2_lora.py`, the frozen Krea-2 13B DiT
-  architecture. Required to load the real pretrained checkpoint; not part of
-  the pose-controlnet training code itself.
-- `pose_controlnet/` — this project's own training stack: data loading,
-  flow-matching diffusion mechanics, text conditioning, checkpointing
-  (with a wall-clock HF Hub mirror), wandb logging, and seeding.
-- `prepare_shards.py` — builds VAE-encoded latent shards from
-  `data/full/` + `data/manifests/`.
-- `train.py` — training entrypoint.
-- `evaluate.py` — evaluation entrypoint (loss-based + turbo generation eval).
-- `scripts/` — dataset audit/prep tooling (bucket analysis, caption
-  sanity checks, VAE round-trip tests, shard verification, model prefetch).
-- `data/` — `full/` and `prepared/` are gitignored (images + shards live
-  only on disk/GH200, never in git). `manifests/`, `review/`, and `stats/`
-  are tracked — they're the provenance record (splits, exclusions, bucket
-  stats) for the PoseBridge dataset, not the images themselves.
+## Showcase
 
-## Reference
+### Cross-domain pose transfer
 
-The base architecture (`base_model/mmdit.py`, `base_model/k2_lora.py`) was
-copied from Krea-2's depth-ControlNet reference implementation:
-https://github.com/Tanmaypatil123/Krea-2-controlnet
+This is the report-safe technical showcase: one pose condition, interpreted across visual domains with original, non-franchise subject descriptions.
 
-That reference repo is not vendored into this repository — only the two
-architecture files needed to load the real pretrained weights are kept,
-under `base_model/`. Everything else here (data pipeline, training loop,
-eval, checkpointing/wandb/seed guardrails) is original to this project.
+<!-- Showcase placeholders — the referenced assets do not yet exist.
+| Pose condition | Fantasy mage / stained-glass subject | Street-mural interpretation | Editorial / fashion interpretation |
+|---|---|---|---|
+| ![Pose condition](docs/assets/showcase/hero_pose.png) | ![Stained glass](docs/assets/showcase/hero_stained_glass.png) | ![Mural](docs/assets/showcase/hero_mural.png) | ![Editorial](docs/assets/showcase/hero_editorial.png) |
 
-## Dataset: PoseBridge
+| Realistic human-domain interpretation | Sculpture interpretation | Painterly interpretation |
+|---|---|---|
+| ![Realistic human](docs/assets/showcase/hero_realistic.png) | ![Sculpture](docs/assets/showcase/hero_sculpture.png) | ![Painterly](docs/assets/showcase/hero_painterly.png) |
+-->
 
-~17,416 image/pose-skeleton pairs across 5 buckets (COCO, Danbooru, and
-three Human-Art sub-buckets: painting, real_human, sculpture). Full
-composition, caption methodology, and known dataset quirks are documented in
-`data/stats/` and `data/review/`.
+Planned panel: pose condition; an original fantasy mage in a stained-glass treatment; street-mural, editorial/fashion, realistic human-domain, sculpture, and painterly interpretations.
 
-**License note**: the Human-Art sub-buckets (painting/real_human/sculpture,
-~11,347 of the ~17,416 images) are under a non-commercial, no-redistribution
-license. `data/full/` is never committed to this repo and should never be
-uploaded to any public host.
+### Fan-art / social showcase
 
-## Status
+This separate, playful showcase will contain fan-art-style demonstrations: a Frieren stained-glass interpretation, Gojo action/street-mural interpretation, Jotaro fashion/comic interpretation, a meme-inspired pose, plus realistic-human and sculpture examples. These are creative, franchise-inspired examples only; they are not official affiliations, endorsements, or claims about training data.
 
-Data prep, captioning, and validation are complete. Training infra
-(checkpointing, wandb, seed) is written; GH200 provisioning and the first
-real training run are in progress.
+<!-- Fan-art/social placeholders — the referenced assets do not yet exist.
+| Frieren stained glass | Gojo action / street mural | Jotaro fashion / comic |
+|---|---|---|
+| ![Frieren-inspired stained glass](docs/assets/showcase/fanart_frieren_stained_glass.png) | ![Gojo-inspired mural](docs/assets/showcase/fanart_gojo_mural.png) | ![Jotaro-inspired fashion comic](docs/assets/showcase/fanart_jotaro_fashion_comic.png) |
 
-## Environment (GH200)
+| Meme-inspired pose | Realistic human | Sculpture |
+|---|---|---|
+| ![Meme-inspired pose](docs/assets/showcase/fanart_meme_pose.png) | ![Realistic human](docs/assets/showcase/fanart_realistic.png) | ![Sculpture](docs/assets/showcase/fanart_sculpture.png) |
+-->
 
-The Lambda GH200 image's CUDA-enabled Torch stack is host-owned and must not
-be installed, upgraded, or replaced by this repository. Create the project
-environment with:
+## What this project does
 
-```bash
-scripts/create_uv_env.sh
-source .venv/bin/activate
-python scripts/check_environment.py --require-cuda
+- A rendered skeleton image provides the pose condition.
+- Text controls compatible appearance and scene attributes: identity, style, clothing, material, lighting, and environment.
+- The pose image is VAE-encoded into a clean control latent. It is spatially aligned with the noisy image latent and injected through the expanded `ControlInputLayer`.
+- Rank-64 LoRA adapters and the control input projection are the trainable adaptation; the pretrained backbone remains frozen.
+- Training targets **Krea-2 Raw**. The trained control state is evaluated and deployed with **Krea-2 Turbo** after strict control/LoRA compatibility checks.
+
+The condition is intended to carry pose geometry, not source-image semantics. Supplying a pose extracted from an image does not make this an image-reference or source-subject transfer system.
+
+## Architecture
+
+The control-input expansion pattern was informed by [Tanmay Patil’s public Krea-2 ControlNet repository](https://github.com/Tanmaypatil123/Krea-2-controlnet), prior work demonstrating depth-conditioned ControlNet-style control for Krea-2. It is an architectural reference, not Krea’s official training recipe and not a claim that this repository is a fork or reproduction of that depth-control project. This repository’s pose data pipeline, training, supervision, evaluation, inference tooling, and checkpoint work are project-owned.
+
+At each spatial token location, the model concatenates the noisy image latent with the clean VAE-encoded pose-control latent. `ControlInputLayer` projects that widened feature vector into the existing model width; it does not add control tokens or a classical side-branch ControlNet. Its image half starts from the pretrained input projection, while its control half starts at zero. As a result, an untrained model is expected to be initially insensitive to the skeleton until optimization updates the control half.
+
+| Component | Contract |
+|---|---|
+| Backbone | Krea-2 Raw, 28 transformer blocks |
+| Control | Spatially aligned VAE control latent, concatenated at the input projection |
+| Adaptation | LoRA rank 64, alpha 64 |
+| LoRA targets | 8 modules per transformer block; 224 target modules total |
+| Trainable state | `ControlInputLayer` plus LoRA tensors; approximately 215.49M parameters |
+
+At a high level, flow matching forms a noisy image latent and predicts its velocity:
+
+```text
+x_t = t * noise + (1 - t) * x0
+target velocity = noise - x0
+x0_hat = x_t - t * v_hat
 ```
 
-The bootstrap script creates a `uv` virtual environment with system site
-packages enabled, then syncs only the non-Torch packages pinned in `uv.lock`.
-It intentionally fails rather than converting an existing isolated `.venv`.
-Use `uv sync --locked` for subsequent syncs; do not use `pip install`.
+Here `x0` is the clean image latent, `x_t` is the noisy image latent, and the pose latent stays clean.
+
+## Training objective
+
+The canonical production objective is not flow-MSE-only. It combines flow-matching MSE with explicit pose-consistency supervision:
+
+```text
+loss = flow-matching MSE + lambda_pose * normalized-coordinate Huber
+```
+
+The canonical production/control branch uses `lambda_pose = 0.04`. Pose supervision is naturally active in an approximately `[0.10, 0.20]` timestep window; the production recipe sets forced pose-exposure probability to `0`. The pose term decodes `x0_hat`, evaluates it with a frozen fixed-box Keypoint R-CNN path, and compares normalized joint coordinates with Huber loss.
+
+The consistency-feedback idea was inspired by [ControlNet++: Improving Conditional Controls with Efficient Consistency Feedback](https://arxiv.org/abs/2404.07987), Li et al., ECCV 2024. This project’s normalized-coordinate Huber implementation is project-specific and is **not** claimed to be ControlNet++’s exact loss.
+
+## Training recipe
+
+| Setting | Locked production value |
+|---|---:|
+| Precision / seed | BF16 / 42 |
+| Microbatch / accumulation / effective batch | 1 / 32 / 32 |
+| Optimizer | AdamW, betas `(0.9, 0.99)`, weight decay `0` |
+| Base LR / warmup / gradient clipping | `1e-4` / 200 optimizer steps / max norm `1` |
+| Geometry | Dynamic 768-pixel bucket training |
+| Loader | 4 workers, persistent workers, pinned memory, prefetch factor 4 |
+| Runtime switches | Gradient checkpointing off, `torch.compile` off, fused AdamW off |
+
+The work progressed through initial production training, cooldown/consolidation, and a finishing-branch comparison. The current serious checkpoint candidates are **parent-4000** (safer, more balanced) and **finish-control A4300** (more pose-specialist). The annealed/B branch is historical evidence only and is not presented as a current release candidate.
+
+## Evaluation
+
+Evaluation uses a locked Krea-2 Turbo contract: 8 sampling steps, CFG `0`, `mu = 1.15`, the official Turbo schedule, and no resolution-dependent shift. Where comparison applies, prompts, seeds, and geometries are fixed.
+
+Pose scoring uses Keypoint R-CNN detections at confidence `>= 0.5`, deterministic Hungarian person matching, and bbox-diagonal-normalized PCK. Unmatched reference people fail matching rather than disappearing from the denominator. Reports also include detection coverage and CLIP image-text similarity.
+
+Terminology is intentional:
+
+- **Diagnostic split** is the development/selection benchmark.
+- **Validation split** is held out from training, but has been inspected and used for inference benchmarking. It is not an untouched final test set.
+
+Current qualitative status is deliberately modest: parent-4000 is the safer, more balanced candidate; A4300 is more pose-committed and suited to pose-specialist use. The B/anneal branch is historical and was rejected as the final recipe. These are development findings, not state-of-the-art claims.
+
+## Inference
+
+`inference.py` is the canonical local user-facing CLI. It requires a Krea-2 Turbo checkpoint, a compatible full pose-LoRA checkpoint, prompt, pose image, and output path.
+
+```bash
+PYTHONPATH=. python inference.py \
+  --turbo-ckpt /path/to/turbo.safetensors \
+  --pose-lora-ckpt /path/to/checkpoint.pt \
+  --prompt "young woman, platinum-blonde bob, structured black fashion outfit, crimson studio background, cinematic directional lighting, high-fashion editorial photography" \
+  --pose-image /path/to/control.png \
+  --output /path/result.png \
+  --seed 42 \
+  --width 768 \
+  --height 768 \
+  --steps 8 \
+  --cfg 0 \
+  --mu 1.15 \
+  --control-scale 1.0
+```
+
+The canonical sampler enforces the locked defaults: 8 steps, CFG `0`, and `mu = 1.15`. Explicit width and height are supported together and must be divisible by 16. To use the shared production dynamic-768 policy instead of explicit dimensions, pass `--dynamic-768-bucket` and omit `--width` / `--height`.
+
+Each image is accompanied by a JSON provenance sidecar with the prompt, seed, geometry, sampling settings, checkpoint paths, and recorded checkpoint step.
+
+For integrations, `inference.py` also exposes `PoseInferenceRequest`, `PoseInferenceResult`, `generate_pose(...)`, and `InferenceRuntime`. ComfyUI support is not available yet.
+
+## Prompting and prompt curation
+
+Current inference tests suggest that pose adherence is strongest when the text prompt describes appearance, style, and scene while the pose image defines body geometry. Explicit pose wording can compete with the skeleton, and composition/framing language can act like an indirect geometry constraint. Portrait-heavy prompts were the hardest current qualitative cases: full-body controls may be overwhelmed by close-up framing, subject-count mismatches, or sparse/incomplete skeletons. These are empirical observations, not yet a complete formal limitation study.
+
+| Prompt feature | Effect | Recommendation |
+|---|---|---|
+| `close-up`, `portrait` | Can override a full-body condition’s framing | Avoid when preserving a full-body pose is important |
+| `low angle`, `over-the-shoulder` | Can impose viewpoint and torso geometry | Use only when compatible with the condition |
+| `hand on hip`, `arms raised` | Directly competes with skeleton limb placement | Let the control image specify limbs instead |
+| `full body` | Usually supports a readable full-body condition | Use when it matches the skeleton’s extent |
+| `multiple people` | Mismatch can break person assignment | Match prompt subject count to the control |
+
+**Bad:**
+
+```text
+close-up portrait of a woman looking over her shoulder, one hand on her hip,
+arm raised, low-angle view, ...
+```
+
+**Better:**
+
+```text
+young woman, platinum-blonde bob, structured black fashion outfit, crimson
+studio background, cinematic directional lighting, high-fashion editorial photography
+```
+
+Let the pose control specify limb placement, stance, torso direction, and body geometry whenever exact pose adherence is the goal. Match subject count between prompt and control; prefer complete, readable skeletons; avoid sparse or truncated controls for showcase-quality generations; and avoid strongly contradictory portrait framing with a full-body condition. Style, clothing, lighting, environment, and material descriptors are usually safer than pose descriptors.
+
+## Conditioning and data
+
+Conditioning and evaluation material spans multiple visual domains, including COCO-derived human examples, Human-Art painting/real-human/sculpture domains, and anime-style/Danbooru-derived examples where applicable. These sources remain their respective owners’ material; this repository does not claim ownership or imply that third-party-derived imagery is freely redistributable. See [the archive index](docs/ARCHIVE_INDEX.md) for the committed Human-Art-derived imagery that requires redistribution review.
+
+At inference, the skeleton is intended to convey pose geometry only. It is not a request to recover the source image’s identity, clothing, background, or visual semantics.
+
+## Repository layout
+
+| Path | Purpose |
+|---|---|
+| [`inference.py`](inference.py) | Canonical local Turbo pose-generation CLI and Python API |
+| [`scripts/train_production.py`](scripts/train_production.py) | Locked production launcher |
+| [`pose_controlnet/production_training.py`](pose_controlnet/production_training.py) | Production recipe, resume, checkpoint, and training mechanics |
+| [`pose_controlnet/pose_consistency.py`](pose_controlnet/pose_consistency.py) | Canonical flow-MSE plus normalized-coordinate Huber objective |
+| [`pose_controlnet/turbo_runtime.py`](pose_controlnet/turbo_runtime.py) | Locked Turbo sampling and Raw-to-Turbo control compatibility |
+| [`pose_controlnet/resolution_policy.py`](pose_controlnet/resolution_policy.py) | Shared explicit and dynamic-768 geometry policy |
+| [`data/manifests/`](data/manifests/) | Immutable train, validation, and diagnostic membership manifests |
+| [`docs/inference_eval/`](docs/inference_eval/) | Current and preserved inference-evaluation evidence; consult the archive index for status |
+| [`docs/ARCHIVE_INDEX.md`](docs/ARCHIVE_INDEX.md) | Canonical versus historical surfaces and redistribution-review notes |
+
+## Training and resume
+
+The production entry point is `scripts/train_production.py`. Its only required arguments are a run name and maximum step count; the locked recipe validates any exposed recipe switches against the production contract.
+
+```bash
+PYTHONPATH=. python scripts/train_production.py \
+  --run-name pose-control-production \
+  --max-steps 6000
+```
+
+Use `--resume /path/to/checkpoint.pt` for an explicit checkpoint, or `--resume auto` to select the newest valid local checkpoint in that run directory. Resume is fail-closed: checkpoint metadata must match the run identity, recipe, artifacts, scheduler, loader settings, and recorded data position before optimizer, scheduler, data-order, and RNG state are restored.
+
+Checkpoints are written atomically and deserialize-validated. Local JSONL telemetry is durable; W&B is an optional, failure-isolated mirror. When configured with `--hf-repo-id` and a nonzero `--hf-mirror-every-steps`, completed local checkpoints are also submitted to the asynchronous Hugging Face mirror. Those remote services are not allowed to interrupt local training.
+
+## Current status and roadmap
+
+Production training is complete through the current candidate checkpoints. The canonical inference path exists, and prompt/pose interaction has been qualitatively investigated. Parent-4000 and A4300 remain the active candidates.
+
+Planned work:
+
+- Experimental checkpoint interpolation/mixing between parent-4000 and A4300 (not implemented or validated).
+- Broader pose and control-scale evaluation.
+- A focused prompt-conflict study.
+- Style-LoRA composition experiments.
+- A ComfyUI wrapper.
+- A Hugging Face demo.
+- Final technical and social showcase assets.
+
+## References and acknowledgements
+
+- **Krea-2** — the base Raw and Turbo model family; the locked Turbo schedule follows [Krea’s public sampling implementation](https://github.com/krea-ai/krea-2/blob/main/sampling.py).
+- **Tanmay Patil** — [Krea-2 ControlNet](https://github.com/Tanmaypatil123/Krea-2-controlnet), prior depth-conditioned ControlNet-style work that informed this project’s control-input architecture.
+- **ControlNet** — Zhang, Rao, and Agrawala, *Adding Conditional Control to Text-to-Image Diffusion Models*.
+- **ControlNet++** — Li et al., *Improving Conditional Controls with Efficient Consistency Feedback*, ECCV 2024, [arXiv:2404.07987](https://arxiv.org/abs/2404.07987).
+- **LoRA** — Hu et al., *Low-Rank Adaptation of Large Language Models*.
+- **Flow Matching / Rectified Flow** — Lipman et al., *Flow Matching for Generative Modeling*; Liu et al., *Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow*.
+- **COCO** — Lin et al., *Microsoft COCO: Common Objects in Context*.
+- **Human-Art** — Ju et al., *Human-Art: A Versatile Human-Centric Dataset Bridging Natural and Artificial Scenes*.
+- **Karpathy** — Andrej Karpathy, *A Recipe for Training Neural Networks*.
+- **CLIP** — Radford et al., *Learning Transferable Visual Models From Natural Language Supervision*.
+- **Keypoint R-CNN / Mask R-CNN** — He et al., *Mask R-CNN*; torchvision’s COCO Keypoint R-CNN implementation is used for pose-related scoring and supervision components.
