@@ -618,6 +618,21 @@ def production_hf_milestone_steps(*, max_steps: int, mirror_every_steps: int, st
     return tuple(step for step in range(mirror_every_steps, max_steps + 1, mirror_every_steps) if step > start_step)
 
 
+def optimizer_update_steps(*, completed_global_step: int, max_steps: int) -> tuple[int, ...]:
+    """Return the exact absolute optimizer updates still owed by this run.
+
+    ``max_steps`` is an inclusive global optimizer-step ceiling.  A checkpoint
+    at step 4000 and ``--max-steps 4500`` therefore owes updates 4001 through
+    4500, inclusive.  Keeping these numbers explicit prevents a finishing
+    continuation from accidentally treating 4500 as an exclusive range bound.
+    """
+    if completed_global_step < 0 or max_steps < 1:
+        raise ValueError("Optimizer update steps require non-negative progress and positive --max-steps")
+    if completed_global_step > max_steps:
+        raise ValueError("Completed global step exceeds requested --max-steps")
+    return tuple(range(completed_global_step + 1, max_steps + 1))
+
+
 def production_wandb_mirror(*, args: argparse.Namespace, recipe: ProductionRecipe,
                             identities: Mapping[str, Any], resume_state: Mapping[str, Any] | None = None,
                             wandb_module: Any | None = None,
@@ -936,7 +951,8 @@ def run(args: argparse.Namespace, *, verifier: Callable[[argparse.Namespace], di
         continuation_metadata=continuation_metadata,
     ))
     plan = train.DeterministicBucketBatches(data.records, recipe.microbatch_size, recipe.seed)
-    remaining_groups = (cfg.max_steps - global_step) * recipe.gradient_accumulation_steps
+    update_steps = optimizer_update_steps(completed_global_step=global_step, max_steps=cfg.max_steps)
+    remaining_groups = len(update_steps) * recipe.gradient_accumulation_steps
     iterator = (iter(production_loader(data, planned_microbatches(data.records, recipe=recipe, epoch=epoch,
                                          batch_position=batch_position, count=remaining_groups), recipe))
                 if remaining_groups else iter(()))
@@ -946,7 +962,9 @@ def run(args: argparse.Namespace, *, verifier: Callable[[argparse.Namespace], di
         stopped = True; print(f"received signal {signum}; checkpointing at optimizer boundary", flush=True)
     signal.signal(signal.SIGINT, stop_handler); signal.signal(signal.SIGTERM, stop_handler)
     try:
-        while global_step < cfg.max_steps and not stopped:
+        for target_global_step in update_steps:
+            if stopped:
+                break
             start_epoch, start_position = epoch, batch_position
             diagnostics: list[Mapping[str, Any]] = []; started = time.monotonic(); interrupted = False
             scheduled_lambda_pose = (scheduler.current_pose_lambda
@@ -974,9 +992,13 @@ def run(args: argparse.Namespace, *, verifier: Callable[[argparse.Namespace], di
             def capture_diagnostics() -> None:
                 nonlocal control_norms, lora_norms
                 control_norms, lora_norms = train._diagnostic_grad_norms(model)
+            if global_step + 1 != target_global_step:
+                raise RuntimeError("Production optimizer update sequence lost global-step alignment")
             learning_rate = scheduler.current_update_learning_rates[0]
             grad_norm = train.optimizer_update(optimizer, scheduler, trainable_params(model), cfg.max_grad_norm,
                                                before_step=capture_diagnostics if diagnostics_due else None); global_step += 1
+            if global_step != target_global_step:
+                raise RuntimeError("Production optimizer update did not persist its target global step")
             assert_frozen_no_parameter_grad(vae, critic)
             metrics = {"global_step": global_step, "learning_rate": learning_rate, "lambda_pose": scheduled_lambda_pose,
                        "global_grad_norm": grad_norm, "sec_per_step": time.monotonic() - started,

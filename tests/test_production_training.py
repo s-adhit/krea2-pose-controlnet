@@ -28,6 +28,7 @@ from pose_controlnet.production_training import (
     pose_cumulative_counters_from_checkpoint,
     production_hf_milestone_steps,
     production_wandb_mirror,
+    optimizer_update_steps,
     recipe_from_args,
     run_metadata,
     run,
@@ -375,6 +376,87 @@ class ProductionTrainingTests(unittest.TestCase):
         self.assertEqual((resumed.step_count, resumed.current_update_learning_rates[0], resumed.current_pose_lambda),
                          (4100, rates[100], lambdas[100]))
         self.assertEqual(continuation.branch_type, "finish-pose-anneal")
+
+    def test_finishing_execution_sequence_includes_final_global_update_and_resume_tail(self):
+        """The production loop consumes this inclusive sequence directly."""
+        updates = optimizer_update_steps(completed_global_step=4000, max_steps=4500)
+        self.assertEqual(len(updates), 500)
+        self.assertEqual((updates[0], updates[-1]), (4001, 4500))
+        self.assertNotIn(4501, updates)
+        self.assertEqual(optimizer_update_steps(completed_global_step=4400, max_steps=4500), tuple(range(4401, 4501)))
+
+        parameter = torch.nn.Parameter(torch.tensor(1.0))
+        optimizer = torch.optim.AdamW([parameter], lr=1e-4, betas=(.9, .99), weight_decay=0.)
+        anneal = PoseLambdaContinuationScheduler(parent_step=4000, continuation_steps=500, schedule="linear",
+                                                 start_value=.04, final_value=0.)
+        scheduler = CosineContinuationScheduler(optimizer, parent_step=4000, continuation_steps=500,
+                                                start_lr=2e-5, final_lr=5e-6, pose_lambda_scheduler=anneal)
+        observed = []
+        for step in updates:
+            observed.append((step, scheduler.current_update_learning_rates[0], scheduler.current_pose_lambda))
+            scheduler.step()
+        self.assertEqual(observed[-1], (4500, 5e-6, 0.))
+
+        # Recreate a real step-4400 scheduler state rather than loading the
+        # completed state above, then prove its exact-resume tail is 4401..4500.
+        resumed_optimizer = torch.optim.AdamW([torch.nn.Parameter(torch.tensor(1.0))], lr=1e-4,
+                                              betas=(.9, .99), weight_decay=0.)
+        resumed_anneal = PoseLambdaContinuationScheduler(parent_step=4000, continuation_steps=500, schedule="linear",
+                                                         start_value=.04, final_value=0.)
+        resumed_scheduler = CosineContinuationScheduler(resumed_optimizer, parent_step=4000, continuation_steps=500,
+                                                        start_lr=2e-5, final_lr=5e-6,
+                                                        pose_lambda_scheduler=resumed_anneal)
+        for _ in range(400):
+            resumed_scheduler.step()
+        checkpoint_4400 = resumed_scheduler.state_dict()
+        self.assertEqual(checkpoint_4400["step_count"], 4400)
+        resumed_optimizer = torch.optim.AdamW([torch.nn.Parameter(torch.tensor(1.0))], lr=1e-4,
+                                              betas=(.9, .99), weight_decay=0.)
+        resumed_anneal = PoseLambdaContinuationScheduler(parent_step=4000, continuation_steps=500, schedule="linear",
+                                                         start_value=.04, final_value=0.)
+        resumed_scheduler = CosineContinuationScheduler(resumed_optimizer, parent_step=4000, continuation_steps=500,
+                                                        start_lr=2e-5, final_lr=5e-6,
+                                                        pose_lambda_scheduler=resumed_anneal)
+        resumed_scheduler.load_state_dict(checkpoint_4400)
+        resumed_updates = optimizer_update_steps(completed_global_step=4400, max_steps=4500)
+        resumed_observed = []
+        for step in resumed_updates:
+            resumed_observed.append((step, resumed_scheduler.current_update_learning_rates[0],
+                                     resumed_scheduler.current_pose_lambda))
+            resumed_scheduler.step()
+        self.assertEqual((resumed_observed[0][0], resumed_observed[-1]), (4401, (4500, 5e-6, 0.)))
+
+        control = PoseLambdaContinuationScheduler(parent_step=4000, continuation_steps=500, schedule="constant",
+                                                  start_value=.04, final_value=.04)
+        for _ in updates:
+            final_control_lambda = control.current_value
+            control.step()
+        self.assertEqual(final_control_lambda, .04)
+        self.assertEqual(tuple(step for step in updates if step % 100 == 0),
+                         (4100, 4200, 4300, 4400, 4500))
+        self.assertEqual(production_hf_milestone_steps(max_steps=4500, mirror_every_steps=100, start_step=4000),
+                         (4100, 4200, 4300, 4400, 4500))
+
+        args = self.finishing_args("anneal")
+        continuation = cooldown_continuation_from_args(args, recipe_from_args(args))
+        provenance = continuation.metadata(parent_run_name=FINISH_PARENT_RUN_NAME, parent_sha256="parent-sha")
+        metadata = _production_checkpoint_metadata(args=args, recipe=ProductionRecipe(), identities=self.identities(),
+                                                   current_step=4400, continuation_metadata=provenance)
+        metadata["data_position"] = {"epoch": 0, "batch_position": 0, "sample_position": 0}
+        exact_resume = self.full_state(4400, metadata)
+        validate_resume_identity(exact_resume, args=args, recipe=ProductionRecipe(), identities=self.identities(),
+                                 continuation_metadata=provenance)
+        incompatible = copy.deepcopy(exact_resume)
+        incompatible[PRODUCTION_METADATA_KEY]["scheduler"]["final_lr"] = 1e-5
+        with self.assertRaisesRegex(ValueError, "scheduler"):
+            validate_resume_identity(incompatible, args=args, recipe=ProductionRecipe(), identities=self.identities(),
+                                     continuation_metadata=provenance)
+
+    def test_ordinary_and_cooldown_update_sequences_remain_global_max_inclusive(self):
+        ordinary = optimizer_update_steps(completed_global_step=0, max_steps=3000)
+        cooldown = optimizer_update_steps(completed_global_step=3000, max_steps=5000)
+        self.assertEqual((ordinary[0], ordinary[-1], len(ordinary)), (1, 3000, 3000))
+        self.assertEqual((cooldown[0], cooldown[-1], len(cooldown)), (3001, 5000, 2000))
 
     def test_finishing_wandb_starts_new_branch_runs_and_exact_resume_stays_strict(self):
         class FakeRun:

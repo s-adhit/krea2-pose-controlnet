@@ -2,6 +2,10 @@
 
 ## Current objective
 
+The finishing-continuation inclusive step boundary was hardened and
+regression-tested. No training, real evaluation, image generation, network
+activity, upload, commit, or push occurred during this maintenance session.
+
 The ready next experiment is a matched 500-update finishing A/B from:
 
 ```text
@@ -45,6 +49,13 @@ cooldown artifact with matching 3k→5k provenance. It starts a new W&B run;
 only exact resume of that branch may reuse its own id. Existing ordinary and
 cooldown exact-resume checks remain fail-closed.
 
+`max_steps` is an inclusive absolute optimizer-step ceiling. The launcher now
+materializes the exact outstanding update sequence before it plans
+microbatches and drives the optimizer loop from it. Thus a parent at 4000
+with `--max-steps 4500` executes exactly `4001..4500`, with assertions before
+and after every optimizer update that preserve the intended global number.
+Ordinary training remains `1..max_steps`; cooldown remains `3001..5000`.
+
 ## Foreground launches (do not run from Codex)
 
 Branch A:
@@ -79,6 +90,12 @@ PYTHONPATH=. python scripts/train_production.py \
 
 For a restart add `--resume auto` to the identical branch command; do not use
 it on a first launch. Remove both `--hf-*` options to keep HF disabled.
+
+For recovery of an existing branch, use that same branch command with
+`--resume auto`. It selects the newest valid local checkpoint in the named
+branch directory, not the 4000 parent, so it runs only the remaining updates
+through 4500 while preserving weights, Adam moments, RNG, data position,
+LR/pose scheduler state, W&B branch identity, and continuation provenance.
 
 ## Evaluation plan only (do not run from Codex)
 
@@ -120,13 +137,15 @@ effect. Do not add a flow-only branch.
 
 ## Verification this session
 
-CPU/no-network production tests pass: `PYTHONPATH=. python -m unittest
-tests.test_production_training -v`. Coverage includes both branches, accepted
-and rejected parent step, parent/provenance/artifact failure, preserved Adam
-moments, no warmup, exact monotonic LR/lambda endpoints and intermediate
-anneal values, 4100..4500 checkpoint/HF cadence, scheduler resume position,
-new W&B identities, and ordinary/cooldown resume regressions.
+PASS: `PYTHONPATH=. python -m unittest tests.test_production_training -v`
+(28 CPU/no-network tests). Added coverage proves 500 exact updates from
+4000, first/last 4001/4500, no 4501, final LR/lambda endpoints, step-4500
+save/HF cadence, scheduler resume from 4400, fail-closed resume identity, and
+unchanged ordinary/cooldown semantics. PASS: `python -m py_compile
+pose_controlnet/production_training.py tests/test_production_training.py`.
+PASS: `git diff --check`.
 
 Files changed: `pose_controlnet/production_training.py`,
-`tests/test_production_training.py`, and this handoff. Next action: review,
-then only with authorization launch the two foreground branches.
+`tests/test_production_training.py`, and this handoff. The pre-existing
+untracked `docs/evaluation/pose-control-finish-control-4000-to4500/` remains
+untouched. Next action: review; launch only with explicit authorization.
