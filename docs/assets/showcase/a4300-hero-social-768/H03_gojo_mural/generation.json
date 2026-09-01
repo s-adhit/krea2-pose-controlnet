@@ -1,0 +1,46 @@
+{
+  "cfg": 0.0,
+  "checkpoint_step": 4300,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      768,
+      768
+    ],
+    "crop_box": [
+      0,
+      97,
+      768,
+      865
+    ],
+    "resized_size": [
+      768,
+      962
+    ],
+    "source_size": [
+      720,
+      902
+    ]
+  },
+  "geometry_mode": "explicit",
+  "height": 768,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/a4300-hero-social-768/H03_gojo_mural/generation.png",
+  "pose_image": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/danbooru_anime_11912028.png",
+  "pose_lora_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+  "prompt": "Satoru Gojo from Jujutsu Kaisen reimagined as a monumental contemporary street mural, spiky white hair, black high-collar clothing, vivid electric cyan and ultraviolet energy motifs, layered spray paint, expressive brush marks, distressed concrete texture, graffiti typography fragments, dramatic high-contrast lighting, saturated blue and violet palette, premium urban concept art, large-scale painted wall aesthetic.",
+  "seed": 42,
+  "steps": 8,
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 768
+}

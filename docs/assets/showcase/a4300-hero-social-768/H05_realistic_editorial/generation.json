@@ -1,0 +1,46 @@
+{
+  "cfg": 0.0,
+  "checkpoint_step": 4300,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      768,
+      768
+    ],
+    "crop_box": [
+      0,
+      161,
+      768,
+      929
+    ],
+    "resized_size": [
+      768,
+      1091
+    ],
+    "source_size": [
+      950,
+      1350
+    ]
+  },
+  "geometry_mode": "explicit",
+  "height": 768,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/a4300-hero-social-768/H05_realistic_editorial/generation.png",
+  "pose_image": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_02/danbooru_anime_11905305.png",
+  "pose_lora_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+  "prompt": "High-fashion editorial photograph of an original young woman with a short platinum-blonde bob, structured black avant-garde clothing, subtle metallic jewelry, warm natural skin texture, crimson studio background, cinematic directional lighting, luxury magazine photography, realistic fabric detail, sophisticated editorial color grading.",
+  "seed": 42,
+  "steps": 8,
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 768
+}

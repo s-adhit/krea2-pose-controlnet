@@ -1,0 +1,46 @@
+{
+  "cfg": 0.0,
+  "checkpoint_step": 4300,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      768,
+      768
+    ],
+    "crop_box": [
+      0,
+      195,
+      768,
+      963
+    ],
+    "resized_size": [
+      768,
+      1159
+    ],
+    "source_size": [
+      464,
+      700
+    ]
+  },
+  "geometry_mode": "explicit",
+  "height": 768,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/a4300-hero-social-768/H04_jotaro_editorial/generation.png",
+  "pose_image": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/sculpture_humanart_14000000004435.png",
+  "pose_lora_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+  "prompt": "Jotaro Kujo from JoJo's Bizarre Adventure reimagined as a high-fashion comic editorial, dark structured coat with exaggerated shoulders, signature cap, gold chain details, deep navy and black clothing, sharp graphic shadows, luxurious magazine styling, bold ink contours, halftone texture, dramatic purple and gold accents, sophisticated fashion illustration, highly detailed comic-book rendering.",
+  "seed": 42,
+  "steps": 8,
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 768
+}
