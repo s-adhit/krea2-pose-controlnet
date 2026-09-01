@@ -145,6 +145,27 @@ def _decode_normalized_latents(vae: _VAE, latents: torch.Tensor) -> torch.Tensor
 
 
 @torch.inference_mode()
+def encode_preprocessed_image(
+    vae: _VAE,
+    image: Image.Image,
+    *,
+    device: torch.device | str,
+    dtype: torch.dtype = torch.bfloat16,
+    generator: torch.Generator | None = None,
+) -> torch.Tensor:
+    """Encode one already geometry-normalized RGB image to a clean latent.
+
+    This is the single-image counterpart to :func:`encode_preprocessed_pair`.
+    It intentionally keeps the Qwen tensor conversion, posterior sampling, and
+    latent normalization identical to shard preparation, which lets local
+    inference encode a pose control without fabricating an unused RGB image.
+    """
+    pixels = pil_to_qwen_vae_tensor(image).to(device=device, dtype=dtype)
+    raw = vae.encode(pixels).latent_dist.sample(generator=generator)
+    return _squeeze_image_time(normalize_qwen_latents(raw, vae))
+
+
+@torch.inference_mode()
 def encode_preprocessed_pair(
     vae: _VAE,
     pair: PreprocessedPair,
@@ -160,12 +181,8 @@ def encode_preprocessed_pair(
     shard serialization can explicitly cast them to float32 without changing the
     normalization convention.
     """
-    rgb_pixels = pil_to_qwen_vae_tensor(pair.rgb).to(device=device, dtype=dtype)
-    control_pixels = pil_to_qwen_vae_tensor(pair.control).to(device=device, dtype=dtype)
-    rgb_raw = vae.encode(rgb_pixels).latent_dist.sample(generator=generator)
-    control_raw = vae.encode(control_pixels).latent_dist.sample(generator=generator)
-    latent = _squeeze_image_time(normalize_qwen_latents(rgb_raw, vae))
-    control = _squeeze_image_time(normalize_qwen_latents(control_raw, vae))
+    latent = encode_preprocessed_image(vae, pair.rgb, device=device, dtype=dtype, generator=generator)
+    control = encode_preprocessed_image(vae, pair.control, device=device, dtype=dtype, generator=generator)
     if latent.shape != control.shape:
         raise VAEPreprocessingError(
             f"RGB/control latent shapes differ: {tuple(latent.shape)} vs {tuple(control.shape)}"

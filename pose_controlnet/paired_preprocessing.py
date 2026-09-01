@@ -127,8 +127,8 @@ def preprocess_pair(
                     f"RGB {rgb_size}, control {control_size}"
                 )
             geometry = resize_center_crop_geometry(rgb_size, choose_bucket(rgb_size, buckets))
-            rgb = _apply_geometry(rgb_source.convert("RGB"), geometry)
-            control = _apply_geometry(control_source.convert("RGB"), geometry)
+            rgb = apply_resize_center_crop_geometry(rgb_source.convert("RGB"), geometry)
+            control = apply_resize_center_crop_geometry(control_source.convert("RGB"), geometry)
     except PairedPreprocessingError:
         raise
     except (OSError, ValueError) as exc:
@@ -155,8 +155,8 @@ def preprocess_pair_with_persisted_geometry(
                     f"Persisted source geometry disagrees for stem {record.stem!r}: "
                     f"expected {geometry.source_size}, RGB {rgb_source.size}, control {control_source.size}"
                 )
-            rgb = _apply_geometry(rgb_source.convert("RGB"), geometry)
-            control = _apply_geometry(control_source.convert("RGB"), geometry)
+            rgb = apply_resize_center_crop_geometry(rgb_source.convert("RGB"), geometry)
+            control = apply_resize_center_crop_geometry(control_source.convert("RGB"), geometry)
     except PairedPreprocessingError:
         raise
     except (OSError, ValueError) as exc:
@@ -191,7 +191,13 @@ def inspect_resolved_samples(
     return reports
 
 
-def _apply_geometry(image: Image.Image, geometry: ResizeCropGeometry) -> Image.Image:
+def apply_resize_center_crop_geometry(image: Image.Image, geometry: ResizeCropGeometry) -> Image.Image:
+    """Apply a precomputed shared resize-to-cover / center-crop operation.
+
+    Local inference uses this alongside :func:`resize_center_crop_geometry` so
+    a user-supplied skeleton follows exactly the same image transform as a
+    training-pair control image.
+    """
     if image.size != geometry.source_size:
         raise PairedPreprocessingError(
             f"Image size {image.size} does not match shared source size {geometry.source_size}"
@@ -203,6 +209,11 @@ def _apply_geometry(image: Image.Image, geometry: ResizeCropGeometry) -> Image.I
             f"Output size {output.size} does not match bucket {geometry.bucket}"
         )
     return output
+
+
+# Kept private-name compatible for existing read-only diagnostics; new callers
+# use the public helper above.
+_apply_geometry = apply_resize_center_crop_geometry
 
 
 def _validate_size(size: tuple[int, int], label: str) -> tuple[int, int]:
