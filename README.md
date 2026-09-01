@@ -291,7 +291,4 @@ Still being explored:
 * [CLIP](https://arxiv.org/abs/2103.00020)
 * [Mask R-CNN](https://arxiv.org/abs/1703.06870)
 
-```
 
-This version keeps the important technical details but removes most of the report-style repetition and internal implementation commentary.
-```
