@@ -57,6 +57,10 @@ DEFAULT_CHECKPOINT_DIR = "/lambda/nfs/adhit/krea2-pose/checkpoints"
 
 PRODUCTION_METADATA_KEY = "production_pose_control"
 PRODUCTION_METADATA_FORMAT = 1
+FINISH_PARENT_RUN_NAME = "pose-control-production-cooldown-3000-to5000"
+FINISH_PARENT_CHECKPOINT = Path(
+    "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt"
+)
 POSE_CUMULATIVE_COUNTER_KEYS = (
     "eligible_samples_seen", "forced_samples", "naturally_active_samples", "total_active_samples",
 )
@@ -128,7 +132,12 @@ class ProductionRecipe:
 
 @dataclass(frozen=True)
 class CooldownContinuation:
-    """An explicit scientific continuation, distinct from an exact resume."""
+    """An explicit scientific continuation, distinct from an exact resume.
+
+    ``branch_type == "cooldown"`` preserves the original 3k -> 5k contract.
+    The two 4k -> 4.5k finishing branches add an independently checkpointed
+    pose-lambda schedule while retaining the parent AdamW/RNG/data state.
+    """
 
     parent_checkpoint: Path
     parent_step: int
@@ -136,13 +145,21 @@ class CooldownContinuation:
     start_lr: float
     final_lr: float
     continuation_steps: int
+    branch_type: str = "cooldown"
+    pose_lambda_schedule: str = "constant"
+    start_pose_lambda: float = LOCKED_LAMBDA_POSE
+    final_pose_lambda: float = LOCKED_LAMBDA_POSE
 
     @property
     def end_step(self) -> int:
         return self.parent_step + self.continuation_steps
 
+    @property
+    def has_pose_lambda_schedule(self) -> bool:
+        return self.branch_type != "cooldown"
+
     def metadata(self, *, parent_run_name: str, parent_sha256: str) -> dict[str, Any]:
-        return {
+        result = {
             "kind": "scientific_continuation",
             "exact_resume": False,
             "parent_checkpoint": str(self.parent_checkpoint.resolve()),
@@ -155,6 +172,73 @@ class CooldownContinuation:
             "continuation_steps": self.continuation_steps,
             "end_global_step": self.end_step,
         }
+        # Keep original cooldown provenance byte-for-byte shaped so its
+        # existing exact-resume identity remains fail-closed and unchanged.
+        if self.has_pose_lambda_schedule:
+            result.update({
+                "branch_type": self.branch_type,
+                "lr_schedule": {"name": self.schedule, "start": self.start_lr, "final": self.final_lr},
+                "pose_lambda_schedule": {"name": self.pose_lambda_schedule,
+                                         "start": self.start_pose_lambda, "final": self.final_pose_lambda},
+            })
+        return result
+
+
+class PoseLambdaContinuationScheduler:
+    """Constant or linear pose-loss weight over exact continuation updates."""
+
+    name = "PoseLambdaContinuation"
+
+    def __init__(self, *, parent_step: int, continuation_steps: int, schedule: str,
+                 start_value: float, final_value: float) -> None:
+        if parent_step < 0 or continuation_steps < 2:
+            raise ValueError("Pose-lambda continuation requires a non-negative parent step and at least two updates")
+        if schedule not in ("constant", "linear"):
+            raise ValueError("Pose-lambda continuation schedule must be constant or linear")
+        if start_value < 0 or final_value < 0:
+            raise ValueError("Pose-lambda continuation values must be non-negative")
+        if schedule == "constant" and final_value != start_value:
+            raise ValueError("Constant pose-lambda continuation endpoints must match")
+        self.parent_step, self.continuation_steps = parent_step, continuation_steps
+        self.schedule, self.start_value, self.final_value = schedule, start_value, final_value
+        self.step_count = parent_step
+        self.current_value = self._value(parent_step + 1)
+
+    @property
+    def end_step(self) -> int:
+        return self.parent_step + self.continuation_steps
+
+    def _value(self, global_update: int) -> float:
+        index = global_update - self.parent_step - 1
+        if not 0 <= index < self.continuation_steps:
+            raise ValueError(f"Global update {global_update} is outside the configured pose-lambda interval")
+        if self.schedule == "constant":
+            return self.start_value
+        return self.start_value + (self.final_value - self.start_value) * index / (self.continuation_steps - 1)
+
+    def step(self) -> None:
+        self.step_count += 1
+        if self.step_count < self.end_step:
+            self.current_value = self._value(self.step_count + 1)
+        else:
+            self.current_value = self._value(self.end_step)
+
+    def state_dict(self) -> dict[str, Any]:
+        return {"name": self.name, "step_count": self.step_count, "parent_step": self.parent_step,
+                "continuation_steps": self.continuation_steps, "schedule": self.schedule,
+                "start_value": self.start_value, "final_value": self.final_value}
+
+    def load_state_dict(self, state: Mapping[str, Any]) -> None:
+        expected = self.state_dict() | {"step_count": int(state.get("step_count", -1))}
+        if {key: state.get(key) for key in expected if key != "step_count"} != {
+            key: expected[key] for key in expected if key != "step_count"
+        }:
+            raise ValueError("Checkpoint pose-lambda continuation schedule differs from current configuration")
+        step_count = int(state["step_count"])
+        if not self.parent_step <= step_count <= self.end_step:
+            raise ValueError("Checkpoint pose-lambda continuation step is outside the configured interval")
+        self.step_count = step_count
+        self.current_value = self._value(step_count + 1 if step_count < self.end_step else self.end_step)
 
 
 class CosineContinuationScheduler:
@@ -168,7 +252,8 @@ class CosineContinuationScheduler:
     name = "CosineContinuation"
 
     def __init__(self, optimizer: torch.optim.Optimizer, *, parent_step: int,
-                 continuation_steps: int, start_lr: float, final_lr: float) -> None:
+                 continuation_steps: int, start_lr: float, final_lr: float,
+                 pose_lambda_scheduler: PoseLambdaContinuationScheduler | None = None) -> None:
         if parent_step < 0 or continuation_steps < 2:
             raise ValueError("Cosine continuation requires a non-negative parent step and at least two updates")
         if start_lr <= 0 or final_lr <= 0 or final_lr > start_lr:
@@ -178,6 +263,12 @@ class CosineContinuationScheduler:
         self.continuation_steps = continuation_steps
         self.start_lr = start_lr
         self.final_lr = final_lr
+        self.pose_lambda_scheduler = pose_lambda_scheduler
+        if pose_lambda_scheduler is not None and (
+            pose_lambda_scheduler.parent_step != parent_step
+            or pose_lambda_scheduler.continuation_steps != continuation_steps
+        ):
+            raise ValueError("Pose-lambda and LR continuation intervals must match")
         self.step_count = parent_step
         self._apply_for_global_update(parent_step + 1)
 
@@ -202,20 +293,29 @@ class CosineContinuationScheduler:
     def current_update_learning_rates(self) -> list[float]:
         return [float(group["lr"]) for group in self.optimizer.param_groups]
 
+    @property
+    def current_pose_lambda(self) -> float | None:
+        return None if self.pose_lambda_scheduler is None else self.pose_lambda_scheduler.current_value
+
     def step(self) -> None:
         self.step_count += 1
         if self.step_count < self.end_step:
             self._apply_for_global_update(self.step_count + 1)
+        if self.pose_lambda_scheduler is not None:
+            self.pose_lambda_scheduler.step()
 
     def state_dict(self) -> dict[str, Any]:
-        return {"name": self.name, "step_count": self.step_count, "parent_step": self.parent_step,
-                "continuation_steps": self.continuation_steps, "start_lr": self.start_lr, "final_lr": self.final_lr}
+        result = {"name": self.name, "step_count": self.step_count, "parent_step": self.parent_step,
+                  "continuation_steps": self.continuation_steps, "start_lr": self.start_lr, "final_lr": self.final_lr}
+        if self.pose_lambda_scheduler is not None:
+            result["pose_lambda_scheduler"] = self.pose_lambda_scheduler.state_dict()
+        return result
 
     def load_state_dict(self, state: Mapping[str, Any]) -> None:
-        expected = self.state_dict() | {"step_count": int(state.get("step_count", -1))}
-        if {key: state.get(key) for key in expected if key != "step_count"} != {
-            key: expected[key] for key in expected if key != "step_count"
-        }:
+        expected = {"name": self.name, "parent_step": self.parent_step,
+                    "continuation_steps": self.continuation_steps,
+                    "start_lr": self.start_lr, "final_lr": self.final_lr}
+        if {key: state.get(key) for key in expected} != expected:
             raise ValueError("Checkpoint cosine continuation schedule differs from current configuration")
         step_count = int(state["step_count"])
         if not self.parent_step <= step_count <= self.end_step:
@@ -225,6 +325,16 @@ class CosineContinuationScheduler:
             self._apply_for_global_update(step_count + 1)
         else:
             self._apply_for_global_update(self.end_step)
+        saved_pose_schedule = state.get("pose_lambda_scheduler")
+        if self.pose_lambda_scheduler is None:
+            if saved_pose_schedule is not None:
+                raise ValueError("Checkpoint unexpectedly contains a pose-lambda continuation schedule")
+        elif not isinstance(saved_pose_schedule, Mapping):
+            raise ValueError("Checkpoint lacks pose-lambda continuation schedule state")
+        else:
+            self.pose_lambda_scheduler.load_state_dict(saved_pose_schedule)
+            if self.pose_lambda_scheduler.step_count != self.step_count:
+                raise ValueError("Checkpoint LR and pose-lambda continuation progress differ")
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -247,8 +357,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
                         help="required parent global step for --continue-from (default: 3000)")
     parser.add_argument("--lr-schedule", choices=("cosine",), default=None,
                         help="replacement scheduler for --continue-from")
+    parser.add_argument("--lr-start", type=float, default=None,
+                        help="initial LR for an explicit scientific continuation")
     parser.add_argument("--lr-final", type=float, default=None,
                         help="final learning rate for the explicit continuation scheduler")
+    parser.add_argument("--pose-lambda-schedule", choices=("constant", "linear"), default=None,
+                        help="optional per-update pose-loss schedule for an explicit finishing continuation")
+    parser.add_argument("--pose-lambda-final", type=float, default=None,
+                        help="final pose-loss lambda for --pose-lambda-schedule linear")
     wandb_group = parser.add_mutually_exclusive_group()
     wandb_group.add_argument("--wandb", dest="wandb", action="store_true",
                              help="enable best-effort W&B metric mirroring")
@@ -300,30 +416,53 @@ def recipe_from_args(args: argparse.Namespace) -> ProductionRecipe:
 
 
 def cooldown_continuation_from_args(args: argparse.Namespace, recipe: ProductionRecipe) -> CooldownContinuation | None:
-    """Parse the intentionally narrow 3k -> 5k cooldown contract.
+    """Parse only the approved scientific continuations; ordinary runs stay locked.
 
-    No ordinary resume enters this path: a parent checkpoint and every
-    scheduler override must be named explicitly.
+    The original 3k -> 5k cooldown input remains accepted exactly as before.
+    The only additional contract is the matched 4k -> 4.5k finishing A/B.
+    No ordinary resume can enter either path.
     """
     supplied = (args.continue_from is not None, args.lr_schedule is not None, args.lr_final is not None)
-    if any(supplied) and not all(supplied):
-        raise ValueError("--continue-from, --lr-schedule, and --lr-final must be supplied together")
-    if not any(supplied):
+    extras = (args.lr_start is not None, args.pose_lambda_schedule is not None, args.pose_lambda_final is not None)
+    if not any(supplied) and not any(extras):
         return None
-    if args.continue_from_step != 3000:
-        raise ValueError("Cooldown continuation requires --continue-from-step 3000")
-    if args.lr_schedule != "cosine" or args.lr_final != 1e-5:
-        raise ValueError("Cooldown continuation requires --lr-schedule cosine --lr-final 1e-5")
-    continuation = CooldownContinuation(
-        parent_checkpoint=args.continue_from, parent_step=args.continue_from_step,
-        schedule=args.lr_schedule, start_lr=recipe.learning_rate, final_lr=args.lr_final,
-        continuation_steps=args.max_steps - args.continue_from_step,
+    if not all(supplied):
+        raise ValueError("--continue-from, --lr-schedule, and --lr-final must be supplied together")
+    if args.continue_from_step == 3000:
+        if any(extras):
+            raise ValueError("Cooldown continuation does not accept finishing LR or pose-lambda overrides")
+        if args.lr_schedule != "cosine" or args.lr_final != 1e-5:
+            raise ValueError("Cooldown continuation requires --lr-schedule cosine --lr-final 1e-5")
+        continuation = CooldownContinuation(
+            parent_checkpoint=args.continue_from, parent_step=args.continue_from_step,
+            schedule=args.lr_schedule, start_lr=recipe.learning_rate, final_lr=args.lr_final,
+            continuation_steps=args.max_steps - args.continue_from_step,
+        )
+        if args.max_steps != 5000 or continuation.continuation_steps != 2000:
+            raise ValueError("Cooldown continuation requires --max-steps 5000 (exactly 2000 additional optimizer steps)")
+        if args.save_every != 250:
+            raise ValueError("Cooldown continuation requires --save-every 250")
+        return continuation
+    if args.continue_from_step != 4000:
+        raise ValueError("Finishing continuation requires --continue-from-step 4000")
+    if args.lr_schedule != "cosine" or args.lr_start != 2e-5 or args.lr_final != 5e-6:
+        raise ValueError("Finishing continuation requires --lr-schedule cosine --lr-start 2e-5 --lr-final 5e-6")
+    if args.max_steps != 4500 or args.save_every != 100:
+        raise ValueError("Finishing continuation requires --max-steps 4500 and --save-every 100")
+    if args.hf_mirror_every_steps not in (0, 100):
+        raise ValueError("Finishing continuation HF mirroring must be disabled or use --hf-mirror-every-steps 100")
+    if args.pose_lambda_schedule == "constant" and args.pose_lambda_final is None:
+        branch_type, final_pose_lambda = "finish-control", recipe.lambda_pose
+    elif args.pose_lambda_schedule == "linear" and args.pose_lambda_final == 0.0:
+        branch_type, final_pose_lambda = "finish-pose-anneal", 0.0
+    else:
+        raise ValueError("Finishing continuation requires --pose-lambda-schedule constant or --pose-lambda-schedule linear --pose-lambda-final 0")
+    return CooldownContinuation(
+        parent_checkpoint=args.continue_from, parent_step=4000, schedule="cosine",
+        start_lr=args.lr_start, final_lr=args.lr_final, continuation_steps=500,
+        branch_type=branch_type, pose_lambda_schedule=args.pose_lambda_schedule,
+        start_pose_lambda=recipe.lambda_pose, final_pose_lambda=final_pose_lambda,
     )
-    if args.max_steps != 5000 or continuation.continuation_steps != 2000:
-        raise ValueError("Cooldown continuation requires --max-steps 5000 (exactly 2000 additional optimizer steps)")
-    if args.save_every != 250:
-        raise ValueError("Cooldown continuation requires --save-every 250")
-    return continuation
 
 
 def _sha256(path: str | Path) -> str:
@@ -399,6 +538,8 @@ def run_metadata(*, args: argparse.Namespace, recipe: ProductionRecipe, identiti
         "continuation_steps": continuation_metadata["continuation_steps"],
         "start_lr": continuation_metadata["start_lr"], "final_lr": continuation_metadata["final_lr"],
     })
+    if continuation_metadata is not None and "pose_lambda_schedule" in continuation_metadata:
+        scheduler["pose_lambda_schedule"] = dict(continuation_metadata["pose_lambda_schedule"])
     metadata = {
         "format": PRODUCTION_METADATA_FORMAT, "run_name": args.run_name, "current_step": current_step,
         "max_steps": args.max_steps, "scientific_recipe": recipe.scientific_identity(),
@@ -646,7 +787,7 @@ def resolve_resume(path: str | None, run_dir: Path) -> Path | None:
 
 def validate_cooldown_parent_identity(state: Mapping[str, Any], *, continuation: CooldownContinuation,
                                       recipe: ProductionRecipe, identities: Mapping[str, Any]) -> dict[str, Any]:
-    """Accept only the locked 3k parent recipe before changing its scheduler."""
+    """Accept only the fixed parent science before changing continuation schedules."""
     metadata = state.get(PRODUCTION_METADATA_KEY)
     if not isinstance(metadata, dict) or metadata.get("format") != PRODUCTION_METADATA_FORMAT:
         raise ValueError("Cooldown parent lacks production scientific identity metadata")
@@ -656,12 +797,17 @@ def validate_cooldown_parent_identity(state: Mapping[str, Any], *, continuation:
         run_name=metadata.get("run_name"), max_steps=metadata.get("max_steps"), wandb=False,
         wandb_project=None, wandb_entity=None, wandb_name=None, hf_repo_id="", hf_mirror_every_steps=0,
     ), recipe=recipe, identities=identities, current_step=continuation.parent_step)
-    for key in ("scientific_recipe", "artifact_identity", "optimizer", "scheduler", "loader",
+    for key in ("scientific_recipe", "artifact_identity", "optimizer", "loader",
                 "gradient_accumulation_position"):
         if metadata.get(key) != expected[key]:
             raise ValueError(f"Cooldown parent refused: immutable science identity {key} differs")
-    if metadata.get("continuation") is not None:
-        raise ValueError("Cooldown parent must be an original production checkpoint, not another continuation")
+    if continuation.has_pose_lambda_schedule:
+        _validate_finishing_parent(metadata)
+    else:
+        if metadata.get("scheduler") != expected["scheduler"]:
+            raise ValueError("Cooldown parent refused: immutable science identity scheduler differs")
+        if metadata.get("continuation") is not None:
+            raise ValueError("Cooldown parent must be an original production checkpoint, not another continuation")
     expected_position = {"epoch": state.get("epoch"), "batch_position": state.get("batch_position"),
                          "sample_position": int(state.get("batch_position", -1)) * recipe.microbatch_size}
     if metadata.get("data_position") != expected_position:
@@ -670,6 +816,27 @@ def validate_cooldown_parent_identity(state: Mapping[str, Any], *, continuation:
         if key not in state:
             raise ValueError(f"Cooldown parent lacks required resumable state: {key}")
     return metadata
+
+
+def _validate_finishing_parent(metadata: Mapping[str, Any]) -> None:
+    """Fail closed unless step 4000 belongs to the intended cooldown branch."""
+    if metadata.get("run_name") != FINISH_PARENT_RUN_NAME:
+        raise ValueError(f"Finishing parent must come from run {FINISH_PARENT_RUN_NAME}")
+    expected_scheduler = {"name": CosineContinuationScheduler.name, "parent_step": 3000,
+                          "continuation_steps": 2000, "start_lr": 1e-4, "final_lr": 1e-5}
+    if metadata.get("scheduler") != expected_scheduler:
+        raise ValueError("Finishing parent refused: cooldown scheduler identity differs")
+    provenance = metadata.get("continuation")
+    if not isinstance(provenance, Mapping):
+        raise ValueError("Finishing parent lacks cooldown continuation provenance")
+    expected_provenance = {
+        "kind": "scientific_continuation", "exact_resume": False,
+        "parent_run_name": "pose-control-production-3000", "parent_global_step": 3000,
+        "scheduler": "cosine", "start_lr": 1e-4, "final_lr": 1e-5,
+        "continuation_steps": 2000, "end_global_step": 5000,
+    }
+    if any(provenance.get(key) != value for key, value in expected_provenance.items()):
+        raise ValueError("Finishing parent refused: cooldown continuation provenance differs")
 
 
 def restore_cooldown_continuation_state(model: torch.nn.Module, optimizer: torch.optim.Optimizer,
@@ -702,6 +869,8 @@ def run(args: argparse.Namespace, *, verifier: Callable[[argparse.Namespace], di
     continuation_metadata: dict[str, Any] | None = None
     if continuation is not None:
         parent_path = continuation.parent_checkpoint.resolve()
+        if continuation.has_pose_lambda_schedule and parent_path != FINISH_PARENT_CHECKPOINT:
+            raise ValueError(f"Finishing continuation requires parent checkpoint {FINISH_PARENT_CHECKPOINT}")
         if not parent_path.is_file():
             raise FileNotFoundError(f"Cooldown parent checkpoint is missing: {parent_path}")
         parent_state = load_training_state(parent_path)
@@ -715,9 +884,15 @@ def run(args: argparse.Namespace, *, verifier: Callable[[argparse.Namespace], di
     model = build_pose_model(cfg.raw_ckpt, recipe.rank, recipe.alpha, "cuda")
     audit_control_model(model, rank=recipe.rank); train.configure_runtime(model, compile_enabled=False); model.train()
     optimizer = train.build_optimizer(model, cfg)
+    pose_lambda_scheduler = (PoseLambdaContinuationScheduler(
+        parent_step=continuation.parent_step, continuation_steps=continuation.continuation_steps,
+        schedule=continuation.pose_lambda_schedule, start_value=continuation.start_pose_lambda,
+        final_value=continuation.final_pose_lambda,
+    ) if continuation is not None and continuation.has_pose_lambda_schedule else None)
     scheduler: Any = (CosineContinuationScheduler(
         optimizer, parent_step=continuation.parent_step, continuation_steps=continuation.continuation_steps,
         start_lr=continuation.start_lr, final_lr=continuation.final_lr,
+        pose_lambda_scheduler=pose_lambda_scheduler,
     ) if continuation is not None else train.OptimizerStepWarmup(optimizer, recipe.warmup_steps))
     vae = load_krea_vae(device); critic = FixedBoxKeypointRCNNCritic().to(device).eval(); assert_frozen_no_parameter_grad(vae, critic)
     global_step = epoch = batch_position = 0; generator = torch.Generator(device=device).manual_seed(recipe.seed)
@@ -774,6 +949,11 @@ def run(args: argparse.Namespace, *, verifier: Callable[[argparse.Namespace], di
         while global_step < cfg.max_steps and not stopped:
             start_epoch, start_position = epoch, batch_position
             diagnostics: list[Mapping[str, Any]] = []; started = time.monotonic(); interrupted = False
+            scheduled_lambda_pose = (scheduler.current_pose_lambda
+                                     if continuation is not None and continuation.has_pose_lambda_schedule
+                                     else recipe.lambda_pose)
+            if scheduled_lambda_pose is None:
+                raise ValueError("Finishing continuation lacks a current pose-lambda value")
             for accumulation_index in range(recipe.gradient_accumulation_steps):
                 if stopped:
                     interrupted = True; break
@@ -782,7 +962,7 @@ def run(args: argparse.Namespace, *, verifier: Callable[[argparse.Namespace], di
                                                    global_step * recipe.gradient_accumulation_steps + accumulation_index)
                 with torch.autocast("cuda", dtype=torch.bfloat16):
                     loss, diagnostic = _pose_smoke_loss(model, vae, critic, batch, pose_records, cfg, device, generator,
-                        pose_loss_name=recipe.pose_loss, lambda_pose=recipe.lambda_pose,
+                        pose_loss_name=recipe.pose_loss, lambda_pose=scheduled_lambda_pose,
                         timestep_min=recipe.pose_timestep_min, timestep_max=recipe.pose_timestep_max,
                         forced_exposure_probability=recipe.forced_pose_exposure_probability)
                 diagnostics.append(diagnostic); (loss / recipe.gradient_accumulation_steps).backward()
@@ -798,7 +978,7 @@ def run(args: argparse.Namespace, *, verifier: Callable[[argparse.Namespace], di
             grad_norm = train.optimizer_update(optimizer, scheduler, trainable_params(model), cfg.max_grad_norm,
                                                before_step=capture_diagnostics if diagnostics_due else None); global_step += 1
             assert_frozen_no_parameter_grad(vae, critic)
-            metrics = {"global_step": global_step, "learning_rate": learning_rate,
+            metrics = {"global_step": global_step, "learning_rate": learning_rate, "lambda_pose": scheduled_lambda_pose,
                        "global_grad_norm": grad_norm, "sec_per_step": time.monotonic() - started,
                        **aggregate_step_diagnostics(diagnostics)}
             counters = update_cumulative_counters(counters, metrics); metrics["pose_cumulative_counters"] = counters

@@ -17,6 +17,8 @@ from pose_controlnet.production_training import (
     PRODUCTION_METADATA_KEY,
     CooldownContinuation,
     CosineContinuationScheduler,
+    FINISH_PARENT_RUN_NAME,
+    PoseLambdaContinuationScheduler,
     ProductionRecipe,
     _production_checkpoint_metadata,
     build_train_config,
@@ -59,6 +61,27 @@ class ProductionTrainingTests(unittest.TestCase):
                 "epoch": 0, "batch_position": 0, "rng": train._capture_rng(),
                 "flow_generator_state": torch.Generator().get_state(), "config": {},
                 PRODUCTION_METADATA_KEY: metadata}
+
+    def finishing_args(self, branch: str, *extra: str):
+        pose_args = ("--pose-lambda-schedule", "constant") if branch == "control" else (
+            "--pose-lambda-schedule", "linear", "--pose-lambda-final", "0",
+        )
+        return build_arg_parser().parse_args([
+            "--run-name", f"finish-{branch}", "--max-steps", "4500", "--save-every", "100",
+            "--continue-from", "/parent/step_004000.pt", "--continue-from-step", "4000",
+            "--lr-schedule", "cosine", "--lr-start", "2e-5", "--lr-final", "5e-6",
+            *pose_args, *extra,
+        ])
+
+    def finishing_parent(self, identities: dict):
+        parent_args = self.args("--run-name", FINISH_PARENT_RUN_NAME, "--max-steps", "5000")
+        cooldown = CooldownContinuation(Path("/parent/step_003000.pt"), 3000, "cosine", 1e-4, 1e-5, 2000)
+        metadata = _production_checkpoint_metadata(
+            args=parent_args, recipe=ProductionRecipe(), identities=identities, current_step=4000,
+            continuation_metadata=cooldown.metadata(parent_run_name="pose-control-production-3000", parent_sha256="sha"),
+        )
+        metadata["data_position"] = {"epoch": 0, "batch_position": 0, "sample_position": 0}
+        return self.full_state(4000, metadata)
 
     def test_cli_defaults_are_the_locked_loader4_recipe(self):
         args = self.args()
@@ -284,6 +307,106 @@ class ProductionTrainingTests(unittest.TestCase):
         self.assertNotIn("id", fake.kwargs)
         self.assertNotIn("resume", fake.kwargs)
         self.assertEqual(fake.kwargs["config"]["continuation"]["parent_run_name"], "pose-control-production-3000")
+
+    def test_finishing_ab_contract_parent_provenance_and_global_checkpoint_cadence(self):
+        identities = self.identities()
+        parent = self.finishing_parent(identities)
+        control_args = self.finishing_args("control")
+        control = cooldown_continuation_from_args(control_args, recipe_from_args(control_args))
+        self.assertEqual((control.parent_step, control.end_step, control.branch_type), (4000, 4500, "finish-control"))
+        self.assertEqual(validate_cooldown_parent_identity(parent, continuation=control, recipe=ProductionRecipe(),
+                                                           identities=identities)["current_step"], 4000)
+        provenance = control.metadata(parent_run_name=FINISH_PARENT_RUN_NAME, parent_sha256="parent-sha")
+        self.assertEqual(provenance["parent_checkpoint_sha256"], "parent-sha")
+        self.assertEqual(provenance["pose_lambda_schedule"], {"name": "constant", "start": .04, "final": .04})
+        self.assertEqual(production_hf_milestone_steps(max_steps=4500, mirror_every_steps=100, start_step=4000),
+                         (4100, 4200, 4300, 4400, 4500))
+        self.assertEqual(tuple(f"step_{step:06d}.pt" for step in range(4100, 4501, 100)),
+                         ("step_004100.pt", "step_004200.pt", "step_004300.pt", "step_004400.pt", "step_004500.pt"))
+        wrong_step = self.finishing_args("control", "--continue-from-step", "3999")
+        with self.assertRaisesRegex(ValueError, "4000"):
+            cooldown_continuation_from_args(wrong_step, recipe_from_args(wrong_step))
+        bad = copy.deepcopy(parent)
+        bad[PRODUCTION_METADATA_KEY]["artifact_identity"]["pose_sidecar"] = {"records_sha256": "bad"}
+        with self.assertRaisesRegex(ValueError, "immutable science identity"):
+            validate_cooldown_parent_identity(bad, continuation=control, recipe=ProductionRecipe(), identities=identities)
+
+    def test_finishing_schedules_have_exact_endpoints_and_resume_position(self):
+        args = self.finishing_args("anneal")
+        continuation = cooldown_continuation_from_args(args, recipe_from_args(args))
+        parameter = torch.nn.Parameter(torch.tensor(1.0))
+        optimizer = torch.optim.AdamW([parameter], lr=1e-4, betas=(.9, .99), weight_decay=0.)
+        pose = PoseLambdaContinuationScheduler(parent_step=4000, continuation_steps=500, schedule="linear",
+                                               start_value=.04, final_value=0.)
+        scheduler = CosineContinuationScheduler(optimizer, parent_step=4000, continuation_steps=500,
+                                                start_lr=2e-5, final_lr=5e-6, pose_lambda_scheduler=pose)
+        rates, lambdas = [], []
+        for _ in range(500):
+            rates.append(scheduler.current_update_learning_rates[0]); lambdas.append(scheduler.current_pose_lambda); scheduler.step()
+        self.assertEqual((rates[0], rates[-1]), (2e-5, 5e-6))
+        self.assertEqual((lambdas[0], lambdas[-1]), (.04, 0.))
+        self.assertTrue(all(next_rate < rate for rate, next_rate in zip(rates, rates[1:])))
+        self.assertTrue(all(next_value < value for value, next_value in zip(lambdas, lambdas[1:])))
+        expected = {4100: .04 * (1 - 99 / 499), 4200: .04 * (1 - 199 / 499),
+                    4300: .04 * (1 - 299 / 499), 4400: .04 * (1 - 399 / 499), 4500: 0.}
+        for step, value in expected.items():
+            self.assertAlmostEqual(lambdas[step - 4001], value, places=14)
+        control_pose = PoseLambdaContinuationScheduler(parent_step=4000, continuation_steps=500, schedule="constant",
+                                                       start_value=.04, final_value=.04)
+        control_lambdas = []
+        for _ in range(500):
+            control_lambdas.append(control_pose.current_value); control_pose.step()
+        self.assertTrue(all(value == .04 for value in control_lambdas))
+        replay_pose = PoseLambdaContinuationScheduler(parent_step=4000, continuation_steps=500, schedule="linear",
+                                                      start_value=.04, final_value=0.)
+        replay_optimizer = torch.optim.AdamW([torch.nn.Parameter(torch.tensor(1.0))], lr=1e-4, betas=(.9, .99), weight_decay=0.)
+        replay = CosineContinuationScheduler(replay_optimizer, parent_step=4000, continuation_steps=500,
+                                             start_lr=2e-5, final_lr=5e-6, pose_lambda_scheduler=replay_pose)
+        saved = None
+        for _ in range(100):
+            replay.step()
+        saved = replay.state_dict()
+        resumed_pose = PoseLambdaContinuationScheduler(parent_step=4000, continuation_steps=500, schedule="linear",
+                                                       start_value=.04, final_value=0.)
+        resumed_optimizer = torch.optim.AdamW([torch.nn.Parameter(torch.tensor(1.0))], lr=1e-4, betas=(.9, .99), weight_decay=0.)
+        resumed = CosineContinuationScheduler(resumed_optimizer, parent_step=4000, continuation_steps=500,
+                                              start_lr=2e-5, final_lr=5e-6, pose_lambda_scheduler=resumed_pose)
+        resumed.load_state_dict(saved)
+        self.assertEqual((resumed.step_count, resumed.current_update_learning_rates[0], resumed.current_pose_lambda),
+                         (4100, rates[100], lambdas[100]))
+        self.assertEqual(continuation.branch_type, "finish-pose-anneal")
+
+    def test_finishing_wandb_starts_new_branch_runs_and_exact_resume_stays_strict(self):
+        class FakeRun:
+            def __init__(self, identifier): self.id = identifier
+            def log(self, *_args, **_kwargs): pass
+            def finish(self): pass
+        class FakeWandb:
+            def __init__(self): self.calls = []
+            def init(self, **kwargs): self.calls.append(kwargs); return FakeRun(f"branch-{len(self.calls)}")
+        identities, parent = self.identities(), self.finishing_parent(self.identities())
+        for branch in ("control", "anneal"):
+            args = self.finishing_args(branch, "--wandb")
+            continuation = cooldown_continuation_from_args(args, recipe_from_args(args))
+            provenance = continuation.metadata(parent_run_name=FINISH_PARENT_RUN_NAME, parent_sha256="sha")
+            fake = FakeWandb()
+            mirror = production_wandb_mirror(args=args, recipe=ProductionRecipe(), identities=identities,
+                                             resume_state=parent, continuation_metadata=provenance, wandb_module=fake)
+            self.assertEqual(mirror.run_id, "branch-1")
+            self.assertNotIn("id", fake.calls[0])
+            self.assertNotIn("resume", fake.calls[0])
+            self.assertEqual(fake.calls[0]["config"]["continuation"]["branch_type"], continuation.branch_type)
+            child_metadata = _production_checkpoint_metadata(args=args, recipe=ProductionRecipe(), identities=identities,
+                                                              current_step=4100, continuation_metadata=provenance)
+            child_metadata["data_position"] = {"epoch": 0, "batch_position": 0, "sample_position": 0}
+            validate_resume_identity(self.full_state(4100, child_metadata), args=args, recipe=ProductionRecipe(),
+                                     identities=identities, continuation_metadata=provenance)
+            wrong_provenance = dict(provenance)
+            wrong_provenance["branch_type"] = ("finish-pose-anneal"
+                                                if continuation.branch_type == "finish-control" else "finish-control")
+            with self.assertRaisesRegex(ValueError, "continuation provenance"):
+                validate_resume_identity(self.full_state(4100, child_metadata), args=args, recipe=ProductionRecipe(),
+                                         identities=identities, continuation_metadata=wrong_provenance)
 
     def test_hf_failure_keeps_atomic_local_checkpoint_authoritative(self):
         class FailingApi:
