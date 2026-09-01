@@ -50,7 +50,7 @@ The condition is intended to carry pose geometry, not source-image semantics. Su
 
 ## Architecture
 
-The control-input expansion pattern was informed by [Tanmay Patil’s public Krea-2 ControlNet repository](https://github.com/Tanmaypatil123/Krea-2-controlnet), prior work demonstrating depth-conditioned ControlNet-style control for Krea-2. It is an architectural reference, not Krea’s official training recipe and not a claim that this repository is a fork or reproduction of that depth-control project. This repository’s pose data pipeline, training, supervision, evaluation, inference tooling, and checkpoint work are project-owned.
+The control-input expansion used here was informed by [Tanmay Patil's Krea-2 ControlNet repository](https://github.com/Tanmaypatil123/Krea-2-controlnet), which demonstrates depth-conditioned control for Krea-2. This repository adapts that general control-input approach to skeleton-based pose conditioning and develops the pose data pipeline, training objective, pose-consistency supervision, evaluation, inference tooling, and checkpoint recipe used here.
 
 At each spatial token location, the model concatenates the noisy image latent with the clean VAE-encoded pose-control latent. `ControlInputLayer` projects that widened feature vector into the existing model width; it does not add control tokens or a classical side-branch ControlNet. Its image half starts from the pretrained input projection, while its control half starts at zero. As a result, an untrained model is expected to be initially insensitive to the skeleton until optimization updates the control half.
 
@@ -213,16 +213,28 @@ Planned work:
 - A Hugging Face demo.
 - Final technical and social showcase assets.
 
-## References and acknowledgements
+## References, prior work, and acknowledgements
 
-- **Krea-2** — the base Raw and Turbo model family; the locked Turbo schedule follows [Krea’s public sampling implementation](https://github.com/krea-ai/krea-2/blob/main/sampling.py).
-- **Tanmay Patil** — [Krea-2 ControlNet](https://github.com/Tanmaypatil123/Krea-2-controlnet), prior depth-conditioned ControlNet-style work that informed this project’s control-input architecture.
-- **ControlNet** — Zhang, Rao, and Agrawala, *Adding Conditional Control to Text-to-Image Diffusion Models*.
-- **ControlNet++** — Li et al., *Improving Conditional Controls with Efficient Consistency Feedback*, ECCV 2024, [arXiv:2404.07987](https://arxiv.org/abs/2404.07987).
-- **LoRA** — Hu et al., *Low-Rank Adaptation of Large Language Models*.
-- **Flow Matching / Rectified Flow** — Lipman et al., *Flow Matching for Generative Modeling*; Liu et al., *Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow*.
-- **COCO** — Lin et al., *Microsoft COCO: Common Objects in Context*.
-- **Human-Art** — Ju et al., *Human-Art: A Versatile Human-Centric Dataset Bridging Natural and Artificial Scenes*.
-- **Karpathy** — Andrej Karpathy, *A Recipe for Training Neural Networks*.
-- **CLIP** — Radford et al., *Learning Transferable Visual Models From Natural Language Supervision*.
-- **Keypoint R-CNN / Mask R-CNN** — He et al., *Mask R-CNN*; torchvision’s COCO Keypoint R-CNN implementation is used for pose-related scoring and supervision components.
+- **Krea-2** — [official Krea-2 repository](https://github.com/krea-ai/krea-2) and [technical report](https://www.krea.ai/blog/krea-2-technical-report). This project follows Krea’s Raw-for-training / Turbo-for-inference setup. :contentReference[oaicite:0]{index=0}
+
+- **Tanmay Patil** — [Krea-2 ControlNet](https://github.com/Tanmaypatil123/Krea-2-controlnet), a public depth-conditioned Krea-2 ControlNet implementation that informed the control-input approach used in this project.
+
+- **ControlNet** — Lvmin Zhang, Anyi Rao, Maneesh Agrawala, [*Adding Conditional Control to Text-to-Image Diffusion Models*](https://arxiv.org/abs/2302.05543), ICCV 2023. :contentReference[oaicite:1]{index=1}
+
+- **ControlNet++** — Ming Li et al., [*ControlNet++: Improving Conditional Controls with Efficient Consistency Feedback*](https://arxiv.org/abs/2404.07987), ECCV 2024. The consistency-feedback idea influenced the explicit pose-consistency supervision used here; this repository’s normalized-coordinate Huber loss is project-specific.
+
+- **LoRA** — Edward J. Hu et al., [*LoRA: Low-Rank Adaptation of Large Language Models*](https://arxiv.org/abs/2106.09685). :contentReference[oaicite:2]{index=2}
+
+- **Flow Matching** — Yaron Lipman et al., [*Flow Matching for Generative Modeling*](https://arxiv.org/abs/2210.02747). :contentReference[oaicite:3]{index=3}
+
+- **Rectified Flow** — Xingchao Liu, Chengyue Gong, Qiang Liu, [*Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow*](https://arxiv.org/abs/2209.03003). :contentReference[oaicite:4]{index=4}
+
+- **COCO** — Tsung-Yi Lin et al., [*Microsoft COCO: Common Objects in Context*](https://arxiv.org/abs/1405.0312), ECCV 2014. :contentReference[oaicite:5]{index=5}
+
+- **Human-Art** — Xuan Ju et al., [*Human-Art: A Versatile Human-Centric Dataset Bridging Natural and Artificial Scenes*](https://arxiv.org/abs/2303.02760), CVPR 2023. [Official project/code](https://github.com/IDEA-Research/HumanArt). :contentReference[oaicite:6]{index=6}
+
+- **Training methodology** — Andrej Karpathy, [*A Recipe for Training Neural Networks*](https://karpathy.github.io/2019/04/25/recipe/). The project’s staged overfit/debug/scale-up workflow was influenced by this methodology. :contentReference[oaicite:7]{index=7}
+
+- **CLIP** — Alec Radford et al., [*Learning Transferable Visual Models From Natural Language Supervision*](https://arxiv.org/abs/2103.00020). :contentReference[oaicite:8]{index=8}
+
+- **Mask R-CNN / Keypoint R-CNN** — Kaiming He et al., [*Mask R-CNN*](https://arxiv.org/abs/1703.06870), and the [torchvision Keypoint R-CNN implementation](https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.detection.keypointrcnn_resnet50_fpn.html) used for pose-related scoring and supervision. :contentReference[oaicite:9]{index=9}
