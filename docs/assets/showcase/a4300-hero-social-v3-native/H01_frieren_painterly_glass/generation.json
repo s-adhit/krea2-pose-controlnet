@@ -1,0 +1,46 @@
+{
+  "cfg": 0.0,
+  "checkpoint_step": 4300,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      304,
+      640
+    ],
+    "crop_box": [
+      0,
+      0,
+      304,
+      640
+    ],
+    "resized_size": [
+      304,
+      640
+    ],
+    "source_size": [
+      300,
+      632
+    ]
+  },
+  "geometry_mode": "explicit",
+  "height": 640,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/a4300-hero-social-v3-native/H01_frieren_painterly_glass/generation.png",
+  "pose_image": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_01/painting_humanart_10000000002300.png",
+  "pose_lora_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+  "prompt": "Frieren from Frieren: Beyond Journey's End, long pale silver hair, pointed elf ears, white and gold mage clothing, delicate gold ornamentation, serene fantasy atmosphere. Painterly stained-glass-inspired fantasy illustration, soft oil-painted rendering blended with ornamental cathedral glass motifs, translucent emerald, sapphire, amber and ruby accents, dark decorative lead-line patterns, luminous magical symbols, subtle floral ornamentation, radiant diffused backlighting, richly layered painterly texture, elegant high-fantasy artwork.",
+  "seed": 42,
+  "steps": 8,
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 304
+}

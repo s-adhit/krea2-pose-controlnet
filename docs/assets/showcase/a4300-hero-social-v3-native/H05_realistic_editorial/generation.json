@@ -1,0 +1,46 @@
+{
+  "cfg": 0.0,
+  "checkpoint_step": 4300,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      608,
+      320
+    ],
+    "crop_box": [
+      9,
+      0,
+      617,
+      320
+    ],
+    "resized_size": [
+      626,
+      320
+    ],
+    "source_size": [
+      612,
+      313
+    ]
+  },
+  "geometry_mode": "explicit",
+  "height": 320,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/a4300-hero-social-v3-native/H05_realistic_editorial/generation.png",
+  "pose_image": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_03/real_human_humanart_15000000000477.png",
+  "pose_lora_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+  "prompt": "High-fashion editorial photograph of an original young woman with a short choppy platinum-blonde bob, structured black avant-garde clothing, delicate metallic jewelry, natural warm skin texture, rich crimson studio background, cinematic directional lighting, luxury magazine photography, realistic fabric detail, subtle filmic contrast, sophisticated editorial color grading, premium photographic finish.",
+  "seed": 42,
+  "steps": 8,
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 608
+}
