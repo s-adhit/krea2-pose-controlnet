@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    896,
+    1152
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_05/painting_humanart_1000000001225.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "A cartoon of a character featuring black hair, a green cap, a red shirt under a white and black jacket, blue shorts, and shoes with flames, set against a blue sky with fluffy white clouds, rendered in a vibrant color palette with bright lighting, captured from an eye-level angle, with the signature \"MasteR-rainbOw\" visible at the bottom right corner, cel shading, retro animation style",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 8854799449003965586,
+  "stem": "painting_humanart_1000000001225",
+  "steps": 8
+}

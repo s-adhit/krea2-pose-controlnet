@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    704,
+    1472
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/painting_humanart_9000000000608.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "A stained glass depicts a haloed saint in a red garment and dark hat holding an open book near a golden-maned lion against a deep blue background with bright golden yellow highlights, illuminated by a backlit source creating a vibrant glow through the colored panels, stained glass, Pre-Raphaelite, leaded glass",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 7385518152048172045,
+  "stem": "painting_humanart_9000000000608",
+  "steps": 8
+}

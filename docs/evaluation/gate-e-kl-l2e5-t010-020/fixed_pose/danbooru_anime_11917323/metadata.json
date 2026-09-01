@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    896,
+    1152
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_06/danbooru_anime_11917323.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "An anime illustration depicts a character with light brown hair tied in a ponytail adorned with a green hair tie, wearing a dark blue and turquoise one-piece swimsuit, set against a plain white background with bright, even studio lighting highlighting her features and skin tone, featuring the yellow handwritten text reading \"2026.8.3\" and \"@Montellano\", cel shading style, digital art, vibrant colors",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 5817123931316804844,
+  "stem": "danbooru_anime_11917323",
+  "steps": 8
+}

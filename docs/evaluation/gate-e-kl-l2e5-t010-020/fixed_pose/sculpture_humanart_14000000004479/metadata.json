@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    1024,
+    1024
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/sculpture_humanart_14000000004479.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "A sculpture depicts a woman, a man, and an angel on a stone-like base against a solid black background. The carved marble artwork features smooth, polished surfaces juxtaposed with rougher textural elements on the rectangular plinth. The monochromatic color palette ranges from bright, stark white to muted gray and warm amber tones on weathered areas of the stone. Soft, directional studio lighting illuminates the figures from the upper left, casting gentle shadows that define the intricate folds of the draped garments and the carved contours of the bodies. The eye-level view is captured with a telephoto lens, emphasizing the fine details and textures of the carved relief, white marble, sculptural art",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 1678322687182916545,
+  "stem": "sculpture_humanart_14000000004479",
+  "steps": 8
+}

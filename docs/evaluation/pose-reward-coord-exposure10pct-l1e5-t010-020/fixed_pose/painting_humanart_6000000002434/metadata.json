@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    1152,
+    896
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_02/painting_humanart_6000000002434.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "An oil painting depicts four men gathered around a table playing cards outdoors near a market stall displaying produce. The color palette consists of earthy browns, greens, and whites, lit by soft ambient light. The text below reads \"Henryk Rostowicz, Card Players, oil on canvas, 70x50 cm\", oil painting, impasto, fine art",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 1479288552532725441,
+  "stem": "painting_humanart_6000000002434",
+  "steps": 8
+}

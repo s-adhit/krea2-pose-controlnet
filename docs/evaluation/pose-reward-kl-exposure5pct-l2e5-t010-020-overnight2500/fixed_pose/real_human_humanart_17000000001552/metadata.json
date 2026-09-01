@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    1216,
+    832
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/real_human_humanart_17000000001552.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "A photograph depicts a ballet dancer in a theatrical costume, suspended in mid-air against a dark, textured background. Numerous playing cards drift through the air around the dancer, creating a dynamic sense of motion. The dancer wears a blue and white dress with a corset-style bodice and ballet pointe shoes. The lighting is dramatic and directional, highlighting the dancer's form while casting deep shadows in the background. The color palette consists of cool blues, whites, and muted dark tones. The photograph is captured from a straight-on angle with sharp focus on the central subject, dance photography, high-speed shutter",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 6468416484222469845,
+  "stem": "real_human_humanart_17000000001552",
+  "steps": 8
+}

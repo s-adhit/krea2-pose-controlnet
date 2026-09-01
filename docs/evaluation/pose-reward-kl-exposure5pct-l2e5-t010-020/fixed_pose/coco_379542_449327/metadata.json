@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    1024,
+    1024
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_02/coco_379542_449327.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "A photograph captures a man on a skateboard in an indoor skatepark featuring walls with text reading 'IOU RAMPS' and 'Emerica Emerica'. The setting includes wooden ramps, exposed brickwork, and a metal-beamed ceiling with fluorescent lights. The color palette consists of neutral tones like beige and brown alongside darker shades of black and charcoal. The lighting is direct and dramatic, created by artificial overhead sources casting sharp shadows. The camera is positioned at a low angle with a wide-angle lens, fish-eye, high-contrast black-and-white print style",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 6097319796720670444,
+  "stem": "coco_379542_449327",
+  "steps": 8
+}

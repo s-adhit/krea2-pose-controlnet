@@ -1,0 +1,59 @@
+{
+  "authoritative_source": {
+    "path": "/lambda/nfs/adhit/krea2-pose/pose_targets_v3",
+    "records_file": "records.jsonl",
+    "records_sha256": "dfc32293f1bdb76de58e34a02f95a14e515b0080b7c2f60ddd4a28c6f9fb2d8f",
+    "schema_version": 3
+  },
+  "compatible_experiments": [
+    "overfit32-mixed-r64-mse",
+    "overfit32-mixed-r64-mse-res768"
+  ],
+  "coverage": {
+    "eligible_available": 26,
+    "explicitly_unavailable": 6,
+    "total": 32
+  },
+  "format_version": 1,
+  "manifest_stems": [
+    "coco_95051_2165257",
+    "coco_188946_519929",
+    "coco_296459_431405",
+    "coco_330478_503262",
+    "coco_348447_crowd",
+    "coco_572226_crowd",
+    "painting_humanart_2000000002890",
+    "painting_humanart_1000000003686",
+    "painting_humanart_2000000002473",
+    "painting_humanart_10000000000269",
+    "painting_humanart_9000000000137",
+    "painting_humanart_10000000000949",
+    "painting_humanart_9000000002114",
+    "real_human_humanart_17000000001757",
+    "real_human_humanart_15000000000905",
+    "real_human_humanart_15000000000096",
+    "real_human_humanart_17000000001884",
+    "real_human_humanart_17000000000466",
+    "real_human_humanart_17000000000126",
+    "real_human_humanart_17000000000973",
+    "sculpture_humanart_14000000000048",
+    "sculpture_humanart_14000000004066",
+    "sculpture_humanart_14000000001072",
+    "sculpture_humanart_14000000000175",
+    "sculpture_humanart_14000000003688",
+    "sculpture_humanart_14000000004538",
+    "danbooru_anime_11906682",
+    "danbooru_anime_11919799",
+    "danbooru_anime_11919233",
+    "danbooru_anime_11901398",
+    "danbooru_anime_11921388",
+    "danbooru_anime_11921394"
+  ],
+  "read_only": true,
+  "record_count": 32,
+  "records_file": "overfit32-mixed-r64-mse.jsonl",
+  "records_sha256": "95ef6d7d6aa69bc7784f38340abf9e19285d097a4ebf306f8c06f0e3b9cfb3d4",
+  "sidecar_kind": "exact_manifest_authoritative_pose_v1",
+  "source_manifest": "/home/ubuntu/krea2-pose-controlnet/configs/overfit_capacity/manifests/overfit32-mixed-r64-mse.jsonl",
+  "source_manifest_sha256": "18ed9279a1bd05eece600ff950c6d42a4fb84efee7cbf24d82b28882920cc17d"
+}

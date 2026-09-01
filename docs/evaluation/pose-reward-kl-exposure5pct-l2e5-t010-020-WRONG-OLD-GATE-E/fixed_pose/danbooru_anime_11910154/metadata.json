@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    1024,
+    1024
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_01/danbooru_anime_11910154.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "An anime illustration depicts a woman with pale blonde hair in a white bikini and a man with brown hair in an unbuttoned red shirt and white shorts near a beach. The setting features ocean waves crashing against sandy shores under a pastel sky at sunset with distant mountains and birds in flight. A warm color palette of pinks, oranges, and soft blues dominates the scene. The lighting is strongly backlit by the setting sun, creating a glowing lens flare effect with circular rainbow refractions around the subjects, digital art, pastel aesthetic, lens flare effect",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 8076876324841898675,
+  "stem": "danbooru_anime_11910154",
+  "steps": 8
+}

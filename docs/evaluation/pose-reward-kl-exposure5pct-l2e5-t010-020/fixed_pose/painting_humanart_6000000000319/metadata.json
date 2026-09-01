@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    1472,
+    704
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_03/painting_humanart_6000000000319.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "An oil painting depicts a narrative scene under a series of vaulted archways on an open-air terrace, with blue sky and distant hills visible through the arches. A diverse group of people and an winged angel occupy the paved floor, dressed in medieval-style tunics, robes, and dresses in rich tones of red, blue, green, and brown. Soft daylight illuminates the figures evenly from the front, casting subtle shadows on the tiled floor. The color palette combines warm earthy browns and reds with cool blues and greens. An angel with glowing halos and white wings accompanies a small child on the right, Nazareth, Nazarenes",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 4411050109036320215,
+  "stem": "painting_humanart_6000000000319",
+  "steps": 8
+}

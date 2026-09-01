@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    832,
+    1216
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_00/real_human_humanart_17000000001695.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "A photograph depicts a male dancer and a female dancer inside a rehearsal studio with exposed brick walls and a multi-pane grid window in the background. The man wears a dark sleeveless tank top and light-colored tights, while the woman wears a dark leotard. The scene is rendered in a monochrome grayscale palette, utilizing soft directional lighting from the large window that highlights the textures of the dancers' clothing, skin, and the textured brickwork behind them. The photograph is captured from a straight-on eye-level angle with a shallow depth of field, monochrome photography, ballet rehearsal, fine art photography",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 5408401923978832484,
+  "stem": "real_human_humanart_17000000001695",
+  "steps": 8
+}

@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    1024,
+    1024
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_07/coco_299468_426600.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "A photograph depicts a man with light brown hair wearing a blue button-down shirt, a loose black tie, black trousers, and a black belt against a textured white wall illuminated by a soft, diffused light source coming from the left, creating a gentle highlight and shadow on the background, captured from an eye-level angle with neutral tones and a clean, minimalist aesthetic, shallow depth of field, film grain",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 3180270558575964818,
+  "stem": "coco_299468_426600",
+  "steps": 8
+}

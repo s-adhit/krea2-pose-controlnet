@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    1472,
+    704
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_00/real_human_humanart_15000000002196.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "A photograph depicts two acrobatic performers on a bright blue mat surface inside a brightly lit indoor arena. A young female performer wears a glittering black and silver leotard with translucent mesh sleeves, while the male partner beneath her wears a black uniform with similar crystal embellishments along the sleeves and torso. In the blurred background, a spectator and a camera operator stand near the edge of the blue mat. The color palette consists of deep blacks, shimmering silvers, and vibrant blues illuminated by overhead stadium lighting creating sharp highlights on the performers' costumes, captured from a low-angle perspective with a telephoto lens, sports photography, action photography",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 8695516506862748354,
+  "stem": "real_human_humanart_15000000002196",
+  "steps": 8
+}

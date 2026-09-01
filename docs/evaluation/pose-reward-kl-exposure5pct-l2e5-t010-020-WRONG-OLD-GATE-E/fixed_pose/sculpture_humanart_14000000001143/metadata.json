@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    896,
+    1152
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/sculpture_humanart_14000000001143.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "A sculpture depicts an Art Deco lamp featuring a female harlequin balancing on an arched, translucent green onyx base with brownish veining. The harlequin wears a fitted red and black diamond-patterned bodysuit. Her head, hands, and the lower portion of her legs are a pale ivory color. She holds two brass-capped glass lampshades that hang downward from her hands on either side. The entire sculpture rests upon a rectangular mottled stone plinth against a plain, brightly lit white background, captured from an eye-level angle, Art Deco, sculpture, lamp",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 8824614010092378975,
+  "stem": "sculpture_humanart_14000000001143",
+  "steps": 8
+}

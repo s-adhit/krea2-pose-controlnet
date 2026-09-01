@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    1216,
+    832
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/real_human_humanart_15000000000201.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "A photograph depicts four individuals in a park with lush green grass and mature leafy trees under bright daylight. A man on the left wears a dark t-shirt and dark trousers. A woman beside him wears a light button-down shirt and grey trousers. Another woman in the center wears a light-colored long-sleeved top and light trousers. A woman on the right wears a dark jacket, a reddish top, and dark trousers. The color palette consists of natural greens, earth tones, and muted clothing hues. The lighting is bright and directional from an upper-left sun source, creating natural highlights and soft shadows on the grassy terrain, slackline, people, and surrounding foliage, slacklining, outdoor recreation, summer day",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 3623769590212024097,
+  "stem": "real_human_humanart_15000000000201",
+  "steps": 8
+}

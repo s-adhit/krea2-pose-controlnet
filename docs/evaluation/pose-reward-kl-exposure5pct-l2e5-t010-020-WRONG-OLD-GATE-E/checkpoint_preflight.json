@@ -1,0 +1,90 @@
+{
+  "checkpoint_validation": {
+    "expected_sha256": {
+      "1700": "b454cfff01e6c2608415abc54d910682be9705d1ea337b342511fe1586828415"
+    },
+    "mode": "direct_local"
+  },
+  "checkpoints": [
+    {
+      "checkpoint_step": 1550,
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32/step_001550.pt"
+    },
+    {
+      "checkpoint_step": 1600,
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32/step_001600.pt"
+    },
+    {
+      "checkpoint_step": 1650,
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32/step_001650.pt"
+    },
+    {
+      "checkpoint_step": 1700,
+      "expected_sha256": "b454cfff01e6c2608415abc54d910682be9705d1ea337b342511fe1586828415",
+      "local_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32/step_001700.pt"
+    }
+  ],
+  "control_scale": 1.0,
+  "diagnostic_sample_count": 24,
+  "experiment_name": "gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32",
+  "hf_namespace": "gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32/full/",
+  "hf_repo_id": "adhit-420/Krea-2-PoseControl-LoRA-checkpoints",
+  "local_checkpoint_root": "/lambda/nfs/adhit/krea2-pose/checkpoints/gate-e-parent1500-kl-l2e5-t010-020-mb1-ga32",
+  "metadata": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "reused_baseline": {
+    "checkpoint_step": 1500,
+    "regenerated": false,
+    "source": "docs/evaluation/turbo-8step-cfg0-lr5e5/pck_clip_results.json"
+  },
+  "stems": [
+    "coco_156320_crowd",
+    "coco_299468_426600",
+    "coco_379542_449327",
+    "coco_64240_crowd",
+    "danbooru_anime_11903560",
+    "danbooru_anime_11910154",
+    "danbooru_anime_11917323",
+    "painting_humanart_10000000000555",
+    "painting_humanart_10000000000838",
+    "painting_humanart_1000000000218",
+    "painting_humanart_1000000001225",
+    "painting_humanart_1000000002653",
+    "painting_humanart_6000000000319",
+    "painting_humanart_6000000002434",
+    "painting_humanart_9000000000608",
+    "painting_humanart_9000000002722",
+    "real_human_humanart_15000000000201",
+    "real_human_humanart_15000000002196",
+    "real_human_humanart_17000000000288",
+    "real_human_humanart_17000000001552",
+    "real_human_humanart_17000000001695",
+    "sculpture_humanart_14000000000243",
+    "sculpture_humanart_14000000001143",
+    "sculpture_humanart_14000000004479"
+  ],
+  "training_metadata": {
+    "final_step": 1700,
+    "gradient_accumulation_steps": 32,
+    "lambda_pose": 2e-05,
+    "microbatch_size": 1,
+    "pose_timestep_window": [
+      0.1,
+      0.2
+    ],
+    "resumed_exposure": {
+      "active_fraction_percent": 0.7987,
+      "active_samples": 20,
+      "eligible_samples": 2504,
+      "optimizer_steps": 90,
+      "optimizer_steps_with_active_sample": 18
+    },
+    "step_1700_sha256": "b454cfff01e6c2608415abc54d910682be9705d1ea337b342511fe1586828415"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    1152,
+    896
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_07/painting_humanart_1000000002653.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "A cartoon depicts a young witch wearing a pointed orange hat adorned with a small pumpkin, along with red-and-white striped clothing, a yellow scarf, and orange boots. Surrounding the witch is a dark, swirling tunnel-like setting against a vibrant blue background, accompanied by a cat silhouette on the left. The color palette features bold reds, oranges, and bright blues, illuminated by dynamic backlighting and glowing ember highlights that create a dramatic contrast. The text \"DAS GNOMO\", \"DEVIANTART.COM/DASGNOMO\", and \"TWITTER.COM/REAL_DASGNOMO\" appears in the upper right. The scene is shot from a low-angle perspective, digital illustration, fan art, stylized character design",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 6414660882780986812,
+  "stem": "painting_humanart_1000000002653",
+  "steps": 8
+}

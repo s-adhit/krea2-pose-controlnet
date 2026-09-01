@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    1472,
+    704
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_03/danbooru_anime_11903560.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "An anime illustration depicts a robot with golden hair and a smooth face featuring a red star insignia, wearing a dark metallic bodysuit and metallic gloves, set against a ruined interior with staircases and debris, illuminated by dramatic dim lighting with glowing red energy threads extending from the robot's hand, featuring visible text in the upper left corner reading \"\u91cd\u8fd4\u672a\u6765 X ATOMIC HEART\" and in the bottom right corner reading \"\u00a9 2026. BLUEPOCH AND SLIMAO LIMITED DBA MUNDFISH. ALL RIGHTS RESERVED.\"",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 3404738794602796961,
+  "stem": "danbooru_anime_11903560",
+  "steps": 8
+}

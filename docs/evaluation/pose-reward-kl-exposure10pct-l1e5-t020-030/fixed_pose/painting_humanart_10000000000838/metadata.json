@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    704,
+    1472
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_07/painting_humanart_10000000000838.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "A ukiyo-e depicts three actors in a multi-level wooden interior setting featuring a lantern hanging from a pine tree on the left, a teapot and incense burner on a table, and inscriptions reading \"\u4f50\u306e\u5ddd\u5e02\u677e\", \"\u6751\u306e\u4e5d\u592a\u592b \u4e2d\u6751\u79cb\u826f\", and \"\u7d75\u5e2b\u9ce5\u5c45\u6e05\u4fe1\u7b46 \u99ac\u4e09\u6708\u5c71\u672c\". The monochromatic print utilizes black ink lines on paper with strong directional lighting illuminating the figures and architecture from the front, ukiyo-e, monochrome, woodblock print",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 3217584380567046935,
+  "stem": "painting_humanart_10000000000838",
+  "steps": 8
+}

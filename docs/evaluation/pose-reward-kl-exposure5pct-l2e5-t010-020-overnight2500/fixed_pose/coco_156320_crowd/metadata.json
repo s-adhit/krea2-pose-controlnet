@@ -1,0 +1,17 @@
+{
+  "bucket": [
+    1344,
+    768
+  ],
+  "cfg": 0.0,
+  "control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_08/coco_156320_crowd.png",
+  "control_scale": 1.0,
+  "model": "Krea-2 Turbo",
+  "mu": 1.15,
+  "mu_resolution_dependent": false,
+  "prompt": "A photograph depicts a professional stainless steel restaurant kitchen illuminated by bright overhead fluorescent lights with a wide-angle lens, featuring multiple chefs in white coats and tall toques, silver metal shelving laden with plates, pots, and containers, and a cooking range with exhaust hoods, utilizing a metallic color palette of silver, white, and burgundy, shallow depth of field, documentary photography style",
+  "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+  "seed": 4911567592567212507,
+  "stem": "coco_156320_crowd",
+  "steps": 8
+}
