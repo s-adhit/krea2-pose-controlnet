@@ -215,26 +215,26 @@ Planned work:
 
 ## References, prior work, and acknowledgements
 
-- **Krea-2** — [official Krea-2 repository](https://github.com/krea-ai/krea-2) and [technical report](https://www.krea.ai/blog/krea-2-technical-report). This project follows Krea’s Raw-for-training / Turbo-for-inference setup. :contentReference[oaicite:0]{index=0}
+- **Krea-2** — [official Krea-2 repository](https://github.com/krea-ai/krea-2) and [technical report](https://www.krea.ai/blog/krea-2-technical-report). This project follows Krea's Raw-for-training / Turbo-for-inference setup.
 
 - **Tanmay Patil** — [Krea-2 ControlNet](https://github.com/Tanmaypatil123/Krea-2-controlnet), a public depth-conditioned Krea-2 ControlNet implementation that informed the control-input approach used in this project.
 
-- **ControlNet** — Lvmin Zhang, Anyi Rao, Maneesh Agrawala, [*Adding Conditional Control to Text-to-Image Diffusion Models*](https://arxiv.org/abs/2302.05543), ICCV 2023. :contentReference[oaicite:1]{index=1}
+- **ControlNet** — Lvmin Zhang, Anyi Rao, and Maneesh Agrawala, [*Adding Conditional Control to Text-to-Image Diffusion Models*](https://arxiv.org/abs/2302.05543), ICCV 2023.
 
-- **ControlNet++** — Ming Li et al., [*ControlNet++: Improving Conditional Controls with Efficient Consistency Feedback*](https://arxiv.org/abs/2404.07987), ECCV 2024. The consistency-feedback idea influenced the explicit pose-consistency supervision used here; this repository’s normalized-coordinate Huber loss is project-specific.
+- **ControlNet++** — Ming Li et al., [*ControlNet++: Improving Conditional Controls with Efficient Consistency Feedback*](https://arxiv.org/abs/2404.07987), ECCV 2024. The consistency-feedback idea influenced the explicit pose-consistency supervision used here; this repository's normalized-coordinate Huber loss is project-specific.
 
-- **LoRA** — Edward J. Hu et al., [*LoRA: Low-Rank Adaptation of Large Language Models*](https://arxiv.org/abs/2106.09685). :contentReference[oaicite:2]{index=2}
+- **LoRA** — Edward J. Hu et al., [*LoRA: Low-Rank Adaptation of Large Language Models*](https://arxiv.org/abs/2106.09685).
 
-- **Flow Matching** — Yaron Lipman et al., [*Flow Matching for Generative Modeling*](https://arxiv.org/abs/2210.02747). :contentReference[oaicite:3]{index=3}
+- **Flow Matching** — Yaron Lipman et al., [*Flow Matching for Generative Modeling*](https://arxiv.org/abs/2210.02747).
 
-- **Rectified Flow** — Xingchao Liu, Chengyue Gong, Qiang Liu, [*Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow*](https://arxiv.org/abs/2209.03003). :contentReference[oaicite:4]{index=4}
+- **Rectified Flow** — Xingchao Liu, Chengyue Gong, and Qiang Liu, [*Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow*](https://arxiv.org/abs/2209.03003).
 
-- **COCO** — Tsung-Yi Lin et al., [*Microsoft COCO: Common Objects in Context*](https://arxiv.org/abs/1405.0312), ECCV 2014. :contentReference[oaicite:5]{index=5}
+- **COCO** — Tsung-Yi Lin et al., [*Microsoft COCO: Common Objects in Context*](https://arxiv.org/abs/1405.0312), ECCV 2014.
 
-- **Human-Art** — Xuan Ju et al., [*Human-Art: A Versatile Human-Centric Dataset Bridging Natural and Artificial Scenes*](https://arxiv.org/abs/2303.02760), CVPR 2023. [Official project/code](https://github.com/IDEA-Research/HumanArt). :contentReference[oaicite:6]{index=6}
+- **Human-Art** — Xuan Ju et al., [*Human-Art: A Versatile Human-Centric Dataset Bridging Natural and Artificial Scenes*](https://arxiv.org/abs/2303.02760), CVPR 2023. [Official project/code](https://github.com/IDEA-Research/HumanArt).
 
-- **Training methodology** — Andrej Karpathy, [*A Recipe for Training Neural Networks*](https://karpathy.github.io/2019/04/25/recipe/). The project’s staged overfit/debug/scale-up workflow was influenced by this methodology. :contentReference[oaicite:7]{index=7}
+- **Training methodology** — Andrej Karpathy, [*A Recipe for Training Neural Networks*](https://karpathy.github.io/2019/04/25/recipe/). The project's staged overfit, debug, and scale-up workflow was influenced by this methodology.
 
-- **CLIP** — Alec Radford et al., [*Learning Transferable Visual Models From Natural Language Supervision*](https://arxiv.org/abs/2103.00020). :contentReference[oaicite:8]{index=8}
+- **CLIP** — Alec Radford et al., [*Learning Transferable Visual Models From Natural Language Supervision*](https://arxiv.org/abs/2103.00020).
 
-- **Mask R-CNN / Keypoint R-CNN** — Kaiming He et al., [*Mask R-CNN*](https://arxiv.org/abs/1703.06870), and the [torchvision Keypoint R-CNN implementation](https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.detection.keypointrcnn_resnet50_fpn.html) used for pose-related scoring and supervision. :contentReference[oaicite:9]{index=9}
+- **Mask R-CNN / Keypoint R-CNN** — Kaiming He et al., [*Mask R-CNN*](https://arxiv.org/abs/1703.06870), together with the [torchvision Keypoint R-CNN implementation](https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.detection.keypointrcnn_resnet50_fpn.html) used for pose-related scoring and supervision.
