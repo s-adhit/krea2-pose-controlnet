@@ -1,0 +1,46 @@
+{
+  "cfg": 0.0,
+  "checkpoint_step": 4300,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      608,
+      432
+    ],
+    "crop_box": [
+      0,
+      1,
+      608,
+      433
+    ],
+    "resized_size": [
+      608,
+      434
+    ],
+    "source_size": [
+      612,
+      437
+    ]
+  },
+  "geometry_mode": "explicit",
+  "height": 432,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_path": "/lambda/nfs/adhit/krea2-pose/hero-native-a4300/hero_editorial_v2.png",
+  "pose_image": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_08/real_human_humanart_15000000000052.png",
+  "pose_lora_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+  "prompt": "High-fashion editorial portrait of a young East Asian woman, platinum blonde bob, structured black couture outfit, crimson red studio background, soft directional lighting, cinematic beauty photography",
+  "seed": 42,
+  "steps": 8,
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 608
+}
