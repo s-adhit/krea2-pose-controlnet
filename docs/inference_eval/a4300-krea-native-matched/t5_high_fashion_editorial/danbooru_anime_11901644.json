@@ -1,0 +1,46 @@
+{
+  "cfg": 0.0,
+  "checkpoint_step": 4300,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      912,
+      1280
+    ],
+    "crop_box": [
+      1,
+      0,
+      913,
+      1280
+    ],
+    "resized_size": [
+      914,
+      1280
+    ],
+    "source_size": [
+      912,
+      1277
+    ]
+  },
+  "geometry_mode": "explicit",
+  "height": 1280,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_path": "/lambda/nfs/adhit/krea2-pose/inference-smokes/a4300_krea_native_matched/t5_high_fashion_editorial/danbooru_anime_11901644.png",
+  "pose_image": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_02/danbooru_anime_11901644.png",
+  "pose_lora_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+  "prompt": "High-fashion editorial portrait of a young East Asian woman with a short choppy platinum blonde bob and heavy bangs, lips playfully pursed, wearing a structured black top with an architectural protruding bust detail and thin straps, delicate gold hoop earrings, warm skin tones, solid striking crimson red background, soft directional studio lighting, cinematic color palette.",
+  "seed": 42,
+  "steps": 8,
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 912
+}

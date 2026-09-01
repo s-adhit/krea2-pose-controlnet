@@ -1,0 +1,46 @@
+{
+  "cfg": 0.0,
+  "checkpoint_step": 4300,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      608,
+      416
+    ],
+    "crop_box": [
+      8,
+      0,
+      616,
+      416
+    ],
+    "resized_size": [
+      624,
+      416
+    ],
+    "source_size": [
+      612,
+      408
+    ]
+  },
+  "geometry_mode": "explicit",
+  "height": 416,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_path": "/lambda/nfs/adhit/krea2-pose/inference-smokes/a4300_krea_native_matched/t2_minimalist_ocean_wading/real_human_humanart_15000000000115.png",
+  "pose_image": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_03/real_human_humanart_15000000000115.png",
+  "pose_lora_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+  "prompt": "A minimalist flat-color illustration of a dark-skinned figure wading through expansive shallow ocean waves beneath a pale peach sky. The figure wears an orange swim cap, a light blue top, and bright green shorts. The ocean is rendered in muted mint green with delicate thin black linework detailing continuous ripples and gentle whitecaps. Soft pinkish-peach reflections echo the sky on the water surface. A dark jagged rock rests in the lower-left foreground near a pale grey shoreline. The horizon features a solid purplish-blue landmass and a stylized layered yellow-and-blue cloud. High-angle wide perspective, clean ligne claire drawing aesthetic, subtle paper texture.",
+  "seed": 42,
+  "steps": 8,
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 608
+}

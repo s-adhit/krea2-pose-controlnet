@@ -1,0 +1,46 @@
+{
+  "cfg": 0.0,
+  "checkpoint_step": 4300,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      304,
+      608
+    ],
+    "crop_box": [
+      0,
+      7,
+      304,
+      615
+    ],
+    "resized_size": [
+      304,
+      622
+    ],
+    "source_size": [
+      300,
+      614
+    ]
+  },
+  "geometry_mode": "explicit",
+  "height": 608,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_path": "/lambda/nfs/adhit/krea2-pose/inference-smokes/a4300_krea_native_matched/t4_sailor_dynamic_painting/painting_humanart_10000000003222.png",
+  "pose_image": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/painting_humanart_10000000003222.png",
+  "pose_lora_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+  "prompt": "A dynamic digital painting of a joyful girl in a sailor uniform against a solid vibrant blue background. She has short dark windblown hair, amber eyes, and a bright smile. She wears a white shirt, striped blue collar, flowing red neckerchief, and a billowing blue pleated skirt. Expressive thick brushstrokes and bold shading emphasize energetic motion.",
+  "seed": 42,
+  "steps": 8,
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 304
+}

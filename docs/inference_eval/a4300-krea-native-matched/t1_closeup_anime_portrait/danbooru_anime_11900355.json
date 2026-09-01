@@ -1,0 +1,46 @@
+{
+  "cfg": 0.0,
+  "checkpoint_step": 4300,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      1632,
+      2896
+    ],
+    "crop_box": [
+      3,
+      0,
+      1635,
+      2896
+    ],
+    "resized_size": [
+      1639,
+      2896
+    ],
+    "source_size": [
+      1637,
+      2892
+    ]
+  },
+  "geometry_mode": "explicit",
+  "height": 2896,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_path": "/lambda/nfs/adhit/krea2-pose/inference-smokes/a4300_krea_native_matched/t1_closeup_anime_portrait/danbooru_anime_11900355.png",
+  "pose_image": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_02/danbooru_anime_11900355.png",
+  "pose_lora_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+  "prompt": "anime illustration of a young woman, large amber-brown eyes with intricate sparkling reflections, messy dark blue hair with loose strands crossing her face, white and navy school uniform, bright high-key lighting, luminous shadows with cool blue undertones, detailed digital painting",
+  "seed": 42,
+  "steps": 8,
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 1632
+}

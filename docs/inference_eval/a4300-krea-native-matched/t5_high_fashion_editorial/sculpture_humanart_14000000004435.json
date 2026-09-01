@@ -1,0 +1,46 @@
+{
+  "cfg": 0.0,
+  "checkpoint_step": 4300,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      464,
+      704
+    ],
+    "crop_box": [
+      1,
+      0,
+      465,
+      704
+    ],
+    "resized_size": [
+      467,
+      704
+    ],
+    "source_size": [
+      464,
+      700
+    ]
+  },
+  "geometry_mode": "explicit",
+  "height": 704,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_path": "/lambda/nfs/adhit/krea2-pose/inference-smokes/a4300_krea_native_matched/t5_high_fashion_editorial/sculpture_humanart_14000000004435.png",
+  "pose_image": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/sculpture_humanart_14000000004435.png",
+  "pose_lora_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+  "prompt": "High-fashion editorial portrait of a young East Asian woman with a short choppy platinum blonde bob and heavy bangs, lips playfully pursed, wearing a structured black top with an architectural protruding bust detail and thin straps, delicate gold hoop earrings, warm skin tones, solid striking crimson red background, soft directional studio lighting, cinematic color palette.",
+  "seed": 42,
+  "steps": 8,
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 464
+}
