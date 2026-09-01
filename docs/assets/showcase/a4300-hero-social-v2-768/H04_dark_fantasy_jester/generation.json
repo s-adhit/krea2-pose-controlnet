@@ -1,0 +1,46 @@
+{
+  "cfg": 0.0,
+  "checkpoint_step": 4300,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      768,
+      768
+    ],
+    "crop_box": [
+      0,
+      0,
+      768,
+      768
+    ],
+    "resized_size": [
+      768,
+      768
+    ],
+    "source_size": [
+      640,
+      640
+    ]
+  },
+  "geometry_mode": "explicit",
+  "height": 768,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/a4300-hero-social-v2-768/H04_dark_fantasy_jester/generation.png",
+  "pose_image": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_08/danbooru_anime_11905229.png",
+  "pose_lora_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+  "prompt": "Stylized digital painting of a menacing dark-fantasy jester rendered with bold expressive brushstrokes and a vibrant psychedelic color palette against a nearly black background. Classic multi-pointed jester hat with bells, elaborate ruffled collar, puffed sleeves, harlequin-patterned clothing in muted gold and dark brown, striped purple, blue and chartreuse fabric, richly textured flowing cape covered with saturated marbled patterns resembling iridescent oil slicks. Smooth faceless pale mauve mask with a single glowing white point of light. Massive ornate fantasy sword with a broad ethereal glowing blade and intricately sculpted crossguard. Dramatic theatrical illumination, deep shadows, painterly texture, surreal dark-fantasy concept art.",
+  "seed": 42,
+  "steps": 8,
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 768
+}
