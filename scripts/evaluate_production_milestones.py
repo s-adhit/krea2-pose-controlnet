@@ -20,7 +20,8 @@ import torch
 from PIL import Image
 
 from pose_controlnet.checkpointing import load_training_state
-from pose_controlnet.overfit_capacity import RESOLUTION_768_BUCKETS, deterministic_seed
+from pose_controlnet.overfit_capacity import deterministic_seed
+from pose_controlnet.resolution_policy import RESOLUTION_768_BUCKETS
 from pose_controlnet.paired_preprocessing import preprocess_pair
 from pose_controlnet.production_milestone_evaluation import (
     EVALUATION_MODES,

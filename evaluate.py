@@ -42,7 +42,7 @@ def main():
     parser.add_argument("--steps", nargs="+", type=int,
                         help="exact canonical steps to evaluate; use 600 700 ... 1500 for the extension")
     parser.add_argument("--full-diagnostic", action="store_true",
-                        help="use all 24 diagnostic holdouts; the existing compact spec remains untouched")
+                        help="use all 24 diagnostic development/selection samples; the existing compact spec remains fixed")
     parser.add_argument("--stems", nargs="+", help="explicit immutable split stems for a focused fixed-pose smoke")
     parser.add_argument("--spec-name", help="override spec filename; required when a smoke must not reuse the compact spec")
     parser.add_argument("--verify-repeat", action="store_true",

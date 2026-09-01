@@ -14,12 +14,11 @@ from pose_controlnet.config import TrainConfig
 from pose_controlnet.wandb_logging import OptionalWandbMirror
 from scripts.train_pose_reward_smoke import (
     _gate_e_metadata,
-    aggregate_step_diagnostics,
     gate_e_wandb_config,
     gate_e_wandb_run_id,
     gate_e_wandb_step_metrics,
-    update_cumulative_counters,
 )
+from pose_controlnet.pose_consistency import aggregate_step_diagnostics, update_cumulative_counters
 
 
 class FakeRun:

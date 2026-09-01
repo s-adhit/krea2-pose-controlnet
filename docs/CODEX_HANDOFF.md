@@ -1,93 +1,114 @@
 # Project handoff
 
-## Current objective and state
+## Current objective and canonical surfaces
 
-The canonical local user-facing inference entrypoint is now `inference.py`.
-It is a thin composition of the existing Krea-2 Turbo model loader, strict
-project ControlInputLayer/LoRA loader, Qwen VAE, online Qwen text conditioner,
-and locked Turbo sampler. It does not reimplement model layers,
-ControlInputLayer, or sampling math.
+Final production-dependency cleanup completed locally; no training, GPU
+inference/evaluation, network access, commit, or push occurred.
 
-The retained inference-evaluation candidates are `parent-4000`,
-`finish-control-a4300`, and `finish-anneal-b4200`, exposed as names in
-`POSE_CHECKPOINT_CANDIDATES`. No release checkpoint is locked: every CLI run
-requires an explicit `--pose-lora-ckpt` (or `--control-ckpt`) file path.
+- Canonical training entrypoint: `scripts/train_production.py`, backed by
+  `pose_controlnet/production_training.py`.
+- Canonical user-facing inference CLI/API: `inference.py`.
+- Canonical production objective: flow-matching MSE plus explicit
+  normalized-coordinate pose-consistency Huber. The main production/control
+  branch is `lambda_pose=0.04`, with the existing controlled timestep exposure
+  behavior and resumable checkpoint semantics preserved.
+- Exact reusable implementation: `pose_controlnet/pose_consistency.py`,
+  function `production_pose_consistency_loss` (with the accumulation
+  diagnostics and cumulative exposure counters beside it).  It uses the
+  small `PoseConsistencyRuntimeConfig` protocol, not `train.TrainConfig`.
+- Neutral production dependencies are `pose_controlnet/pose_critic.py`,
+  `pose_controlnet/pose_loss.py`, and `pose_controlnet/training_runtime.py`.
+  `pose_controlnet/keypoint_critic.py` and `pose_controlnet/pose_reward_tools.py`
+  retain historical compatibility re-exports only.
+- Shared 768 geometry lives in `pose_controlnet/resolution_policy.py`.
+- Locked Turbo sampling/runtime helpers live in `pose_controlnet/turbo_runtime.py`.
+  `pose_controlnet/turbo_evaluation.py` remains a historical evaluation layer
+  and re-exports those helpers for compatibility.
 
-The finishing pose-anneal contract remains unchanged: global update 4001 uses
-`lambda_pose=.04`; update 4500 uses literal `lambda_pose=0.0` and writes
-`step_004500.pt`. Do not run recovery or training from Codex without explicit
-authorization.
+Current checkpoint status: `parent-4000` is the balanced candidate and
+`finish-control-a4300` is the pose-specialist candidate. The entire anneal
+branch, including B4200, is historical only and is absent from the current
+inference candidate list.
 
-## Inference interface
+Terminology: diagnostic is the development/selection benchmark. Validation is
+held out from training but is used for inference benchmarking; it is not an
+untouched final test set.
 
-The standard command is:
+## Audit changes
 
-```bash
-PYTHONPATH=. python inference.py \
-  --turbo-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors \
-  --pose-lora-ckpt /path/to/selected/step_004300.pt \
-  --prompt "editorial photograph of a dancer" \
-  --pose-image /path/to/skeleton.png \
-  --output /path/to/result.png \
-  --seed 42 --width 768 --height 768 \
-  --steps 8 --cfg 0 --mu 1.15 --control-scale 1.0
-```
+- `production_training.py` no longer imports `scripts/train_pose_reward_smoke.py`.
+  The historical smoke script delegates to the reusable library implementation.
+- `production_training.py` and `pose_consistency.py` no longer import
+  `train.py`, `keypoint_critic`, `pose_reward_tools`, or critic-audit helpers.
+  Production uses the neutral runtime, fixed-box critic, and loss modules.
+- Production-facing inference no longer imports bucket policy or locked runtime
+  helpers from experiment modules.
+- Removed empty/dead `scripts/prefetch_models.py` and `run_forever.sh`, plus
+  invalid placeholder `requirements/local-x86-cuda.txt`.
+- Moved obsolete prompt-transfer development evidence to
+  `docs/archive/inference_eval/`; current parent/A4300 evidence remains under
+  `docs/inference_smoke/`, `docs/inference_eval/a4300-krea-native-matched/`,
+  and `docs/inference_eval/val_pose_candidates/`.
+- `docs/ARCHIVE_INDEX.md` identifies canonical surfaces, historical material,
+  and the Human-Art redistribution-review paths. No Human-Art imagery was
+  removed and no rights/licensing decision was made.
 
-Required inputs are `--turbo-ckpt`, `--pose-lora-ckpt` (`--control-ckpt`
-alias), `--prompt`, `--pose-image`, and `--output`. Additional options are
-`--seed`, `--width`, `--height`, `--steps`, `--cfg`, `--mu`, and
-`--control-scale`. Defaults are Turbo, 8 steps, CFG 0, mu 1.15, control scale
-1.0, seed 42, and 768x768. The established sampler explicitly has no
-resolution-dependent shift; noncanonical steps/CFG/mu values fail clearly.
-
-`--dynamic-768-bucket` replaces `--width/--height`; it selects the shared
-production `RESOLUTION_768_BUCKETS` policy from pose-image aspect ratio and
-uses the exact shared resize-to-cover / center-crop helpers. Explicit
-dimensions must be positive multiples of 16. The `<output-stem>.json` sidecar
-contains prompt, seed, output dimensions, steps, CFG, mu, control scale, both
-checkpoint paths, checkpoint step when available, pose input, geometry mode
-and full geometry, locked Turbo metadata, and absolute output path.
-
-Python callers use `PoseInferenceRequest(...)` and `generate_pose(request)`,
-which returns `PoseInferenceResult`. Optional `InferenceRuntime` injection
-keeps the wrapper suitable for a future ComfyUI or HF demo adapter without
-separate model implementations. Style-LoRA composition is intentionally not
-implemented.
-
-## This session: files and verification
-
-Changed: `inference.py`, `pose_controlnet/paired_preprocessing.py`,
-`pose_controlnet/vae_preprocessing.py`, `tests/test_inference.py`, and this
-handoff. The VAE now exposes `encode_preprocessed_image`, which paired
-encoding also uses. Paired preprocessing publicly exposes the exact geometry
-application helper used by inference.
+## Verification
 
 PASS (CPU, no network):
 
 ```bash
+PYTHONPATH=. python -m py_compile inference.py \
+  pose_controlnet/production_training.py pose_controlnet/pose_consistency.py \
+  pose_controlnet/resolution_policy.py pose_controlnet/turbo_runtime.py \
+  pose_controlnet/turbo_evaluation.py pose_controlnet/overfit_capacity.py \
+  scripts/train_production.py scripts/train_pose_reward_smoke.py \
+  scripts/benchmark_production_trainer.py scripts/train_overfit_capacity.py
+
 PYTHONPATH=. python -m unittest tests.test_inference \
-  tests.test_paired_preprocessing tests.test_vae_preprocessing \
-  tests.test_turbo_evaluation -v
+  tests.test_production_training tests.test_pose_reward_tools \
+  tests.test_pose_reward_wandb tests.test_turbo_evaluation \
+  tests.test_capacity_experiment_axes tests.test_production_milestone_evaluation -v
 ```
 
-36 tests passed. Coverage includes CLI/defaults, explicit checkpoint
-requirement, shared explicit/dynamic geometry, metadata sidecar, deterministic
-seed propagation, bad dimensions, missing/malformed files and checkpoint
-metadata, callable API generation with mocked heavy execution, and no copied
-dynamic bucket list.
+94 tests passed. Run `git diff --check` after reviewing the final working tree
+before staging. No checkpoint, manifest, source dataset, or README change was
+made.
 
-PASS:
+Final dependency-cleanup verification:
 
 ```bash
-python -m py_compile inference.py pose_controlnet/paired_preprocessing.py \
-  pose_controlnet/vae_preprocessing.py tests/test_inference.py
+PYTHONPATH=. python -m py_compile pose_controlnet/pose_consistency.py \
+  pose_controlnet/pose_critic.py pose_controlnet/pose_loss.py \
+  pose_controlnet/training_runtime.py pose_controlnet/keypoint_critic.py \
+  pose_controlnet/production_training.py scripts/train_production.py
+
+PYTHONPATH=. python -m unittest tests.test_production_training \
+  tests.test_pose_reward_tools tests.test_keypoint_critic tests.test_inference \
+  tests.test_turbo_evaluation tests.test_train_mechanics -v
+# PASS: 141 tests
+
+PYTHONPATH=. python -m unittest tests.test_control_diagnostics \
+  tests.test_turbo_evaluation tests.test_inference tests.test_production_training \
+  tests.test_pose_reward_tools -v
+# PASS: 87 tests
 ```
 
-No training, real evaluation, network activity, commit, or push occurred.
-Known limitations: no real generation ran in this session; it requires the
-GH200 shell, local Turbo/pose checkpoint files, and locally available VAE/text
-weights. No candidate has been selected or released, and style-LoRA
-composition remains intentionally unsupported.
+The canonical import direction is now:
 
-Next action: choose one explicit retained pose checkpoint for a separately
-authorized local inference smoke, then inspect its image and JSON sidecar.
+```text
+scripts/train_production.py -> pose_controlnet/production_training.py
+  -> pose_controlnet/{pose_consistency, pose_critic, pose_loss, training_runtime}.py
+```
+
+Static import audit found no backwards import from that path to `train.py`,
+the historical pose smoke script, `keypoint_critic`, `pose_reward_tools`, or
+`keypoint_critic_audit`. `inference.py` contains exactly the current checkpoint
+candidates `parent-4000` and `finish-control-a4300`; anneal/B candidates remain
+historical only.
+
+## Next action
+
+Run `git diff --check`, review, and stage the cleanup. A redistribution/legal
+decision for the Human-Art-derived committed imagery remains explicitly
+pending; do not delete or history-rewrite it without approval.

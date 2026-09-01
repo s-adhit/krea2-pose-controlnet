@@ -40,7 +40,9 @@ Our training, data, logging, evaluation, checkpoint, recovery, and production in
 - Image latent is noisy at the sampled flow timestep.
 - Control latent remains clean.
 - LoRA rank: **64**.
-- Training loss: **flow-matching MSE only**.
+- Production objective: **flow-matching MSE plus normalized-coordinate pose-consistency Huber**.
+- Main production/control branch: `lambda_pose = 0.04`; the controlled
+  timestep exposure contract is part of checkpoint provenance.
 - PCK and related pose metrics are evaluation-only.
 - Seed: **42**.
 - Baseline optimizer unless explicitly changed by the user:
@@ -109,7 +111,7 @@ Treat source data and immutable manifests as read-only.
 Expected clean split after known exclusions:
 
 - train: 16,503
-- representative val: 889
+- validation: 889 (held out from training and used for inference benchmarking)
 - diagnostic val: 24
 - total used: 17,416
 
@@ -136,6 +138,10 @@ resolved physical files:
 ```
 
 The immutable manifest filename does **not** encode the physical Hugging Face storage path.
+
+Terminology is deliberate: the diagnostic split is the development/selection
+benchmark. The validation split is held out from training but is inspected for
+inference benchmarking; it is not an untouched final test set.
 
 The Hugging Face dataset may contain many path prefixes/directories because of how the approximately 35,000 files were uploaded.
 
@@ -299,7 +305,6 @@ Relevant project files may include:
 - `pose_controlnet/checkpointing.py`
 - `scripts/check_environment.py`
 - `scripts/verify_shards.py`
-- `scripts/prefetch_models.py`
 - smoke-test scripts
 - `base_model/mmdit.py`
 - `base_model/k2_lora.py`
@@ -735,14 +740,19 @@ The 6000-step production run remains blocked until both are green.
 
 The production training objective is:
 
-**flow-matching MSE only**
+**flow-matching MSE plus normalized-coordinate pose-consistency Huber**
+
+The main production/control branch uses `lambda_pose = 0.04`. Preserve the
+recorded pose timestep exposure behavior and resume semantics. Historical
+anneal branches may intentionally vary `lambda_pose`; they are not a reason to
+redefine the main recipe.
 
 Do not add:
 
 - PCK loss;
 - perceptual pose loss;
 - CLIP loss;
-- auxiliary skeleton reconstruction loss;
+- auxiliary losses other than the canonical pose-consistency Huber;
 - image similarity loss;
 - additional experimental objectives;
 
@@ -805,7 +815,7 @@ Before production:
 
 ## Evaluation
 
-Training optimization uses flow-matching MSE only.
+Training optimization uses flow-matching MSE plus the canonical normalized-coordinate pose-consistency Huber.
 
 Evaluation may include:
 

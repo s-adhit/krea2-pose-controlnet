@@ -15,10 +15,13 @@ from pose_controlnet.keypoint_critic import gaussian_heatmap_kl
 from pose_controlnet.config import TrainConfig
 from scripts.train_pose_reward_smoke import (
     GATE_E_METADATA_KEY, _gate_e_metadata, _validate_parent,
-    aggregate_step_diagnostics, load_gate_e_microbatch, pose_active_window,
-    checkpoint_publication_steps, resolve_target_global_step, should_build_pose_graph,
-    update_cumulative_counters, validate_gate_e_destination, validate_gate_e_resume_checkpoint,
+    load_gate_e_microbatch, checkpoint_publication_steps, resolve_target_global_step,
+    validate_gate_e_destination, validate_gate_e_resume_checkpoint,
     _validate_hf_branch_args, build_arg_parser, prepare_gate_e_run_setup,
+)
+from pose_controlnet.pose_consistency import (
+    aggregate_step_diagnostics, pose_active_window, should_build_pose_graph,
+    update_cumulative_counters,
 )
 from pose_controlnet.keypoint_critic_audit import deterministic_noise_like
 

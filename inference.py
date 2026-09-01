@@ -17,14 +17,14 @@ from PIL import Image
 
 from pose_controlnet.checkpointing import load_training_state
 from pose_controlnet.model import build_turbo_pose_model, load_trainable_state_dict
-from pose_controlnet.overfit_capacity import RESOLUTION_768_BUCKETS
+from pose_controlnet.resolution_policy import RESOLUTION_768_BUCKETS
 from pose_controlnet.paired_preprocessing import (
     apply_resize_center_crop_geometry,
     choose_bucket,
     resize_center_crop_geometry,
 )
 from pose_controlnet.text_encoder import PoseTextConditioner
-from pose_controlnet.turbo_evaluation import (
+from pose_controlnet.turbo_runtime import (
     TURBO_CFG,
     TURBO_MU,
     TURBO_STEPS,
@@ -46,7 +46,6 @@ DEFAULT_SEED = 42
 POSE_CHECKPOINT_CANDIDATES = (
     "parent-4000",
     "finish-control-a4300",
-    "finish-anneal-b4200",
 )
 
 

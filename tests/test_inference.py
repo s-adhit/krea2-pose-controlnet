@@ -11,7 +11,7 @@ import torch
 from PIL import Image
 
 import inference
-from pose_controlnet.overfit_capacity import RESOLUTION_768_BUCKETS
+from pose_controlnet.resolution_policy import RESOLUTION_768_BUCKETS
 
 
 class _Conditioner:

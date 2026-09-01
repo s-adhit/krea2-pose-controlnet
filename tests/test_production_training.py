@@ -42,7 +42,7 @@ from pose_controlnet.production_training import (
     verify_production_artifacts,
 )
 from pose_controlnet.checkpointing import HFTrainingCheckpointMirror
-from scripts.train_pose_reward_smoke import update_cumulative_counters
+from pose_controlnet.pose_consistency import update_cumulative_counters
 
 
 class ProductionTrainingTests(unittest.TestCase):
@@ -255,7 +255,7 @@ class ProductionTrainingTests(unittest.TestCase):
         new_optimizer = torch.optim.AdamW([new_parameter], lr=1e-4, betas=(.9, .99), weight_decay=0.)
         state = {"model": {}, "optimizer": saved_optimizer, "global_step": 3000, "epoch": 2,
                  "batch_position": 9, "rng": train._capture_rng(), "flow_generator_state": torch.Generator().get_state()}
-        with mock.patch("pose_controlnet.production_training.train.load_trainable_state_dict"):
+        with mock.patch("pose_controlnet.production_training.load_trainable_state_dict"):
             restored = restore_cooldown_continuation_state(object(), new_optimizer, state)
         self.assertEqual(restored[:3], (3000, 2, 9))
         self.assertTrue(torch.equal(new_optimizer.state[new_parameter]["exp_avg"], old_optimizer.state[old_parameter]["exp_avg"]))

@@ -159,7 +159,8 @@ Normalized-coordinate Huber remains the fallback/diagnostic candidate. Raw
 pixel-coordinate Huber is rejected for training consideration because its
 gradient scale is strongly domain-dependent. This is not an authorization to
 add any pose objective to production training: production remains
-flow-matching MSE only.
+flow-matching MSE plus the canonical normalized-coordinate pose-consistency
+Huber auxiliary loss.
 
 The reproducible A.5 command was:
 

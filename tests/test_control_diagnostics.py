@@ -48,7 +48,7 @@ class ControlDiagnosticsTest(unittest.TestCase):
             controls.append(control.clone())
             return torch.zeros_like(control)
         before = model.weight.detach().clone()
-        with patch("pose_controlnet.turbo_evaluation.forward_pose_control", side_effect=forward):
+        with patch("pose_controlnet.turbo_runtime.forward_pose_control", side_effect=forward):
             sample_turbo_pose_image(model, lambda latent: latent, sample, torch.device("cpu"), 123)
         self.assertEqual(len(controls), 8)
         self.assertTrue(all(torch.equal(value, torch.tensor([[[2.0]]], dtype=torch.bfloat16)) for value in controls))
@@ -62,7 +62,7 @@ class ControlDiagnosticsTest(unittest.TestCase):
         def forward(_model, image, control, *_args, **_kwargs):
             traces.append((image.clone(), control.clone()))
             return torch.zeros_like(image)
-        with patch("pose_controlnet.turbo_evaluation.forward_pose_control", side_effect=forward):
+        with patch("pose_controlnet.turbo_runtime.forward_pose_control", side_effect=forward):
             sample_turbo_pose_image(model, lambda latent: latent, sample, torch.device("cpu"), 321, control_scale=1.0)
             baseline = list(traces); traces.clear()
             sample_turbo_pose_image(model, lambda latent: latent, sample, torch.device("cpu"), 321, control_scale=1.5)

@@ -395,10 +395,11 @@ def main() -> None:
                     with torch.autocast("cuda", dtype=torch.bfloat16): loss, diagnostics = train._flow_loss(model, None, batch, cfg, device, generator, gradient_checkpointing_blocks=0)
                 else:
                     # Reuse the audited fixed-box critic semantics verbatim;
-                    # this branch is absent from the normal MSE-only experiment.
-                    from scripts.train_pose_reward_smoke import _pose_smoke_loss
+                    # This historical capacity branch shares the canonical
+                    # pose-consistency implementation with production.
+                    from pose_controlnet.pose_consistency import production_pose_consistency_loss
                     with torch.autocast("cuda", dtype=torch.bfloat16):
-                        loss, diagnostics = _pose_smoke_loss(
+                        loss, diagnostics = production_pose_consistency_loss(
                             model, vae, critic, batch, pose_records, cfg, device, generator,
                             pose_loss_name=scientific.pose_loss, lambda_pose=scientific.lambda_pose,
                             timestep_min=scientific.pose_timestep_min, timestep_max=scientific.pose_timestep_max,

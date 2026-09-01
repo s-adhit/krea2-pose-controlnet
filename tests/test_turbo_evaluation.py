@@ -176,8 +176,10 @@ class TurboEvaluationTest(unittest.TestCase):
             self.assertEqual(validate.call_args.kwargs["run_name"], "run")
             with self.assertRaisesRegex(FileNotFoundError, "missing"):
                 exact_local_turbo_checkpoints(checkpoint_root=checkpoints, hf_repo_id="org/repo", hf_namespace="run/full/", marker_download_dir=root / "markers", steps=(1700,))
-        source = Path("pose_controlnet/turbo_evaluation.py").read_text(); resolver = source[source.index("def exact_local_turbo_checkpoints"):source.index("def turbo_schedule")]
+        source = Path("pose_controlnet/turbo_evaluation.py").read_text(); resolver = source[source.index("def exact_local_turbo_checkpoints"):source.index("def turbo_scoring_geometry")]
         self.assertNotIn("validated_hf_checkpoint_for_step", resolver); self.assertNotIn("newest_valid", resolver)
+        runtime = Path("pose_controlnet/turbo_runtime.py").read_text()
+        self.assertIn("def turbo_schedule", runtime)
 
     def test_direct_local_checkpoint_selection_has_no_marker_fallback_and_honors_supplied_sha(self):
         with tempfile.TemporaryDirectory() as temporary:

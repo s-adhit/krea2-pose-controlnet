@@ -8,7 +8,7 @@ from unittest import mock
 from PIL import Image
 
 from pose_controlnet import paired_preprocessing
-from pose_controlnet.overfit_capacity import RESOLUTION_768_BUCKETS
+from pose_controlnet.resolution_policy import RESOLUTION_768_BUCKETS
 from pose_controlnet.production_milestone_evaluation import (
     EVALUATION_MODES,
     ProductionMilestoneEvaluationError,

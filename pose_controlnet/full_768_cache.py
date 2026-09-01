@@ -21,7 +21,8 @@ from PIL import Image
 
 from prepare_shards import ShardError, validate_shard, write_shard_atomically
 from pose_controlnet.dataset_index import ManifestRecord, validate_posebridge_snapshot
-from pose_controlnet.overfit_capacity import RESOLUTION_768_BUCKETS, deterministic_seed
+from pose_controlnet.overfit_capacity import deterministic_seed
+from pose_controlnet.resolution_policy import RESOLUTION_768_BUCKETS
 from pose_controlnet.paired_preprocessing import preprocess_pair, resize_center_crop_geometry
 from pose_controlnet.pose_targets import (
     POSE_TARGET_SIDECAR_VERSION, PoseTargetError, common_body_mapping,

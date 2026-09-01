@@ -1,6 +1,7 @@
-"""Explicit, isolated Gate-E pose-reward continuation smoke trainer.
+"""Historical isolated pose-consistency continuation smoke trainer.
 
-Normal ``train.py`` remains flow-only.  This command is blocked unless an
+The canonical production path is ``scripts/train_production.py``.  This
+historical command is blocked unless an
 operator provides the parent, lambda, timestep window, and isolated run name.
 It samples production flow timesteps unchanged and only adds the explicitly
 selected differentiable pose loss to eligible samples within that supplied
@@ -18,28 +19,26 @@ from pathlib import Path
 from typing import Any, Mapping
 
 import torch
-import torch.nn.functional as F
 
 import train
 from pose_controlnet.checkpointing import HFTrainingCheckpointMirror, load_training_state, save_training_state
 from pose_controlnet.data import PreparedLatentShardDataset, collate
-from pose_controlnet.diffusion import (
-    CONTROLLED_POSE_EXPOSURE_POLICY_VERSION, forward_pose_control, make_flow_pair,
-    patchify_and_position, sample_controlled_pose_exposure_timestep,
-)
-from pose_controlnet.keypoint_critic import (
-    POSE_LOSS_NAMES,
-    FixedBoxKeypointRCNNCritic,
-    differentiable_pose_loss,
-)
+from pose_controlnet.diffusion import CONTROLLED_POSE_EXPOSURE_POLICY_VERSION
+from pose_controlnet.keypoint_critic import POSE_LOSS_NAMES, FixedBoxKeypointRCNNCritic
 from pose_controlnet.keypoint_critic_audit import assert_frozen_no_parameter_grad
 from pose_controlnet.model import audit_control_model, build_pose_model, trainable_params, trainable_state_dict
-from pose_controlnet.pose_reward_tools import combine_flow_and_pose_loss, validate_smoke_invocation
+from pose_controlnet.pose_reward_tools import validate_smoke_invocation
+from pose_controlnet.pose_consistency import (
+    aggregate_step_diagnostics,
+    pose_active_window,
+    production_pose_consistency_loss,
+    should_build_pose_graph,
+    update_cumulative_counters,
+)
 from pose_controlnet.pose_targets import load_sidecar
 from pose_controlnet.seed import set_seed
-from pose_controlnet.vae_preprocessing import decode_normalized_latents_autograd, load_krea_vae, qwen_decoded_to_unit_rgb
+from pose_controlnet.vae_preprocessing import load_krea_vae
 from pose_controlnet.wandb_logging import OptionalWandbMirror
-from scripts.audit_keypoint_critic import _person_tensors
 from scripts.audit_keypoint_critic_timestep import _sha256
 
 
@@ -55,20 +54,6 @@ _GATE_E_CRITICAL_CONFIG_FIELDS = (
     "source_checkpoint", "source_step", "target_step", "control_input_lr",
     "control_input_lr_multiplier", "required_checkpoint_steps",
 )
-
-
-def pose_active_window(timesteps: torch.Tensor, available: torch.Tensor, lower: float, upper: float) -> torch.Tensor:
-    """Inclusive per-sample eligibility; the production sampler is not modified."""
-    if not 0.0 < lower <= upper < 1.0:
-        raise ValueError("pose timestep window must satisfy 0 < min <= max < 1")
-    if timesteps.ndim != 1 or available.shape != timesteps.shape:
-        raise ValueError("timestep and availability shapes must match")
-    return available.to(device=timesteps.device, dtype=torch.bool) & (timesteps >= lower) & (timesteps <= upper)
-
-
-def should_build_pose_graph(active_indices: torch.Tensor) -> bool:
-    """Keep decoder/critic work completely absent when no sample is active."""
-    return bool(active_indices.numel())
 
 
 def load_gate_e_microbatch(data: PreparedLatentShardDataset, indices: list[int]) -> dict[str, Any]:
@@ -344,122 +329,7 @@ def prepare_gate_e_run_setup(*, parent_path: Path, expected_parent_sha256: str |
     )
 
 
-def _pose_smoke_loss(model: torch.nn.Module, vae: Any, critic: FixedBoxKeypointRCNNCritic, batch: dict[str, Any],
-                     sidecar_by_stem: dict[str, dict[str, Any]], cfg: train.TrainConfig, device: torch.device,
-                     generator: torch.Generator, *, pose_loss_name: str, lambda_pose: float, timestep_min: float,
-                     timestep_max: float, forced_exposure_probability: float,
-                     collect_diagnostics: bool = True) -> tuple[torch.Tensor, dict[str, Any]]:
-    clean = batch["latent"].to(device=device, dtype=torch.float32, non_blocking=True)
-    control = batch["control"].to(device=device, dtype=torch.bfloat16, non_blocking=True)
-    if clean.shape != control.shape or not torch.isfinite(clean).all() or not torch.isfinite(control).all():
-        raise FloatingPointError("invalid paired latent batch")
-    records = [sidecar_by_stem[stem] for stem in batch["stems"]]
-    available = torch.tensor([bool(record.get("pose_reward_available", False)) for record in records], device=device)
-    timestep, forced, natural_active, active = sample_controlled_pose_exposure_timestep(
-        clean.shape[0], (clean.shape[-2] // model.config.patch) * (clean.shape[-1] // model.config.patch),
-        cfg, device, generator, pose_reward_available=available,
-        force_probability=forced_exposure_probability, final_timestep_min=timestep_min,
-        final_timestep_max=timestep_max,
-    )
-    noise = torch.randn(clean.shape, device=device, dtype=torch.float32, generator=generator)
-    noisy, target = make_flow_pair(clean, noise, timestep)
-    context, text_mask = batch["context"].to(device=device, dtype=torch.bfloat16, non_blocking=True), batch["text_mask"].to(device=device, dtype=torch.bool, non_blocking=True)
-    image_tokens, pos, mask = patchify_and_position(noisy.to(torch.bfloat16), context.shape[1], model.config.patch, text_mask)
-    control_tokens, _, _ = patchify_and_position(control, context.shape[1], model.config.patch, text_mask)
-    target_tokens, _, _ = patchify_and_position(target, context.shape[1], model.config.patch, text_mask)
-    velocity = forward_pose_control(model, image_tokens, control_tokens, context, timestep.to(torch.bfloat16), pos, mask,
-                                    gradient_checkpointing_blocks=cfg.gradient_checkpointing_blocks)
-    flow_loss = F.mse_loss(velocity.float(), target_tokens.float())
-    if not torch.isfinite(flow_loss): raise FloatingPointError("non-finite flow-matching MSE")
-    active_indices = active.nonzero(as_tuple=False).flatten()
-    pose_loss: torch.Tensor | None = None
-    if should_build_pose_graph(active_indices):
-        x0_hat_tokens = image_tokens - timestep.view(-1, 1, 1).to(image_tokens) * velocity
-        from scripts.audit_keypoint_critic_timestep import unpatchify_latent_tokens
-        x0_hat = unpatchify_latent_tokens(x0_hat_tokens[active_indices], tuple(clean.shape[-2:]), model.config.patch)
-        decoded = qwen_decoded_to_unit_rgb(decode_normalized_latents_autograd(vae, x0_hat)).float()
-        boxes, targets, valid = zip(*(_person_tensors(records[index], device) for index in active_indices.tolist()))
-        heatmaps = critic(decoded, list(boxes))
-        pose_loss_value = differentiable_pose_loss(
-            pose_loss_name, heatmaps.logits, torch.cat(targets), heatmaps.boxes_training, torch.cat(valid),
-            temperature=1.0, gaussian_sigma=1.5,
-        )
-        if not torch.isfinite(pose_loss_value): raise FloatingPointError(f"non-finite pose loss: {pose_loss_name}")
-        pose_loss = pose_loss_value
-    total = combine_flow_and_pose_loss(flow_loss, pose_loss, int(active_indices.numel()), lambda_pose)
-    if not torch.isfinite(total): raise FloatingPointError("non-finite total loss")
-    if not collect_diagnostics:
-        # Keep only device-side counters for a timing harness.  The loss graph,
-        # sampler, active-set selection, and gradients are exactly unchanged;
-        # this avoids serializing diagnostic scalars on every timed microbatch.
-        return total, {"pose_active_count_tensor": active.sum(), "pose_eligible_count_tensor": available.sum()}
-    return total, {
-        "flow_loss": float(flow_loss.item()), "pose_loss": float(pose_loss.item()) if pose_loss is not None else None,
-        "total_loss": float(total.item()), "pose_active_fraction": float(active.float().mean().item()),
-        "pose_active_count": int(active_indices.numel()), "pose_eligible_count": int(available.sum().item()),
-        "pose_forced_count": int(forced.sum().item()), "pose_natural_active_count": int(natural_active.sum().item()),
-        "timesteps": [float(value) for value in timestep.detach().cpu()],
-        "active_timesteps": [float(value) for value in timestep[active].detach().cpu()],
-    }
-
-
-def aggregate_step_diagnostics(microbatch_diagnostics: list[Mapping[str, Any]]) -> dict[str, Any]:
-    """Report optimizer-step diagnostics across every accumulation microbatch."""
-    if not microbatch_diagnostics:
-        raise ValueError("Cannot aggregate an empty optimizer step")
-    flow_losses = [float(item["flow_loss"]) for item in microbatch_diagnostics]
-    total_losses = [float(item["total_loss"]) for item in microbatch_diagnostics]
-    timesteps = [float(value) for item in microbatch_diagnostics for value in item["timesteps"]]
-    active_counts = [int(item["pose_active_count"]) for item in microbatch_diagnostics]
-    eligible_counts = [int(item["pose_eligible_count"]) for item in microbatch_diagnostics]
-    forced_counts = [int(item.get("pose_forced_count", 0)) for item in microbatch_diagnostics]
-    natural_active_counts = [int(item.get("pose_natural_active_count", item["pose_active_count"]))
-                             for item in microbatch_diagnostics]
-    pose_losses = [float(item["pose_loss"]) for item in microbatch_diagnostics if item["pose_loss"] is not None]
-    if not timesteps:
-        raise ValueError("Optimizer-step diagnostics contain no timesteps")
-    active_samples = sum(active_counts)
-    forced_samples, natural_active_samples, eligible_samples = sum(forced_counts), sum(natural_active_counts), sum(eligible_counts)
-    if active_samples != forced_samples + natural_active_samples:
-        raise ValueError("Pose-exposure diagnostics double-count or omit active samples")
-    active_timesteps = [float(value) for item in microbatch_diagnostics for value in item.get("active_timesteps", [])]
-    return {
-        "flow_loss": sum(flow_losses) / len(flow_losses),
-        "total_loss": sum(total_losses) / len(total_losses),
-        "pose_loss": sum(pose_losses) / len(pose_losses) if pose_losses else None,
-        "pose_active_count": active_samples,
-        "pose_active_fraction": active_samples / len(timesteps),
-        "pose_active_samples_step": active_samples,
-        "pose_active_microbatches_step": sum(count > 0 for count in active_counts),
-        "pose_eligible_samples_step": eligible_samples,
-        "pose_forced_samples_step": forced_samples,
-        "pose_natural_active_samples_step": natural_active_samples,
-        "pose_forced_fraction_of_eligible_step": forced_samples / eligible_samples if eligible_samples else 0.0,
-        "pose_total_active_fraction_of_eligible_step": active_samples / eligible_samples if eligible_samples else 0.0,
-        "pose_loss_mean_active": sum(pose_losses) / len(pose_losses) if pose_losses else None,
-        "pose_loss_max_active": max(pose_losses) if pose_losses else None,
-        "flow_loss_mean_step": sum(flow_losses) / len(flow_losses),
-        "total_loss_mean_step": sum(total_losses) / len(total_losses),
-        "timestep_min_step": min(timesteps),
-        "timestep_max_step": max(timesteps),
-        "timestep_mean_step": sum(timesteps) / len(timesteps),
-        "active_timestep_min_step": min(active_timesteps) if active_timesteps else None,
-        "active_timestep_mean_step": sum(active_timesteps) / len(active_timesteps) if active_timesteps else None,
-        "active_timestep_max_step": max(active_timesteps) if active_timesteps else None,
-    }
-
-
-def update_cumulative_counters(counters: Mapping[str, int], metrics: Mapping[str, Any]) -> dict[str, int]:
-    """Carry branch exposure evidence across atomically resumable checkpoints."""
-    updated = {key: int(value) for key, value in counters.items()}
-    for counter, metric in (("eligible_samples_seen", "pose_eligible_samples_step"),
-                            ("forced_samples", "pose_forced_samples_step"),
-                            ("naturally_active_samples", "pose_natural_active_samples_step"),
-                            ("total_active_samples", "pose_active_samples_step")):
-        updated[counter] += int(metrics[metric])
-    if updated["total_active_samples"] != updated["forced_samples"] + updated["naturally_active_samples"]:
-        raise AssertionError("Cumulative pose exposure counters double-count activity")
-    return updated
+_pose_smoke_loss = production_pose_consistency_loss
 
 
 def build_arg_parser() -> argparse.ArgumentParser:

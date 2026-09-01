@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from pose_controlnet.overfit_capacity import RESOLUTION_768_BUCKETS
+from pose_controlnet.resolution_policy import RESOLUTION_768_BUCKETS
 from pose_controlnet.evaluation_geometry import persisted_scoring_geometry
 from pose_controlnet.paired_preprocessing import choose_bucket, resize_center_crop_geometry
 

@@ -17,6 +17,13 @@ from typing import Any, Iterable, Mapping
 from torch.utils.data import Dataset
 
 from pose_controlnet.pose_targets import source_for_stem
+from pose_controlnet.resolution_policy import (
+    NATIVE_RESOLUTION_POLICY,
+    RESOLUTION_768_BUCKETS,
+    RESOLUTION_768_POLICY,
+    buckets_for_resolution,
+    canonical_resolution_policy,
+)
 
 
 OVERFIT_SAMPLE_COUNT = 32
@@ -31,19 +38,6 @@ OVERFIT_ACCUMULATION = 8
 OVERFIT_LR = 1e-4
 OVERFIT_WARMUP = 0
 OVERFIT_MANIFEST_ROOT = Path("configs/overfit_capacity/manifests")
-NATIVE_RESOLUTION_POLICY = "native"
-RESOLUTION_768_POLICY = "768"
-# The native buckets are all approximately one megapixel.  The 768 policy is
-# derived from the same aspect-ratio family, quantised to the project's 64-px
-# convention, and keeps each bucket near 768² pixels rather than forcing a
-# square crop.
-RESOLUTION_768_BUCKETS: tuple[tuple[int, int], ...] = (
-    (768, 768),
-    (704, 896), (896, 704),
-    (640, 960), (960, 640),
-    (576, 1024), (1024, 576),
-    (512, 1152), (1152, 512),
-)
 # The definitive 768 Mixed-32 branch is deliberately constrained to the
 # audited coordinate loss.  Historical KL experiments keep their own scripts;
 # they cannot be recreated through this capacity runner.
@@ -89,21 +83,6 @@ class CapacityScientificConfig:
         return capacity_experiment_name(
             self.base_experiment, self.resolution, self.pose_loss, self.lambda_pose,
         )
-
-
-def canonical_resolution_policy(value: str) -> str:
-    value = str(value).strip().lower()
-    if value == "current":
-        value = NATIVE_RESOLUTION_POLICY
-    if value not in (NATIVE_RESOLUTION_POLICY, RESOLUTION_768_POLICY):
-        raise ValueError(f"Unknown capacity resolution policy {value!r}; choose native or 768")
-    return value
-
-
-def buckets_for_resolution(value: str) -> tuple[tuple[int, int], ...] | None:
-    """Return alternate buckets; native means use persisted paired geometry."""
-    policy = canonical_resolution_policy(value)
-    return None if policy == NATIVE_RESOLUTION_POLICY else RESOLUTION_768_BUCKETS
 
 
 def capacity_experiment_name(base_experiment: str, resolution: str, pose_loss: str, lambda_pose: float) -> str:

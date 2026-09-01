@@ -1,8 +1,8 @@
-"""Small, testable contracts shared by the opt-in pose-reward tools.
+"""Small, testable contracts for canonical pose-consistency tooling.
 
-Nothing in this module changes the normal flow-only trainer.  It contains only
-math and fail-closed argument/output guards used by the Gate-D audit and the
-explicit Gate-E smoke command.
+This module owns loss-combination guards used by production and preserved
+historical experiments; the production implementation is in
+``pose_controlnet.pose_consistency``.
 """
 from __future__ import annotations
 
@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Iterable, Sequence
 
 import torch
+
+from pose_controlnet.pose_loss import combine_flow_and_pose_loss
 
 
 GRAD_EPSILON = 1e-12
@@ -44,27 +46,6 @@ def pose_active_mask(timesteps: torch.Tensor, pose_reward_available: torch.Tenso
     for value in selected:
         matches |= (timesteps - value).abs() <= tolerance
     return matches & pose_reward_available.to(device=timesteps.device, dtype=torch.bool)
-
-
-def combine_flow_and_pose_loss(flow_loss: torch.Tensor, pose_loss: torch.Tensor | None,
-                               active_count: int, lambda_pose: float) -> torch.Tensor:
-    """Apply pose loss only when a graph was actually constructed."""
-    if not math.isfinite(lambda_pose) or lambda_pose < 0:
-        raise ValueError("lambda_pose must be finite and non-negative when pose reward is enabled")
-    if active_count < 0:
-        raise ValueError("active_count must be non-negative")
-    if active_count == 0:
-        if pose_loss is not None:
-            raise ValueError("pose_loss must be absent when no samples are pose-active")
-        return flow_loss
-    if pose_loss is None:
-        raise ValueError("pose_loss is required when samples are pose-active")
-    if lambda_pose == 0:
-        # The finishing anneal intentionally reaches an exact zero endpoint.
-        # Keep the active-reference integrity check above, but make its
-        # optimization contribution identically zero without an epsilon.
-        return flow_loss
-    return flow_loss + float(lambda_pose) * pose_loss
 
 
 def validate_smoke_invocation(*, lambda_pose: float | None, pose_timesteps: Sequence[float] | None,

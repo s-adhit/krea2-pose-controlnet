@@ -23,7 +23,6 @@ from typing import Any, Callable, Mapping
 import torch
 from torch.utils.data import DataLoader
 
-import train
 from pose_controlnet.checkpointing import (
     HFTrainingCheckpointMirror,
     load_training_state,
@@ -33,8 +32,7 @@ from pose_controlnet.checkpointing import (
 from pose_controlnet.config import TrainConfig
 from pose_controlnet.data import PreparedLatentShardDataset, collate
 from pose_controlnet.full_768_cache import FULL_TRAIN_COUNT, verify_full_768_cache
-from pose_controlnet.keypoint_critic import FixedBoxKeypointRCNNCritic
-from pose_controlnet.keypoint_critic_audit import assert_frozen_no_parameter_grad
+from pose_controlnet.pose_critic import FixedBoxKeypointRCNNCritic
 from pose_controlnet.model import audit_control_model, build_pose_model, trainable_params, trainable_state_dict
 from pose_controlnet.pose_targets import load_sidecar
 from pose_controlnet.seed import set_seed
@@ -44,7 +42,26 @@ from pose_controlnet.throughput_benchmark import (
 )
 from pose_controlnet.vae_preprocessing import load_krea_vae
 from pose_controlnet.wandb_logging import DEFAULT_WANDB_PROJECT, OptionalWandbMirror
-from scripts.train_pose_reward_smoke import _pose_smoke_loss, aggregate_step_diagnostics, update_cumulative_counters
+from pose_controlnet.pose_consistency import (
+    aggregate_step_diagnostics,
+    production_pose_consistency_loss,
+    update_cumulative_counters,
+)
+from pose_controlnet.training_runtime import (
+    DeterministicBucketBatches,
+    OptimizerStepWarmup,
+    apply_cached_caption_dropout,
+    assert_frozen_no_parameter_grad,
+    build_production_optimizer,
+    capture_rng_state,
+    configure_runtime,
+    diagnostic_grad_norms,
+    optimizer_update,
+    restore_full_training_state,
+    restore_rng_state,
+    step_mirror_requested,
+)
+from pose_controlnet.model import load_trainable_state_dict
 
 
 DEFAULT_DATASET_ROOT = "/lambda/nfs/adhit/krea2-pose/posebridge_hf"
@@ -750,7 +767,7 @@ def load_and_validate_pose_records(sidecar: str, data: PreparedLatentShardDatase
 def planned_microbatches(records: list[tuple[str, int, tuple[int, int], str]], *, recipe: ProductionRecipe,
                          epoch: int, batch_position: int, count: int) -> list[list[int]]:
     """Reconstruct the benchmarked epoch/bucket ordering from a resume position."""
-    plan = train.DeterministicBucketBatches(records, recipe.microbatch_size, recipe.seed)
+    plan = DeterministicBucketBatches(records, recipe.microbatch_size, recipe.seed)
     result: list[list[int]] = []
     while len(result) < count:
         batches = plan.for_epoch(epoch)
@@ -763,7 +780,7 @@ def planned_microbatches(records: list[tuple[str, int, tuple[int, int], str]], *
     return result
 
 
-def advance_position(plan: train.DeterministicBucketBatches, epoch: int, batch_position: int) -> tuple[int, int]:
+def advance_position(plan: DeterministicBucketBatches, epoch: int, batch_position: int) -> tuple[int, int]:
     batch_position += 1
     if batch_position >= len(plan.for_epoch(epoch)):
         return epoch + 1, 0
@@ -790,7 +807,7 @@ def checkpoint_state(*, model: torch.nn.Module, optimizer: torch.optim.Optimizer
                                  "sample_position": batch_position * recipe.microbatch_size}
     return {"model": trainable_state_dict(model), "optimizer": optimizer.state_dict(), "scheduler": scheduler.state_dict(),
             "global_step": global_step, "epoch": epoch, "batch_position": batch_position,
-            "rng": train._capture_rng(), "flow_generator_state": generator.get_state(), "config": asdict(cfg),
+            "rng": capture_rng_state(), "flow_generator_state": generator.get_state(), "config": asdict(cfg),
             PRODUCTION_METADATA_KEY: metadata}
 
 
@@ -862,14 +879,14 @@ def _validate_finishing_parent(metadata: Mapping[str, Any]) -> None:
 def restore_cooldown_continuation_state(model: torch.nn.Module, optimizer: torch.optim.Optimizer,
                                         state: Mapping[str, Any]) -> tuple[int, int, int, object | None]:
     """Restore weights, Adam moments, RNG and data position while replacing only LR policy."""
-    train.load_trainable_state_dict(model, state["model"])
+    load_trainable_state_dict(model, state["model"])
     optimizer.load_state_dict(state["optimizer"])
     groups = optimizer.param_groups
     if len(groups) != 1 or tuple(groups[0].get("betas", ())) != (0.9, 0.99) or groups[0].get("weight_decay") != 0.0:
         raise ValueError("Cooldown parent AdamW hyperparameters differ from the locked recipe")
     if not optimizer.state:
         raise ValueError("Cooldown parent AdamW moments are absent; refusing to reset optimizer state")
-    train._restore_rng(state["rng"])
+    restore_rng_state(state["rng"])
     return int(state["global_step"]), int(state["epoch"]), int(state["batch_position"]), state.get("flow_generator_state")
 
 
@@ -902,8 +919,8 @@ def run(args: argparse.Namespace, *, verifier: Callable[[argparse.Namespace], di
     data = PreparedLatentShardDataset(args.latent_root, "train", text_conditioning_root=args.text_conditioning_root)
     validate_full_768_dataset(data); pose_records = load_and_validate_pose_records(args.pose_sidecar, data)
     model = build_pose_model(cfg.raw_ckpt, recipe.rank, recipe.alpha, "cuda")
-    audit_control_model(model, rank=recipe.rank); train.configure_runtime(model, compile_enabled=False); model.train()
-    optimizer = train.build_optimizer(model, cfg)
+    audit_control_model(model, rank=recipe.rank); configure_runtime(model, compile_enabled=False); model.train()
+    optimizer = build_production_optimizer(model, cfg)
     pose_lambda_scheduler = (PoseLambdaContinuationScheduler(
         parent_step=continuation.parent_step, continuation_steps=continuation.continuation_steps,
         schedule=continuation.pose_lambda_schedule, start_value=continuation.start_pose_lambda,
@@ -913,7 +930,7 @@ def run(args: argparse.Namespace, *, verifier: Callable[[argparse.Namespace], di
         optimizer, parent_step=continuation.parent_step, continuation_steps=continuation.continuation_steps,
         start_lr=continuation.start_lr, final_lr=continuation.final_lr,
         pose_lambda_scheduler=pose_lambda_scheduler,
-    ) if continuation is not None else train.OptimizerStepWarmup(optimizer, recipe.warmup_steps))
+    ) if continuation is not None else OptimizerStepWarmup(optimizer, recipe.warmup_steps))
     vae = load_krea_vae(device); critic = FixedBoxKeypointRCNNCritic().to(device).eval(); assert_frozen_no_parameter_grad(vae, critic)
     global_step = epoch = batch_position = 0; generator = torch.Generator(device=device).manual_seed(recipe.seed)
     resume_state: dict[str, Any] | None = None
@@ -921,7 +938,7 @@ def run(args: argparse.Namespace, *, verifier: Callable[[argparse.Namespace], di
         resume_state = load_training_state(resume_path)
         validate_resume_identity(resume_state, args=args, recipe=recipe, identities=identities,
                                  continuation_metadata=continuation_metadata)
-        global_step, epoch, batch_position, generator_state = train.restore_full_training_state(model, optimizer, scheduler, resume_state)
+        global_step, epoch, batch_position, generator_state = restore_full_training_state(model, optimizer, scheduler, resume_state)
         if generator_state is None: raise ValueError("Production checkpoint lacks flow/timestep generator state")
         generator.set_state(generator_state)
     elif continuation is not None:
@@ -955,7 +972,7 @@ def run(args: argparse.Namespace, *, verifier: Callable[[argparse.Namespace], di
         args=args, recipe=recipe, identities=identities, current_step=global_step, wandb_run_id=wandb.run_id,
         continuation_metadata=continuation_metadata,
     ))
-    plan = train.DeterministicBucketBatches(data.records, recipe.microbatch_size, recipe.seed)
+    plan = DeterministicBucketBatches(data.records, recipe.microbatch_size, recipe.seed)
     update_steps = optimizer_update_steps(completed_global_step=global_step, max_steps=cfg.max_steps)
     remaining_groups = len(update_steps) * recipe.gradient_accumulation_steps
     iterator = (iter(production_loader(data, planned_microbatches(data.records, recipe=recipe, epoch=epoch,
@@ -981,10 +998,10 @@ def run(args: argparse.Namespace, *, verifier: Callable[[argparse.Namespace], di
                 if stopped:
                     interrupted = True; break
                 batch = next(iterator); epoch, batch_position = advance_position(plan, epoch, batch_position)
-                train.apply_cached_caption_dropout(batch, data.text_conditioning.unconditional, cfg.caption_dropout, cfg.seed,
-                                                   global_step * recipe.gradient_accumulation_steps + accumulation_index)
+                apply_cached_caption_dropout(batch, data.text_conditioning.unconditional, cfg.caption_dropout, cfg.seed,
+                                             global_step * recipe.gradient_accumulation_steps + accumulation_index)
                 with torch.autocast("cuda", dtype=torch.bfloat16):
-                    loss, diagnostic = _pose_smoke_loss(model, vae, critic, batch, pose_records, cfg, device, generator,
+                    loss, diagnostic = production_pose_consistency_loss(model, vae, critic, batch, pose_records, recipe, device, generator,
                         pose_loss_name=recipe.pose_loss, lambda_pose=scheduled_lambda_pose,
                         timestep_min=recipe.pose_timestep_min, timestep_max=recipe.pose_timestep_max,
                         forced_exposure_probability=recipe.forced_pose_exposure_probability)
@@ -996,12 +1013,12 @@ def run(args: argparse.Namespace, *, verifier: Callable[[argparse.Namespace], di
             control_norms = lora_norms = None
             def capture_diagnostics() -> None:
                 nonlocal control_norms, lora_norms
-                control_norms, lora_norms = train._diagnostic_grad_norms(model)
+                control_norms, lora_norms = diagnostic_grad_norms(model)
             if global_step + 1 != target_global_step:
                 raise RuntimeError("Production optimizer update sequence lost global-step alignment")
             learning_rate = scheduler.current_update_learning_rates[0]
-            grad_norm = train.optimizer_update(optimizer, scheduler, trainable_params(model), cfg.max_grad_norm,
-                                               before_step=capture_diagnostics if diagnostics_due else None); global_step += 1
+            grad_norm = optimizer_update(optimizer, scheduler, trainable_params(model), cfg.max_grad_norm,
+                                         before_step=capture_diagnostics if diagnostics_due else None); global_step += 1
             if global_step != target_global_step:
                 raise RuntimeError("Production optimizer update did not persist its target global step")
             assert_frozen_no_parameter_grad(vae, critic)
@@ -1026,7 +1043,7 @@ def run(args: argparse.Namespace, *, verifier: Callable[[argparse.Namespace], di
                     continuation_metadata=continuation_metadata,
                 ))
                 print(f"checkpoint saved: {path}", flush=True)
-                if train.step_mirror_requested(global_step, args.hf_mirror_every_steps):
+                if step_mirror_requested(global_step, args.hf_mirror_every_steps):
                     mirror.submit(path, reason="step")
     finally:
         if stopped:

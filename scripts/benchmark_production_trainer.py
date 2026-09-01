@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader
 
 import train
 from pose_controlnet.data import PreparedLatentShardDataset, collate
-from pose_controlnet.keypoint_critic import FixedBoxKeypointRCNNCritic
+from pose_controlnet.pose_critic import FixedBoxKeypointRCNNCritic
 from pose_controlnet.keypoint_critic_audit import assert_frozen_no_parameter_grad
 from pose_controlnet.full_768_cache import verify_full_768_cache
 from pose_controlnet.model import audit_control_model, build_pose_model, trainable_params
@@ -32,7 +32,7 @@ from pose_controlnet.throughput_benchmark import (
     projected_runtime, validate_benchmark_result,
 )
 from pose_controlnet.vae_preprocessing import load_krea_vae
-from scripts.train_pose_reward_smoke import _pose_smoke_loss
+from pose_controlnet.pose_consistency import production_pose_consistency_loss
 
 
 def parser() -> argparse.ArgumentParser:
@@ -159,7 +159,7 @@ def run_step(*, model: torch.nn.Module, optimizer: torch.optim.Optimizer,
         with torch.autocast("cuda", dtype=torch.bfloat16):
             if recipe.objective == "candidate":
                 assert vae is not None and critic is not None
-                loss, diag = _pose_smoke_loss(
+                loss, diag = production_pose_consistency_loss(
                     model, vae, critic, batch, pose_records, cfg, device, generator,
                     pose_loss_name=LOCKED_POSE_LOSS, lambda_pose=LOCKED_LAMBDA_POSE,
                     timestep_min=LOCKED_POSE_WINDOW[0], timestep_max=LOCKED_POSE_WINDOW[1],
