@@ -65,28 +65,49 @@ Flow matching uses `x_t = t * noise + (1 - t) * x0` with target `noise - x0`. Po
 
 ## Prompting
 
-See the concise [prompting guide](prompting.md). The main rule is simple: **pose image = geometry; prompt = appearance, environment, and rendering**. Controlled studies show that framing/count conflicts and strong semantic priors can fight the pose condition.
+See the concise [prompting guide](prompting.md). The main rule is simple: **pose image = geometry; prompt = appearance, environment, and rendering**.
+
+Controlled studies show that framing/count conflicts, explicit pose conflicts, and strong semantic priors can fight the pose condition.
 
 ![Prompting study contact sheet](docs/evaluation/prompting-guide/results/mix-025/prompting_study_contact_sheet.png)
 
 ## Style-LoRA composition
 
-Isolated runtime composition has been implemented and tested with `darkbrush`, `rainywindow`, `retroanime`, and `realism`. Official trigger words matter for the first three; Style-LoRA deltas remain separate from the Pose-LoRA. The style-strength sweep is complete, but recommendations are still under review, so final strengths are not hard-coded here.
+Isolated runtime composition has been implemented and tested with `darkbrush`, `rainywindow`, `retroanime`, and `realism`.
+
+Official trigger phrases matter for the first three. Style-LoRA deltas stay separate from the Pose-LoRA, and a controlled strength sweep was run at `0.25`, `0.50`, `0.75`, and `1.00`.
+
+Pose retention is not monotonic with style strength, so final default strengths are still being reviewed.
 
 [Trigger-correct composition results](docs/evaluation/style-lora-composition/results/mix-025-strength-1.0-triggers) · [strength-sweep results](docs/evaluation/style-lora-composition/results/strength-sweep-v1)
 
-
 ## Multilingual prompting
 
-A fixed-pose English / Chinese / Telugu sanity comparison is available. All three generations use the same pose control, seed, candidate, and Turbo settings. This is a small sanity test, not a multilingual benchmark or a claim of language parity.
+A fixed-pose English / Chinese / Telugu sanity test was run using the same pose control, seed, candidate, geometry, and Turbo settings.
 
-![English / Chinese / Telugu fixed-pose sanity comparison](docs/evaluation/prompting-guide/results/multilingual-smoke-v2/multilingual_comparison.png)
+| Language | PCK@0.05 | PCK@0.10 | PCK@0.20 | CLIP |
+|---|---:|---:|---:|---:|
+| English | **0.8824** | 0.9412 | 1.0000 | **0.30815** |
+| Chinese | 0.7647 | **1.0000** | 1.0000 | 0.23574 |
+| Telugu | 0.8235 | 0.8824 | 1.0000 | 0.22788 |
+
+All three preserved the target pose strongly in this example. This is a small sanity test, not a multilingual benchmark or a claim of language parity.
 
 ## Evaluation
 
-Evaluation includes a frozen held-out 48-condition benchmark; PCK@0.05 / 0.10 / 0.20; CLIP; and an authoritative pose sidecar. Additional controlled studies cover semantic prompt-injection stress, prompting guidance, and Style-LoRA composition.
+Evaluation includes:
 
-The locked Turbo contract is 8 steps, CFG 0, `mu=1.15`, and control scale 1.0. The diagnostic split is used for development and checkpoint selection; validation was held out from training but inspected for inference evaluation and is not an untouched test set.
+- frozen held-out 48-condition benchmark
+- PCK@0.05 / 0.10 / 0.20
+- CLIP prompt alignment
+- authoritative pose-reference sidecar
+- semantic prompt-injection stress test
+- prompting-guide study
+- Style-LoRA composition and strength sweep
+
+The locked Turbo contract is **8 steps, CFG 0, `mu=1.15`, control scale 1.0**.
+
+The diagnostic split is used for development and checkpoint selection. Validation was held out from training but inspected during inference evaluation, so it should not be described as an untouched test set.
 
 ## Inference
 
