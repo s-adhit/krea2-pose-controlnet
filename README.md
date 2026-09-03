@@ -10,7 +10,13 @@ The Pose Control-LoRA has been trained for Krea-2 Raw and evaluated/deployed on 
 
 ![mix-025 held-out Turbo contact sheet](docs/evaluation/final-val-turbo/mix-025/full_contact_sheet.png)
 
-Curated demonstrations remain available for [Fantasy Mage](docs/assets/showcase/final/fantasy-mage/generation.png), [Gojo-inspired Mural](docs/assets/showcase/final/gojo-mural/generation.png), and [Dark-fantasy Jester](docs/assets/showcase/final/jester/generation.png). Franchise-inspired examples are fan-art-style demonstrations only.
+### Curated generations
+
+| Fantasy Mage | Gojo-inspired Mural | Dark-fantasy Jester |
+|---|---|---|
+| ![Fantasy Mage](docs/assets/showcase/final/fantasy-mage/generation.png) | ![Gojo-inspired Mural](docs/assets/showcase/final/gojo-mural/generation.png) | ![Dark-fantasy Jester](docs/assets/showcase/final/jester/generation.png) |
+
+These are curated qualitative demonstrations. Franchise-inspired examples are fan-art-style demonstrations only.
 
 ## Current evaluation candidate
 
@@ -69,7 +75,6 @@ Isolated runtime composition has been implemented and tested with `darkbrush`, `
 
 [Trigger-correct composition results](docs/evaluation/style-lora-composition/results/mix-025-strength-1.0-triggers) · [strength-sweep results](docs/evaluation/style-lora-composition/results/strength-sweep-v1)
 
-![Style-LoRA strength sweep](docs/evaluation/style-lora-composition/results/strength-sweep-v1/grids/style_lora_strength_sweep_contact_sheet.png)
 
 ## Multilingual prompting
 
