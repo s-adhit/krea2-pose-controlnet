@@ -147,6 +147,31 @@ class FinalValTurboBenchmarkTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "contract-inconsistent"):
                 evaluator._generation_status(root, stems, candidate, digest)
 
+    def test_qualitative_paths_select_candidate_generated_image_not_dataset_rgb(self):
+        candidate = {"label": "parent-4000", "step": 4000}
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            directory = root / "fixed_pose" / "sample"; directory.mkdir(parents=True)
+            control = directory / "control.png"; control.write_bytes(b"control")
+            generated = directory / "step_004000.png"; generated.write_bytes(b"generated")
+            dataset_rgb = root / "dataset" / "sample.jpg"; dataset_rgb.parent.mkdir(); dataset_rgb.write_bytes(b"reference")
+
+            self.assertEqual(
+                evaluator._qualitative_image_paths(root, "sample", candidate),
+                [control, generated],
+            )
+            self.assertNotEqual(evaluator._qualitative_image_paths(root, "sample", candidate)[1], dataset_rgb)
+
+    def test_qualitative_paths_fail_closed_when_generated_image_is_missing(self):
+        candidate = {"label": "parent-4000", "step": 4000}
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            directory = root / "fixed_pose" / "sample"; directory.mkdir(parents=True)
+            (directory / "control.png").write_bytes(b"control")
+
+            with self.assertRaisesRegex(FileNotFoundError, "missing generated output"):
+                evaluator._qualitative_image_paths(root, "sample", candidate)
+
 
 if __name__ == "__main__":
     unittest.main()

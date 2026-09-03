@@ -229,6 +229,23 @@ def _generation_status(output: Path, stems: list[str], candidate: Mapping[str, A
     raise ValueError("Existing final-val generation output is incomplete or inconsistent; refusing to overwrite it")
 
 
+def _qualitative_image_paths(output: Path, stem: str, candidate: Mapping[str, Any]) -> list[Path]:
+    """Return the conditioning control and this candidate's generated image.
+
+    Qualitative reports must never resolve a dataset RGB/reference image.  The
+    generated image is deliberately addressed only through the validated
+    candidate-specific output root.
+    """
+    directory = output / "fixed_pose" / stem
+    control = directory / "control.png"
+    generated = directory / f"step_{candidate['step']:06d}.png"
+    if not control.is_file():
+        raise FileNotFoundError(f"Final-val report is missing pose control for {stem}: {control}")
+    if not generated.is_file():
+        raise FileNotFoundError(f"Final-val report is missing generated output for {stem}: {generated}")
+    return [control, generated]
+
+
 def _inputs(args) -> tuple[dict[str, Any], str, PreparedLatentShardDataset, dict[str, Path], dict[str, Any], Path, dict[str, Any], Path]:
     spec, spec_sha256 = load_final_spec(args.final_spec)
     dataset = PreparedLatentShardDataset(args.latent_root, "val", text_conditioning_root=args.text_conditioning_root)
@@ -345,11 +362,10 @@ def report(args) -> None:
         raise ValueError("Final-val report requires exactly one scored selected checkpoint")
     row = rows[0]; grid_rows = []
     for stem in spec["stems"]:
-        paths = [output / "fixed_pose" / stem / "control.png", output / "fixed_pose" / stem / f"step_{candidate['step']:06d}.png"]
-        if not all(path.is_file() for path in paths): raise FileNotFoundError(f"Final-val report has incomplete artifacts for {stem}")
-        grid_rows.append((stem, paths))
-    make_contact_sheet(grid_rows[:4], output / "checkpoint_selection_grid.png", thumbnail_width=180, thumbnail_height=180, column_labels=("control", candidate["label"]))
-    make_contact_sheet(grid_rows, output / "full_contact_sheet.png", thumbnail_width=320, thumbnail_height=320, column_labels=("control", candidate["label"]))
+        grid_rows.append((stem, _qualitative_image_paths(output, stem, candidate)))
+    labels = ("pose control", f"generated output ({candidate['label']})")
+    make_contact_sheet(grid_rows[:4], output / "checkpoint_selection_grid.png", thumbnail_width=180, thumbnail_height=180, column_labels=labels)
+    make_contact_sheet(grid_rows, output / "full_contact_sheet.png", thumbnail_width=320, thumbnail_height=320, column_labels=labels)
     _write(output / "evaluation_summary.json", {**contract, "training_metadata": training, "checkpoints": rows,
            "benchmark": spec["benchmark"], "reference_sidecar": score_payload.get("reference_sidecar"),
            "qualitative_grids": {"checkpoint_selection": "checkpoint_selection_grid.png", "full_contact_sheet": "full_contact_sheet.png"},

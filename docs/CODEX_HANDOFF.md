@@ -2,41 +2,58 @@
 
 ## Current objective
 
-The final-val Turbo evaluator is ready to preflight the two frozen selected
-controlled checkpoints. No checkpoint was modified. No generation, training,
-network operation, commit, or push occurred.
+The final-val Turbo qualitative-report selection bug is fixed in the workspace.
+The report-only rebuild is ready but cannot be written from this Codex sandbox:
+`/lambda/nfs` is mounted read-only here. No model generation, PCK/CLIP scoring,
+checkpoint, frozen spec, sidecar, training, network operation, commit, or push
+occurred.
 
-## Final-val checkpoint compatibility contract
+## Final-val qualitative report fix
 
-- Only `parent-4000` and `finish-control-a4300` are accepted.
-- Each candidate is pinned to its exact absolute root, `step_XXXXXX.pt`
-  filename, embedded `global_step`, and SHA-256:
-  - parent-4000 / step 4000:
-    `0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd`.
-  - finish-control-a4300 / step 4300:
-    `17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff`.
-- `load_training_state` remains the full-training checkpoint schema gate.
-- If `gate_e` is present, the evaluator still uses the unchanged strict
-  `controlled_branch_metadata()` validation used by historical diagnostics.
-- These two legitimate older checkpoints lack `gate_e`; for them only, the
-  evaluator instead verifies their pinned project-owned
-  `production_pose_control` format, run name, maximum step, and current step.
-  This validated provenance is recorded in final-val outputs.
+- Bug: `full_contact_sheet.png` and `checkpoint_selection_grid.png` could
+  visually present reference RGB in the generated-output position.
+- `report` now uses `_qualitative_image_paths()` as the sole report image
+  resolver. For each stem it returns only:
+  1. `<candidate output-root>/fixed_pose/<stem>/control.png` (pose control);
+  2. `<candidate output-root>/fixed_pose/<stem>/step_XXXXXX.png` (that
+     candidate's actual generated output).
+- A missing generated PNG fails closed with `FileNotFoundError`; no dataset RGB
+  fallback exists. Column labels are now `pose control` and
+  `generated output (<candidate>)`.
+- The same rows and labels feed both qualitative sheets. Historical diagnostic
+  behavior and frozen final-val benchmark/spec/sidecar are unchanged.
 
-## Completed / green gates
+## Completed / green checks
 
 PASS:
 
 ```bash
-python -m py_compile scripts/final_val_turbo_benchmark.py tests/test_final_val_turbo_benchmark.py
 python -m unittest tests.test_final_val_turbo_benchmark -v
-# 7 tests passed
+# 9 tests passed
 git diff --check
 ```
 
-Focused coverage proves metadata-present checkpoints retain strict historical
-validation, while metadata-absent final-val checkpoints require the pinned
-SHA and production provenance and reject mismatched provenance.
+Focused coverage proves the qualitative resolver selects the exact
+candidate-specific `step_004000.png` rather than a dataset RGB path, and that
+it fails closed when the expected generated image is absent.
+
+The script was run through the edited workspace module and reached report-image
+writing, then failed at the expected output path with `OSError: [Errno 30]
+Read-only file system`. The existing report artifacts were not changed.
+
+## Exact report rerun commands
+
+Run these from the writable GH200 host shell. They perform only the `report`
+action and reuse the complete existing generations and score artifacts:
+
+```bash
+uv run python scripts/final_val_turbo_benchmark.py report --candidate parent-4000 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/final-val-turbo/parent-4000
+uv run python scripts/final_val_turbo_benchmark.py report --candidate finish-control-a4300 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/final-val-turbo/finish-control-a4300
+```
+
+Each command rewrites only its report artifacts:
+`checkpoint_selection_grid.png`, `full_contact_sheet.png`, and
+`evaluation_summary.json`.
 
 ## Files changed this session
 
@@ -46,16 +63,9 @@ SHA and production provenance and reject mismatched provenance.
 
 Pre-existing untracked final-val sidecar/build-script work remains untouched.
 
-## Exact next preflight commands
+## Exact next recommended action
 
-Run from the GH200 host shell only:
-
-```bash
-uv run python scripts/final_val_turbo_benchmark.py preflight --candidate parent-4000 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/final-val-turbo/parent-4000
-uv run python scripts/final_val_turbo_benchmark.py preflight --candidate finish-control-a4300 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/final-val-turbo/finish-control-a4300
-```
-
-After both preflights pass, the next bounded task is the already-authorized
-final-val generation/scoring workflow for only those two candidates. Do not
-evaluate Turbo base/zero-adapter, interpolate checkpoints, or alter the
-frozen benchmark contract.
+Run the two report-only commands from the writable GH200 host shell, then
+review the rebuilt sheets. Do not regenerate or rescore these completed
+final-val outputs unless an independently authorized benchmark change is
+required.
