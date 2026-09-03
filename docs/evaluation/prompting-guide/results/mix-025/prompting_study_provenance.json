@@ -1,0 +1,517 @@
+{
+  "buckets": {
+    "coco_49731_461706": [
+      1152,
+      896
+    ],
+    "real_human_humanart_15000000000477": [
+      1472,
+      704
+    ],
+    "real_human_humanart_15000000000521": [
+      832,
+      1216
+    ],
+    "real_human_humanart_15000000001893": [
+      832,
+      1216
+    ],
+    "real_human_humanart_17000000001263": [
+      1216,
+      832
+    ],
+    "real_human_humanart_17000000001269": [
+      1024,
+      1024
+    ],
+    "real_human_humanart_17000000002207": [
+      1216,
+      832
+    ],
+    "sculpture_humanart_14000000003803": [
+      1024,
+      1024
+    ]
+  },
+  "candidate": "mix-025",
+  "candidate_kind": "trainable_tensor_interpolation",
+  "checkpoint_interpolation": {
+    "alpha": 0.25,
+    "candidate_id": "mix-025",
+    "compute_dtype": "float32",
+    "endpoints": [
+      {
+        "candidate": "parent-4000",
+        "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt",
+        "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+        "step": 4000
+      },
+      {
+        "candidate": "finish-control-a4300",
+        "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+        "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff",
+        "step": 4300
+      }
+    ],
+    "formula": "(1 - alpha) * parent-4000 + alpha * finish-control-a4300",
+    "tensor_scope": "state['model'] trainable control/LoRA tensors only"
+  },
+  "checkpoint_step": null,
+  "conditions": [
+    {
+      "pose_class": "simple_single",
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "pose_class": "dynamic_airborne",
+      "stem": "coco_49731_461706"
+    },
+    {
+      "pose_class": "floor_seated_crouched",
+      "stem": "real_human_humanart_15000000000477"
+    },
+    {
+      "pose_class": "inversion",
+      "stem": "real_human_humanart_15000000000521"
+    },
+    {
+      "pose_class": "two_person_overhead",
+      "stem": "real_human_humanart_15000000001893"
+    },
+    {
+      "pose_class": "suspended_extreme",
+      "stem": "real_human_humanart_17000000001269"
+    },
+    {
+      "pose_class": "two_person_interaction",
+      "stem": "real_human_humanart_17000000001263"
+    },
+    {
+      "pose_class": "multi_person_group",
+      "stem": "real_human_humanart_17000000002207"
+    }
+  ],
+  "control_sha256": {
+    "coco_49731_461706": "e49a88c758f5f8889c5dd498f02a4c5de2eced6dbec71745aa428159fd29f1bb",
+    "real_human_humanart_15000000000477": "4e87b281764962da7838ef76bbf5dfb889e76e03a5e75f5091a49d9d0a37db0f",
+    "real_human_humanart_15000000000521": "d59c50ca283bd26aa6192f9b1eb5eb9c05fb2db6c91ee36b13353623d515ab1a",
+    "real_human_humanart_15000000001893": "db15cf74488fcd6115adc98001121cb1fd5bf124f50df1d10b9ae823b6a21609",
+    "real_human_humanart_17000000001263": "353d6c34e8b8e0bcaba9502df74f0853aed4d691dc0c6f19aba32cecb09201c1",
+    "real_human_humanart_17000000001269": "69cc478ebfa2e08032833849145a2eb517404fc09f9502f86a06c022314d53a1",
+    "real_human_humanart_17000000002207": "67f485b6870f19be1b33a69799d84ca9ce2a1a2d4c6bd50ebb256e633645e845",
+    "sculpture_humanart_14000000003803": "80eb64d325b349ed0dc57b82916ecedbc8e350253bd05c14b87d1f333207206a"
+  },
+  "final_val_spec_sha256": "93a5254e57fa208263f6188573e0760ffedd954bf3b3b3425109ea0178957cd0",
+  "geometry": "native_aspect_preserving_cached_latent_bucket",
+  "kind": "prompting_guide_8_conditions_x_8_modes_turbo_fixed_pose",
+  "prompt_file": {
+    "path": "docs/evaluation/prompting-guide/prompting_study.jsonl",
+    "record_count": 64,
+    "sha256": "4fae6d39ac7354d451ca13556d3a2a89e303691ceb30727b8561b13b494450df"
+  },
+  "prompt_mapping": [
+    {
+      "mode": "P0_minimal",
+      "pose_class": "simple_single",
+      "prompt": "A single adult woman wearing a simple cream outfit.",
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "mode": "P1_style",
+      "pose_class": "simple_single",
+      "prompt": "A single adult woman wearing a simple cream outfit, contemporary watercolor illustration, soft paper texture, restrained blue and ochre palette.",
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "mode": "P2_environment",
+      "pose_class": "simple_single",
+      "prompt": "A single adult woman wearing a simple cream outfit in a quiet botanical courtyard, soft overcast daylight, natural textures.",
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "mode": "P3_neutral",
+      "pose_class": "simple_single",
+      "prompt": "A single adult woman wearing a simple cream outfit with subtle botanical embroidery, pale stone courtyard, soft natural daylight, realistic full-body fashion photography.",
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "mode": "P4_supportive",
+      "pose_class": "simple_single",
+      "prompt": "A single adult woman standing gracefully beside a column, wearing a simple cream outfit with subtle botanical embroidery, soft natural daylight, realistic full-body fashion photography.",
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "mode": "P5_conflicting",
+      "pose_class": "simple_single",
+      "prompt": "A single adult woman sitting cross-legged on the floor, wearing a simple cream outfit, soft natural daylight, realistic photography.",
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "mode": "P6_semantic_prior",
+      "pose_class": "simple_single",
+      "prompt": "A heroic fantasy warrior queen wearing ornate silver armor and carrying a massive sword, dramatic cinematic lighting.",
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "mode": "P7_framing_count_conflict",
+      "pose_class": "simple_single",
+      "prompt": "A tight close-up head-and-shoulders beauty portrait of two women wearing cream clothing, shallow depth of field.",
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "mode": "P0_minimal",
+      "pose_class": "dynamic_airborne",
+      "prompt": "A single young adult wearing a black jacket, dark trousers and sneakers.",
+      "stem": "coco_49731_461706"
+    },
+    {
+      "mode": "P1_style",
+      "pose_class": "dynamic_airborne",
+      "prompt": "A single young adult wearing a black jacket, dark trousers and sneakers, bold comic-ink illustration, halftone texture, limited red black and cream palette.",
+      "stem": "coco_49731_461706"
+    },
+    {
+      "mode": "P2_environment",
+      "pose_class": "dynamic_airborne",
+      "prompt": "A single young adult wearing a black jacket, dark trousers and sneakers in a futuristic concrete plaza at dusk, cinematic blue-hour lighting.",
+      "stem": "coco_49731_461706"
+    },
+    {
+      "mode": "P3_neutral",
+      "pose_class": "dynamic_airborne",
+      "prompt": "A single young adult wearing a black jacket, dark trousers and sneakers, futuristic concrete plaza, dramatic blue-hour lighting, crisp editorial photography.",
+      "stem": "coco_49731_461706"
+    },
+    {
+      "mode": "P4_supportive",
+      "pose_class": "dynamic_airborne",
+      "prompt": "A single young adult captured in a dynamic airborne moment, wearing a black jacket, dark trousers and sneakers, futuristic concrete plaza, crisp editorial photography.",
+      "stem": "coco_49731_461706"
+    },
+    {
+      "mode": "P5_conflicting",
+      "pose_class": "dynamic_airborne",
+      "prompt": "A single young adult sitting calmly in a low lounge chair, wearing a black jacket, dark trousers and sneakers, studio photography.",
+      "stem": "coco_49731_461706"
+    },
+    {
+      "mode": "P6_semantic_prior",
+      "pose_class": "dynamic_airborne",
+      "prompt": "A medieval king seated on a massive golden throne wearing a jeweled crown and ceremonial robes, epic fantasy cinema.",
+      "stem": "coco_49731_461706"
+    },
+    {
+      "mode": "P7_framing_count_conflict",
+      "pose_class": "dynamic_airborne",
+      "prompt": "A tightly framed passport-style headshot of the person, face and shoulders only, plain gray background.",
+      "stem": "coco_49731_461706"
+    },
+    {
+      "mode": "P0_minimal",
+      "pose_class": "floor_seated_crouched",
+      "prompt": "A single young woman wearing turquoise athletic clothing.",
+      "stem": "real_human_humanart_15000000000477"
+    },
+    {
+      "mode": "P1_style",
+      "pose_class": "floor_seated_crouched",
+      "prompt": "A single young woman wearing turquoise athletic clothing, clean cel-animation illustration, crisp linework and bright flat colors.",
+      "stem": "real_human_humanart_15000000000477"
+    },
+    {
+      "mode": "P2_environment",
+      "pose_class": "floor_seated_crouched",
+      "prompt": "A single young woman wearing turquoise athletic clothing in a minimalist sunlit training studio with pale wooden floors.",
+      "stem": "real_human_humanart_15000000000477"
+    },
+    {
+      "mode": "P3_neutral",
+      "pose_class": "floor_seated_crouched",
+      "prompt": "A single young woman wearing turquoise athletic clothing, minimalist training studio, pale wooden floor, soft window light, realistic lifestyle photography.",
+      "stem": "real_human_humanart_15000000000477"
+    },
+    {
+      "mode": "P4_supportive",
+      "pose_class": "floor_seated_crouched",
+      "prompt": "A single young woman low to the floor on an exercise mat, wearing turquoise athletic clothing, minimalist training studio, realistic lifestyle photography.",
+      "stem": "real_human_humanart_15000000000477"
+    },
+    {
+      "mode": "P5_conflicting",
+      "pose_class": "floor_seated_crouched",
+      "prompt": "A single young woman standing upright at attention, wearing turquoise athletic clothing, minimalist training studio, realistic photography.",
+      "stem": "real_human_humanart_15000000000477"
+    },
+    {
+      "mode": "P6_semantic_prior",
+      "pose_class": "floor_seated_crouched",
+      "prompt": "A regal princess in a towering ceremonial gown with an enormous crown, grand palace staircase, elaborate fantasy portrait.",
+      "stem": "real_human_humanart_15000000000477"
+    },
+    {
+      "mode": "P7_framing_count_conflict",
+      "pose_class": "floor_seated_crouched",
+      "prompt": "A close-up facial beauty portrait, shoulders and head only, soft studio lighting.",
+      "stem": "real_human_humanart_15000000000477"
+    },
+    {
+      "mode": "P0_minimal",
+      "pose_class": "inversion",
+      "prompt": "A single adult woman wearing a fitted dark violet athletic outfit.",
+      "stem": "real_human_humanart_15000000000521"
+    },
+    {
+      "mode": "P1_style",
+      "pose_class": "inversion",
+      "prompt": "A single adult woman wearing a fitted dark violet athletic outfit, delicate ink-and-watercolor illustration, pale paper background.",
+      "stem": "real_human_humanart_15000000000521"
+    },
+    {
+      "mode": "P2_environment",
+      "pose_class": "inversion",
+      "prompt": "A single adult woman wearing a fitted dark violet athletic outfit in a modern aerial studio, soft skylight and neutral walls.",
+      "stem": "real_human_humanart_15000000000521"
+    },
+    {
+      "mode": "P3_neutral",
+      "pose_class": "inversion",
+      "prompt": "A single adult woman wearing a fitted dark violet athletic outfit, modern aerial studio, soft skylight, realistic editorial photography.",
+      "stem": "real_human_humanart_15000000000521"
+    },
+    {
+      "mode": "P4_supportive",
+      "pose_class": "inversion",
+      "prompt": "A single adult woman suspended upside down in an aerial studio, wearing a fitted dark violet athletic outfit, realistic editorial photography.",
+      "stem": "real_human_humanart_15000000000521"
+    },
+    {
+      "mode": "P5_conflicting",
+      "pose_class": "inversion",
+      "prompt": "A single adult woman standing straight with both feet on the floor, wearing a fitted dark violet athletic outfit, realistic studio photography.",
+      "stem": "real_human_humanart_15000000000521"
+    },
+    {
+      "mode": "P6_semantic_prior",
+      "pose_class": "inversion",
+      "prompt": "A formal corporate executive standing behind a polished conference table in a tailored business suit, professional office portrait.",
+      "stem": "real_human_humanart_15000000000521"
+    },
+    {
+      "mode": "P7_framing_count_conflict",
+      "pose_class": "inversion",
+      "prompt": "A tight face portrait of the woman from the shoulders upward, neutral studio background.",
+      "stem": "real_human_humanart_15000000000521"
+    },
+    {
+      "mode": "P0_minimal",
+      "pose_class": "two_person_overhead",
+      "prompt": "Two adult performers wearing simple white and violet athletic costumes.",
+      "stem": "real_human_humanart_15000000001893"
+    },
+    {
+      "mode": "P1_style",
+      "pose_class": "two_person_overhead",
+      "prompt": "Two adult performers wearing simple white and violet athletic costumes, luminous fantasy illustration, crisp fabric detail and subtle particles.",
+      "stem": "real_human_humanart_15000000001893"
+    },
+    {
+      "mode": "P2_environment",
+      "pose_class": "two_person_overhead",
+      "prompt": "Two adult performers wearing simple white and violet athletic costumes in a dark theatre with focused overhead stage lighting.",
+      "stem": "real_human_humanart_15000000001893"
+    },
+    {
+      "mode": "P3_neutral",
+      "pose_class": "two_person_overhead",
+      "prompt": "Two adult performers wearing simple white and violet athletic costumes, dark theatre, focused stage lighting, high-resolution performance photography.",
+      "stem": "real_human_humanart_15000000001893"
+    },
+    {
+      "mode": "P4_supportive",
+      "pose_class": "two_person_overhead",
+      "prompt": "Two adult performers connected in an acrobatic balance with their arms raised overhead, white and violet costumes, dark theatre, performance photography.",
+      "stem": "real_human_humanart_15000000001893"
+    },
+    {
+      "mode": "P5_conflicting",
+      "pose_class": "two_person_overhead",
+      "prompt": "Two adult performers sitting separately in armchairs with their hands resting on their laps, white and violet costumes, studio photography.",
+      "stem": "real_human_humanart_15000000001893"
+    },
+    {
+      "mode": "P6_semantic_prior",
+      "pose_class": "two_person_overhead",
+      "prompt": "A bride and groom standing side by side at a formal wedding altar, traditional wedding portrait photography.",
+      "stem": "real_human_humanart_15000000001893"
+    },
+    {
+      "mode": "P7_framing_count_conflict",
+      "pose_class": "two_person_overhead",
+      "prompt": "A solo portrait of one performer only, close-up from the chest upward.",
+      "stem": "real_human_humanart_15000000001893"
+    },
+    {
+      "mode": "P0_minimal",
+      "pose_class": "suspended_extreme",
+      "prompt": "A single adult woman wearing a fitted black and gold performance outfit.",
+      "stem": "real_human_humanart_17000000001269"
+    },
+    {
+      "mode": "P1_style",
+      "pose_class": "suspended_extreme",
+      "prompt": "A single adult woman wearing a fitted black and gold performance outfit, painterly fantasy illustration, dark indigo background and warm gold highlights.",
+      "stem": "real_human_humanart_17000000001269"
+    },
+    {
+      "mode": "P2_environment",
+      "pose_class": "suspended_extreme",
+      "prompt": "A single adult woman wearing a fitted black and gold performance outfit in a dark theatrical space with a narrow amber spotlight.",
+      "stem": "real_human_humanart_17000000001269"
+    },
+    {
+      "mode": "P3_neutral",
+      "pose_class": "suspended_extreme",
+      "prompt": "A single adult woman wearing a fitted black and gold performance outfit, dark theatrical environment, narrow amber spotlight, cinematic photography.",
+      "stem": "real_human_humanart_17000000001269"
+    },
+    {
+      "mode": "P4_supportive",
+      "pose_class": "suspended_extreme",
+      "prompt": "A single adult woman suspended in an athletic performance, wearing a fitted black and gold outfit, dark theatrical environment, cinematic photography.",
+      "stem": "real_human_humanart_17000000001269"
+    },
+    {
+      "mode": "P5_conflicting",
+      "pose_class": "suspended_extreme",
+      "prompt": "A single adult woman seated upright at a dining table, wearing a fitted black and gold outfit, realistic interior photography.",
+      "stem": "real_human_humanart_17000000001269"
+    },
+    {
+      "mode": "P6_semantic_prior",
+      "pose_class": "suspended_extreme",
+      "prompt": "A heavily armored knight standing rigidly with a giant shield and long spear, medieval battlefield, epic fantasy cinema.",
+      "stem": "real_human_humanart_17000000001269"
+    },
+    {
+      "mode": "P7_framing_count_conflict",
+      "pose_class": "suspended_extreme",
+      "prompt": "A centered close-up beauty portrait of her face and shoulders only.",
+      "stem": "real_human_humanart_17000000001269"
+    },
+    {
+      "mode": "P0_minimal",
+      "pose_class": "two_person_interaction",
+      "prompt": "Two adults wearing simple charcoal and cream clothing.",
+      "stem": "real_human_humanart_17000000001263"
+    },
+    {
+      "mode": "P1_style",
+      "pose_class": "two_person_interaction",
+      "prompt": "Two adults wearing simple charcoal and cream clothing, expressive contemporary oil painting, visible brushwork and muted earth tones.",
+      "stem": "real_human_humanart_17000000001263"
+    },
+    {
+      "mode": "P2_environment",
+      "pose_class": "two_person_interaction",
+      "prompt": "Two adults wearing simple charcoal and cream clothing inside a large concrete performance hall, warm side lighting.",
+      "stem": "real_human_humanart_17000000001263"
+    },
+    {
+      "mode": "P3_neutral",
+      "pose_class": "two_person_interaction",
+      "prompt": "Two adults wearing simple charcoal and cream clothing, large concrete performance hall, warm directional light, realistic editorial photography.",
+      "stem": "real_human_humanart_17000000001263"
+    },
+    {
+      "mode": "P4_supportive",
+      "pose_class": "two_person_interaction",
+      "prompt": "Two adults moving together in a partnered dance, wearing charcoal and cream clothing, large concrete performance hall, realistic editorial photography.",
+      "stem": "real_human_humanart_17000000001263"
+    },
+    {
+      "mode": "P5_conflicting",
+      "pose_class": "two_person_interaction",
+      "prompt": "Two adults standing far apart with their arms folded, wearing charcoal and cream clothing, realistic studio photography.",
+      "stem": "real_human_humanart_17000000001263"
+    },
+    {
+      "mode": "P6_semantic_prior",
+      "pose_class": "two_person_interaction",
+      "prompt": "Two royal monarchs sitting separately on elaborate thrones wearing crowns and heavy ceremonial robes, palace interior.",
+      "stem": "real_human_humanart_17000000001263"
+    },
+    {
+      "mode": "P7_framing_count_conflict",
+      "pose_class": "two_person_interaction",
+      "prompt": "A single-person portrait of one adult only, face and shoulders, neutral background.",
+      "stem": "real_human_humanart_17000000001263"
+    },
+    {
+      "mode": "P0_minimal",
+      "pose_class": "multi_person_group",
+      "prompt": "A group of adult performers wearing simple black and gray clothing.",
+      "stem": "real_human_humanart_17000000002207"
+    },
+    {
+      "mode": "P1_style",
+      "pose_class": "multi_person_group",
+      "prompt": "A group of adult performers wearing simple black and gray clothing, graphic editorial illustration, strong silhouettes and restrained monochrome palette.",
+      "stem": "real_human_humanart_17000000002207"
+    },
+    {
+      "mode": "P2_environment",
+      "pose_class": "multi_person_group",
+      "prompt": "A group of adult performers wearing simple black and gray clothing inside a vast minimalist white hall with overhead light.",
+      "stem": "real_human_humanart_17000000002207"
+    },
+    {
+      "mode": "P3_neutral",
+      "pose_class": "multi_person_group",
+      "prompt": "A group of adult performers wearing simple black and gray clothing, vast minimalist hall, overhead light, realistic performance photography.",
+      "stem": "real_human_humanart_17000000002207"
+    },
+    {
+      "mode": "P4_supportive",
+      "pose_class": "multi_person_group",
+      "prompt": "A group of adult performers arranged in a coordinated contemporary dance composition, simple black and gray clothing, vast minimalist hall.",
+      "stem": "real_human_humanart_17000000002207"
+    },
+    {
+      "mode": "P5_conflicting",
+      "pose_class": "multi_person_group",
+      "prompt": "A group of adult performers sitting individually in a straight row of chairs, hands resting on their laps, realistic photography.",
+      "stem": "real_human_humanart_17000000002207"
+    },
+    {
+      "mode": "P6_semantic_prior",
+      "pose_class": "multi_person_group",
+      "prompt": "A formal royal family posing stiffly for a traditional palace portrait in elaborate ceremonial clothing.",
+      "stem": "real_human_humanart_17000000002207"
+    },
+    {
+      "mode": "P7_framing_count_conflict",
+      "pose_class": "multi_person_group",
+      "prompt": "A single-person close-up portrait of one performer, face and shoulders only.",
+      "stem": "real_human_humanart_17000000002207"
+    }
+  ],
+  "sampling_seeds": {
+    "coco_49731_461706": 1075931659224113629,
+    "real_human_humanart_15000000000477": 5676061900249086193,
+    "real_human_humanart_15000000000521": 1860641454841022556,
+    "real_human_humanart_15000000001893": 5745961191448260577,
+    "real_human_humanart_17000000001263": 5918792317685775507,
+    "real_human_humanart_17000000001269": 5637780558717542901,
+    "real_human_humanart_17000000002207": 9148705073365945888,
+    "sculpture_humanart_14000000003803": 8675987726486463627
+  },
+  "turbo": {
+    "cfg": 0.0,
+    "control_scale": 1.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  }
+}
