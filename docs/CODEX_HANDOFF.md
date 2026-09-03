@@ -2,84 +2,91 @@
 
 ## Current objective
 
-The frozen 48-image final validation benchmark is now bound to deterministic
-held-out val-cache identities. This stage created only the immutable benchmark
-spec and its focused tests; it did not run training, inference, networking,
-Turbo baselines, checkpoint interpolation, generation, commit, or push.
+The frozen 48-image final validation benchmark now has an opt-in Turbo
+evaluation entry point. This session added no training, network operation,
+image generation, commit, or push. The historical 24-item diagnostic Turbo
+benchmark contract was not changed.
 
-## Locked final benchmark contract
+## Locked final-val contract
 
-- Frozen selection:
+- Immutable selection:
   `docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48.jsonl`.
 - Immutable spec:
-  `docs/evaluation/final-val-benchmark-selection/final_val_benchmark_spec.json`.
-- Stem order is the frozen source-then-stem ascending order, not a new
-  seed-ranked selection order.
-- Fixed quotas: COCO 16, painting 12, real_human 12, sculpture 8.
-- Orientation counts: landscape 16, near_square 17, portrait 15.
-- The spec uses the complete held-out `val` cache at
-  `/lambda/nfs/adhit/krea2-pose/posebridge_latents` plus the matching
-  `/lambda/nfs/adhit/krea2-pose/text_conditioning` cache. The `_768` cache is
-  not appropriate: it does not have matching val text-conditioning identities.
-- Dataset identity is solely the shared `make_evaluation_spec` per-stem latent,
-  control, context, and mask SHA-256 values. Absolute shard/cache paths are
-  absent from the generated spec.
-- `benchmark.provenance` records repository-relative paths, SHA-256 digests,
-  and record counts for the frozen selection (48), `val.jsonl` (889),
-  `diagnostic_val.jsonl` (24), and candidate pool (96).
-- Locked Turbo metadata is Krea-2 Turbo, 8 steps, CFG 0.0, mu 1.15,
-  resolution-independent mu, and control scale 1.0.
-- `write_immutable_spec` writes atomically on first creation and later rejects
-  any non-identical replacement. Historical diagnostic benchmark behavior is
-  unchanged.
+  `docs/evaluation/final-val-benchmark-selection/final_val_benchmark_spec.json`,
+  SHA-256 `93a5254e57fa208263f6188573e0760ffedd954bf3b3b3425109ea0178957cd0`.
+- Exactly 48 held-out `val` stems: COCO 16, painting 12, real_human 12,
+  sculpture 8; orientation counts 16/17/15.
+- Locked Turbo settings: Krea-2 Turbo, 8 steps, CFG 0, mu 1.15 with no
+  resolution shift, and control scale 1.0.
+- Only real controlled checkpoint candidates are accepted:
+  - `parent-4000`: `/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt`
+  - `finish-control-a4300`: `/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt`
+- Turbo base/zero adapter and checkpoint interpolation are intentionally
+  unsupported.
 
 ## Completed implementation
 
-- Added `scripts/create_final_val_benchmark_spec.py`.
-  - Validates frozen count, unique membership, documented ordering, fixed
-    source quotas, val membership, diagnostic exclusion, candidate-pool
-    membership, and frozen candidate-pool digest.
-  - Calls `pose_controlnet.evaluation.make_evaluation_spec` directly for all
-    deterministic seeds and cached sample identities.
-  - Adds final-benchmark counts/provenance and the centralized Turbo contract.
-- Added `tests/test_final_val_benchmark_spec.py`.
-  - Covers deterministic output, stable frozen order, quotas, Turbo contract,
-    all required provenance keys, absence of absolute shard paths, immutable
-    write behavior, and diagnostic-overlap rejection.
-- Generated `final_val_benchmark_spec.json` successfully against the mounted
-  production val cache. Its source provenance is recorded inside the spec.
+- Added `scripts/final_val_turbo_benchmark.py` with staged `preflight`,
+  `generate`, `score`, and `report` actions.
+  - Pins the frozen spec SHA-256 and validates its 48 stems, quotas, seed,
+    identities, and locked Turbo settings.
+  - Recomputes all selected val cached latent/control/text SHA-256 identities
+    and per-stem seeds via shared `make_evaluation_spec`.
+  - Resolves controls exclusively through `validate_posebridge_snapshot` /
+    `DatasetIndex`, including the full sharded physical snapshot validation.
+  - Validates exact checkpoint filename, embedded step, SHA in output
+    provenance, and controlled-branch metadata before work begins.
+  - Reuses the Turbo runtime, raw-to-Turbo compatibility check, PCK scoring,
+    CLIP scoring implementation, PNG/artifact validation pattern, and contact
+    sheets. Outputs fail closed on a conflicting, partial, or corrupt set.
+  - PCK needs an explicit immutable 48-stem authoritative sidecar in frozen
+    order; the historical diagnostic sidecar is rejected and there is no
+    fallback.
+- Added `tests/test_final_val_turbo_benchmark.py`.
+- Added runnable command documentation at
+  `docs/evaluation/final-val-benchmark-selection/README.md`.
 
-## Verification
+## Focused verification
 
 PASS:
 
 ```bash
-PYTHONPATH=. python -m unittest tests.test_final_val_benchmark_spec tests.test_freeze_final_val_benchmark tests.test_evaluation -v
-# 14 tests passed
-
-PYTHONPATH=. python -m py_compile scripts/create_final_val_benchmark_spec.py
-PYTHONPATH=. python scripts/create_final_val_benchmark_spec.py
-# wrote 48-record final validation benchmark spec
-
-git diff --check -- scripts/create_final_val_benchmark_spec.py tests/test_final_val_benchmark_spec.py docs/CODEX_HANDOFF.md
+PYTHONPATH=. python -m py_compile scripts/final_val_turbo_benchmark.py
+PYTHONPATH=. python -m unittest tests.test_final_val_benchmark_spec tests.test_final_val_turbo_benchmark tests.test_turbo_evaluation -v
+# 20 tests passed
+PYTHONPATH=. python scripts/final_val_turbo_benchmark.py --help
+git diff --check
 ```
 
-The full-tree `git diff --check` remains non-clean solely because the
-user-modified `candidate_review.csv` contains pre-existing trailing whitespace;
-that input was not changed in this stage.
+## Exact run commands
+
+Run preflight then generation from the GH200 host shell; no generation was run
+in this session:
+
+```bash
+uv run python scripts/final_val_turbo_benchmark.py preflight --candidate parent-4000 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/final-val-turbo/parent-4000
+uv run python scripts/final_val_turbo_benchmark.py generate --candidate parent-4000 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/final-val-turbo/parent-4000
+uv run python scripts/final_val_turbo_benchmark.py preflight --candidate finish-control-a4300 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/final-val-turbo/finish-control-a4300
+uv run python scripts/final_val_turbo_benchmark.py generate --candidate finish-control-a4300 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/final-val-turbo/finish-control-a4300
+```
+
+After the separate immutable final-val pose sidecar exists, use its exact path
+in the documented `score` commands, then run the corresponding `report`
+commands in the README.
 
 ## Files changed this session
 
-- `scripts/create_final_val_benchmark_spec.py`
-- `tests/test_final_val_benchmark_spec.py`
-- `docs/evaluation/final-val-benchmark-selection/final_val_benchmark_spec.json`
+- `scripts/final_val_turbo_benchmark.py`
+- `tests/test_final_val_turbo_benchmark.py`
+- `docs/evaluation/final-val-benchmark-selection/README.md`
 - `docs/CODEX_HANDOFF.md`
 
-The pre-existing modified `candidate_review.csv` and untracked frozen
-`final_val_benchmark_48.jsonl` were preserved untouched.
+The pre-existing/untracked frozen selection, immutable spec, spec builder, and
+its focused test remain untouched.
 
 ## Exact next task
 
-In a separate bounded stage, add the final-val Turbo evaluation entry point
-that consumes `final_val_benchmark_spec.json`; do not alter this frozen spec or
-the historical diagnostic benchmark contract.
+Create and validate an immutable authoritative pose-reference sidecar for the
+same frozen 48 final-val stems (including its provenance and frozen order), so
+the implemented PCK scoring commands can run. Do not generate images, train,
+or add Turbo base/zero-adapter or interpolation evaluation in that task.
