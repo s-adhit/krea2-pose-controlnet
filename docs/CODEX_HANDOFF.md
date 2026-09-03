@@ -1,116 +1,70 @@
 # Project handoff
 
-## Current objective and canonical surfaces
+## Current objective
 
-Final production-dependency cleanup and README rewrite completed locally; no
-training, GPU inference/evaluation, network access, commit, or push occurred.
+The benchmark-freezing stage is implemented. It converts the manually reviewed
+96-candidate validation pool into a deterministic, provenance-bearing
+48-record JSONL selection once the review CSV has exactly 48 `keep=yes` rows.
+No training, inference, interpolation, network access, commit, or push was
+performed.
 
-- Canonical training entrypoint: `scripts/train_production.py`, backed by
-  `pose_controlnet/production_training.py`.
-- Canonical user-facing inference CLI/API: `inference.py`.
-- Canonical production objective: flow-matching MSE plus explicit
-  normalized-coordinate pose-consistency Huber. The main production/control
-  branch is `lambda_pose=0.04`, with the existing controlled timestep exposure
-  behavior and resumable checkpoint semantics preserved.
-- Exact reusable implementation: `pose_controlnet/pose_consistency.py`,
-  function `production_pose_consistency_loss` (with the accumulation
-  diagnostics and cumulative exposure counters beside it).  It uses the
-  small `PoseConsistencyRuntimeConfig` protocol, not `train.TrainConfig`.
-- Neutral production dependencies are `pose_controlnet/pose_critic.py`,
-  `pose_controlnet/pose_loss.py`, and `pose_controlnet/training_runtime.py`.
-  `pose_controlnet/keypoint_critic.py` and `pose_controlnet/pose_reward_tools.py`
-  retain historical compatibility re-exports only.
-- Shared 768 geometry lives in `pose_controlnet/resolution_policy.py`.
-- Locked Turbo sampling/runtime helpers live in `pose_controlnet/turbo_runtime.py`.
-  `pose_controlnet/turbo_evaluation.py` remains a historical evaluation layer
-  and re-exports those helpers for compatibility.
+## Decisions and verified inputs
 
-Current checkpoint status: `parent-4000` is the balanced candidate and
-`finish-control-a4300` is the pose-specialist candidate. The entire anneal
-branch, including B4200, is historical only and is absent from the current
-inference candidate list.
+- Candidate pool: `docs/evaluation/final-val-benchmark-selection/candidate_pool_96.jsonl`.
+- Required immutable pool SHA256:
+  `a72607f65d104ed09a083588bb210b8fb4e7ab22db3f2224ba939b838d906056`.
+- The pre-existing read-only audit established 96 unique candidate validation
+  stems, no current `keep=yes` review selections, and zero val/diagnostic
+  overlap.
+- Freeze quotas are fixed: COCO 16, painting 12, real_human 12, sculpture 8.
+- The candidate pool, review CSV, source manifests, and `scripts/turbo_benchmark.py`
+  remain unmodified in this session.
 
-Terminology: diagnostic is the development/selection benchmark. Validation is
-held out from training but is used for inference benchmarking; it is not an
-untouched final test set.
+## Completed implementation
 
-## Audit changes
-
-- `production_training.py` no longer imports `scripts/train_pose_reward_smoke.py`.
-  The historical smoke script delegates to the reusable library implementation.
-- `production_training.py` and `pose_consistency.py` no longer import
-  `train.py`, `keypoint_critic`, `pose_reward_tools`, or critic-audit helpers.
-  Production uses the neutral runtime, fixed-box critic, and loss modules.
-- Production-facing inference no longer imports bucket policy or locked runtime
-  helpers from experiment modules.
-- Removed empty/dead `scripts/prefetch_models.py` and `run_forever.sh`, plus
-  invalid placeholder `requirements/local-x86-cuda.txt`.
-- Moved obsolete prompt-transfer development evidence to
-  `docs/archive/inference_eval/`; current parent/A4300 evidence remains under
-  `docs/inference_smoke/`, `docs/inference_eval/a4300-krea-native-matched/`,
-  and `docs/inference_eval/val_pose_candidates/`.
-- `docs/ARCHIVE_INDEX.md` identifies canonical surfaces, historical material,
-  and the Human-Art redistribution-review paths. No Human-Art imagery was
-  removed and no rights/licensing decision was made.
+- Added `scripts/freeze_final_val_benchmark.py`.
+  - Uses Python's `csv.DictReader` for the review CSV.
+  - Verifies the exact candidate-pool SHA256 before any selection is accepted.
+  - Validates unique candidate/review/manifest stems; validates candidate
+    membership in val; rejects diagnostic overlap, non-candidates, duplicate
+    reviews, non-val stems, caption/source mismatches, invalid `keep` values,
+    wrong selection count, and wrong quotas.
+  - Atomically writes the stable source/stem-sorted artifact at the default
+    path `docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48.jsonl`.
+    Each artifact record retains candidate metadata, carries the verified pool
+    digest, and preserves review `difficulty`, `pose_type`, `multi_person`, and
+    `notes` fields for later `make_evaluation_spec` integration.
+- Added focused unit tests in `tests/test_freeze_final_val_benchmark.py` using
+  only temporary fixtures. They cover deterministic successful output and hash,
+  count, quota, duplicate, non-candidate, non-val, diagnostic-overlap, and
+  caption-mismatch failures.
 
 ## Verification
 
-PASS (CPU, no network):
+PASS:
 
 ```bash
-PYTHONPATH=. python -m py_compile inference.py \
-  pose_controlnet/production_training.py pose_controlnet/pose_consistency.py \
-  pose_controlnet/resolution_policy.py pose_controlnet/turbo_runtime.py \
-  pose_controlnet/turbo_evaluation.py pose_controlnet/overfit_capacity.py \
-  scripts/train_production.py scripts/train_pose_reward_smoke.py \
-  scripts/benchmark_production_trainer.py scripts/train_overfit_capacity.py
+PYTHONPATH=. python -m unittest tests.test_freeze_final_val_benchmark -v
+# 2 tests passed
 
-PYTHONPATH=. python -m unittest tests.test_inference \
-  tests.test_production_training tests.test_pose_reward_tools \
-  tests.test_pose_reward_wandb tests.test_turbo_evaluation \
-  tests.test_capacity_experiment_axes tests.test_production_milestone_evaluation -v
+PYTHONPATH=. python -m py_compile scripts/freeze_final_val_benchmark.py
+git diff --check
 ```
 
-94 tests passed. Run `git diff --check` after reviewing the final working tree
-before staging. No checkpoint, manifest, or source dataset was changed.
+Current working tree also includes the user-provided, untracked
+`docs/evaluation/final-val-benchmark-selection/` candidate materials, plus the
+new untracked script and focused test. No frozen artifact exists yet because
+the live review sheet has zero keep selections, as expected.
 
-Final dependency-cleanup verification:
+## Exact next task
+
+Complete `candidate_review.csv` by marking exactly 48 reviewed candidates
+`keep=yes` while meeting the fixed source quotas, then run:
 
 ```bash
-PYTHONPATH=. python -m py_compile pose_controlnet/pose_consistency.py \
-  pose_controlnet/pose_critic.py pose_controlnet/pose_loss.py \
-  pose_controlnet/training_runtime.py pose_controlnet/keypoint_critic.py \
-  pose_controlnet/production_training.py scripts/train_production.py
-
-PYTHONPATH=. python -m unittest tests.test_production_training \
-  tests.test_pose_reward_tools tests.test_keypoint_critic tests.test_inference \
-  tests.test_turbo_evaluation tests.test_train_mechanics -v
-# PASS: 141 tests
-
-PYTHONPATH=. python -m unittest tests.test_control_diagnostics \
-  tests.test_turbo_evaluation tests.test_inference tests.test_production_training \
-  tests.test_pose_reward_tools -v
-# PASS: 87 tests
+PYTHONPATH=. python scripts/freeze_final_val_benchmark.py
 ```
 
-The canonical import direction is now:
-
-```text
-scripts/train_production.py -> pose_controlnet/production_training.py
-  -> pose_controlnet/{pose_consistency, pose_critic, pose_loss, training_runtime}.py
-```
-
-Static import audit found no backwards import from that path to `train.py`,
-the historical pose smoke script, `keypoint_critic`, `pose_reward_tools`, or
-`keypoint_critic_audit`. `inference.py` contains exactly the current checkpoint
-candidates `parent-4000` and `finish-control-a4300`; anneal/B candidates remain
-historical only.
-
-## Next action
-
-Review and stage the dependency cleanup plus the rewritten top-level README.
-The README documents the current Raw-to-Turbo pose-control workflow,
-parent-4000/A4300 candidate status, prompt guidance, and commented-only
-showcase placeholders; no assets were created. A redistribution/legal decision
-for the Human-Art-derived committed imagery remains explicitly pending; do not
-delete or history-rewrite it without approval.
+Review the generated `final_val_benchmark_48.jsonl`; only after it is accepted
+should a separate bounded task integrate its frozen stems with
+`make_evaluation_spec`.
