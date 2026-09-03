@@ -1,0 +1,148 @@
+{
+  "authoritative_export": {
+    "format": "pose_targets_authoritative_v1_jsonl",
+    "path": "/home/ubuntu/krea2-pose-controlnet/data/pose_targets_authoritative_v1.jsonl",
+    "record_count": 15240,
+    "schema_version": 1,
+    "sha256": "6d4469ba8118f78d6bc7f99f59136ac6699d3bcec4bf89165b7ae82dabed4b4f"
+  },
+  "authoritative_source_pose_export": {
+    "path": "/home/ubuntu/krea2-pose-controlnet/data/pose_targets_authoritative_v1.jsonl",
+    "sha256": "6d4469ba8118f78d6bc7f99f59136ac6699d3bcec4bf89165b7ae82dabed4b4f"
+  },
+  "coverage": {
+    "sources": {
+      "coco": {
+        "available": 16,
+        "available_percent": 100.0,
+        "total": 16,
+        "unavailable": 0,
+        "unavailable_percent": 0.0
+      },
+      "humanart_painting": {
+        "available": 12,
+        "available_percent": 100.0,
+        "total": 12,
+        "unavailable": 0,
+        "unavailable_percent": 0.0
+      },
+      "humanart_real_human": {
+        "available": 12,
+        "available_percent": 100.0,
+        "total": 12,
+        "unavailable": 0,
+        "unavailable_percent": 0.0
+      },
+      "humanart_sculpture": {
+        "available": 8,
+        "available_percent": 100.0,
+        "total": 8,
+        "unavailable": 0,
+        "unavailable_percent": 0.0
+      }
+    },
+    "total": {
+      "available": 48,
+      "available_percent": 100.0,
+      "total": 48,
+      "unavailable": 0,
+      "unavailable_percent": 0.0
+    }
+  },
+  "diagnostic_coverage": {
+    "expected_annotated_stems": 21,
+    "status": "NOT_APPLICABLE_PARTIAL_GEOMETRY"
+  },
+  "expected_counts": {
+    "coco": 16,
+    "humanart_painting": 12,
+    "humanart_real_human": 12,
+    "humanart_sculpture": 8
+  },
+  "frozen_selection": {
+    "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48.jsonl",
+    "record_count": 48,
+    "sha256": "23d448d573a2ffd20adfd73fa88f34ebc08df280a051cb0931d9ecdcc1231ceb"
+  },
+  "frozen_spec": {
+    "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/final-val-benchmark-selection/final_val_benchmark_spec.json",
+    "sha256": "93a5254e57fa208263f6188573e0760ffedd954bf3b3b3425109ea0178957cd0"
+  },
+  "frozen_stems": [
+    "coco_103163_crowd",
+    "coco_104715_474045",
+    "coco_125590_434183",
+    "coco_161602_425434",
+    "coco_253969_crowd",
+    "coco_268556_2203816",
+    "coco_290558_421102",
+    "coco_338108_crowd",
+    "coco_355256_1220058",
+    "coco_374270_crowd",
+    "coco_491215_1246517",
+    "coco_49731_461706",
+    "coco_510864_1738324",
+    "coco_540614_498912",
+    "coco_571029_crowd",
+    "coco_99798_2204748",
+    "painting_humanart_10000000000154",
+    "painting_humanart_10000000000223",
+    "painting_humanart_10000000000300",
+    "painting_humanart_10000000004967",
+    "painting_humanart_1000000001291",
+    "painting_humanart_1000000004026",
+    "painting_humanart_2000000003095",
+    "painting_humanart_6000000002659",
+    "painting_humanart_6000000002700",
+    "painting_humanart_6000000003190",
+    "painting_humanart_9000000000787",
+    "painting_humanart_9000000001054",
+    "real_human_humanart_15000000000477",
+    "real_human_humanart_15000000000521",
+    "real_human_humanart_15000000000930",
+    "real_human_humanart_15000000001808",
+    "real_human_humanart_15000000001893",
+    "real_human_humanart_17000000000140",
+    "real_human_humanart_17000000000265",
+    "real_human_humanart_17000000001263",
+    "real_human_humanart_17000000001269",
+    "real_human_humanart_17000000001322",
+    "real_human_humanart_17000000002178",
+    "real_human_humanart_17000000002207",
+    "sculpture_humanart_14000000000022",
+    "sculpture_humanart_14000000000288",
+    "sculpture_humanart_14000000000561",
+    "sculpture_humanart_14000000003693",
+    "sculpture_humanart_14000000003768",
+    "sculpture_humanart_14000000003803",
+    "sculpture_humanart_14000000004376",
+    "sculpture_humanart_14000000004558"
+  ],
+  "inactive_authoritative_records": 15192,
+  "read_only": true,
+  "record_count": 48,
+  "records": 48,
+  "records_file": "records.jsonl",
+  "records_sha256": "3cc4defc282cb11e956ec06517eff4e8369622d4c0b3b567ab2247efb4a499a7",
+  "schema_version": 3,
+  "sidecar_kind": "final_val_benchmark_48_authoritative_pose_targets_v3",
+  "source_oob_contract": {
+    "affected_stems": [],
+    "altered_reviewed_count": 0,
+    "altered_reviewed_events": [],
+    "contract_applicable": false,
+    "events": [],
+    "expected_visible_source_oob_joint_count": 0,
+    "missing_reviewed_count": 0,
+    "missing_reviewed_events": [],
+    "policy": {
+      "policy_version": "humanart_original_source_oob_v1",
+      "rationale": "Verified original Human-Art numerical annotation defects; raw values are retained for historical raster reconstruction.",
+      "scope": "active authoritative export only"
+    },
+    "status": "PASS",
+    "unexpected_count": 0,
+    "unexpected_events": [],
+    "visible_source_oob_joint_count": 0
+  }
+}
