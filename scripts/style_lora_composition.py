@@ -31,13 +31,52 @@ from scripts import final_val_turbo_benchmark as final_val
 from scripts import prompting_guide_study as guide
 
 
-SPEC_FILE = Path("docs/evaluation/style-lora-composition/style_lora_composition_v1.jsonl")
-SPEC_SHA256 = "cf3ac68a5500b5ab2938349b8eb74db1a6f711c9ee7f49c97e629beeccab52cb"
-KIND = "isolated_turbo_pose_lora_plus_single_style_lora_v1"
+class ExperimentSpec:
+    """A frozen composition-spec identity; v1 remains a historical control."""
+
+    def __init__(self, experiment_id: str, path: Path, sha256_digest: str, kind: str, trigger_correct: bool) -> None:
+        self.experiment_id = experiment_id
+        self.path = path
+        self.sha256 = sha256_digest
+        self.kind = kind
+        self.trigger_correct = trigger_correct
+
+
+EXPERIMENTS = {
+    "v1": ExperimentSpec(
+        "v1", Path("docs/evaluation/style-lora-composition/style_lora_composition_v1.jsonl"),
+        "cf3ac68a5500b5ab2938349b8eb74db1a6f711c9ee7f49c97e629beeccab52cb",
+        "isolated_turbo_pose_lora_plus_single_style_lora_v1", False,
+    ),
+    "v2-triggers": ExperimentSpec(
+        "v2-triggers", Path("docs/evaluation/style-lora-composition/style_lora_composition_v2_triggers.jsonl"),
+        "89916989cdf8bc083cf868793647cf7239313ed7e8cc4badabb44eb40a13736d",
+        "isolated_turbo_pose_lora_plus_single_style_lora_v2_triggers", True,
+    ),
+}
+DEFAULT_EXPERIMENT = "v1"
+# Compatibility aliases for callers and the historical v1 test contract.
+SPEC_FILE = EXPERIMENTS[DEFAULT_EXPERIMENT].path
+SPEC_SHA256 = EXPERIMENTS[DEFAULT_EXPERIMENT].sha256
+KIND = EXPERIMENTS[DEFAULT_EXPERIMENT].kind
 POSE_CANDIDATE = "mix-025"
 STYLE_ORDER = ("pose-only", "darkbrush", "rainywindow", "retroanime", "realism")
 EXPECTED_CONDITIONS = ("simple_single", "dynamic_airborne", "inversion", "multi_person")
 NATIVE_GEOMETRY = "native_aspect_preserving_cached_latent_bucket"
+V2_TRIGGER_PHRASES = {
+    "pose-only": "",
+    "darkbrush": "monochrome ink wash style",
+    "rainywindow": "rainy window style",
+    "retroanime": "Purple retro anime style",
+    "realism": "",
+}
+
+
+def _experiment(experiment_id: str) -> ExperimentSpec:
+    try:
+        return EXPERIMENTS[experiment_id]
+    except KeyError:
+        raise ValueError(f"Unknown frozen Style-LoRA composition experiment: {experiment_id}") from None
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -97,9 +136,11 @@ def _validate_or_write_provenance(output: Path, provenance: Mapping[str, Any]) -
     return canonical
 
 
-def load_rows(path: str | Path = SPEC_FILE) -> list[dict[str, Any]]:
-    source = Path(path)
-    if sha256(source) != SPEC_SHA256:
+def load_rows(experiment_id: str = DEFAULT_EXPERIMENT) -> list[dict[str, Any]]:
+    """Load only a named, pinned experiment; arbitrary prompt files are forbidden."""
+    experiment = _experiment(experiment_id)
+    source = experiment.path
+    if sha256(source) != experiment.sha256:
         raise ValueError(f"Frozen Style-LoRA composition spec SHA-256 mismatch: {source}")
     try:
         rows = [json.loads(line) for line in source.read_text(encoding="utf-8").splitlines()]
@@ -107,19 +148,42 @@ def load_rows(path: str | Path = SPEC_FILE) -> list[dict[str, Any]]:
         raise FileNotFoundError(f"Frozen Style-LoRA composition spec is missing: {source}") from None
     except json.JSONDecodeError as exc:
         raise ValueError(f"Frozen Style-LoRA composition spec contains invalid JSON: {source}") from exc
-    fields = {"condition_id", "stem", "prompt", "style_ids", "style_trigger", "style_hashes"}
+    fields = ({"condition_id", "stem", "prompt", "style_ids", "style_trigger", "style_hashes"}
+              if not experiment.trigger_correct else
+              {"condition_id", "stem", "semantic_base_prompt", "style_ids", "style_triggers", "style_hashes"})
     if len(rows) != 4 or any(not isinstance(row, dict) or set(row) != fields for row in rows):
         raise ValueError("Style-LoRA composition spec must contain exactly four exact-schema rows")
     if tuple(row["condition_id"] for row in rows) != EXPECTED_CONDITIONS:
         raise ValueError("Style-LoRA composition spec condition order drifted")
     stems = [row["stem"] for row in rows]
-    if len(stems) != len(set(stems)) or any(not isinstance(row["prompt"], str) or not row["prompt"].strip() for row in rows):
+    prompt_key = "semantic_base_prompt" if experiment.trigger_correct else "prompt"
+    if len(stems) != len(set(stems)) or any(not isinstance(row[prompt_key], str) or not row[prompt_key].strip() for row in rows):
         raise ValueError("Style-LoRA composition spec has duplicate stems or empty prompts")
     expected_hashes = {style: spec["sha256"] for style, spec in STYLE_LORA_SPECS.items()}
     for row in rows:
-        if tuple(row["style_ids"]) != STYLE_ORDER or row["style_trigger"] != "" or row["style_hashes"] != expected_hashes:
+        triggers = row["style_triggers"] if experiment.trigger_correct else {style: row["style_trigger"] for style in STYLE_ORDER}
+        expected_triggers = V2_TRIGGER_PHRASES if experiment.trigger_correct else {style: "" for style in STYLE_ORDER}
+        if tuple(row["style_ids"]) != STYLE_ORDER or triggers != expected_triggers or row["style_hashes"] != expected_hashes:
             raise ValueError("Style-LoRA composition spec has unsupported variants, trigger wording, or hashes")
     return rows
+
+
+def _prompt_parts(row: Mapping[str, Any], style: str, experiment: ExperimentSpec) -> dict[str, str]:
+    """Build the only prompt allowed for a matrix cell, without style expansion."""
+    if style not in STYLE_ORDER:
+        raise ValueError(f"Unsupported Style-LoRA composition variant: {style}")
+    semantic_base_prompt = str(row["semantic_base_prompt"] if experiment.trigger_correct else row["prompt"])
+    trigger_phrase = str(row["style_triggers"][style] if experiment.trigger_correct else "")
+    effective_prompt = semantic_base_prompt if not trigger_phrase else f"{semantic_base_prompt}, {trigger_phrase}"
+    return {"semantic_base_prompt": semantic_base_prompt, "trigger_phrase": trigger_phrase,
+            "effective_prompt": effective_prompt}
+
+
+def _prompt_provenance(rows: list[dict[str, Any]], variants: tuple[str, ...], experiment: ExperimentSpec) -> list[dict[str, Any]]:
+    """Explicitly freeze each base/trigger/effective prompt triplet for v2."""
+    return [{"condition_id": row["condition_id"], "stem": row["stem"], "variants": [
+        {"style_id": style, **_prompt_parts(row, style, experiment)} for style in variants
+    ]} for row in rows]
 
 
 def _audits() -> dict[str, dict[str, Any]]:
@@ -184,13 +248,14 @@ def _immutable_style_loras(audits: Mapping[str, Mapping[str, Any]]) -> dict[str,
 def _immutable_provenance(*, rows: list[dict[str, Any]], variants: tuple[str, ...], seed_by_stem: Mapping[str, int],
                           control_hashes: Mapping[str, str], bucket_by_stem: Mapping[str, list[int]],
                           style_strength: float, audits: Mapping[str, Mapping[str, Any]], final_digest: str,
-                          candidate: Mapping[str, Any], checkpoint: Path | None) -> dict[str, Any]:
+                          candidate: Mapping[str, Any], checkpoint: Path | None,
+                          experiment: ExperimentSpec) -> dict[str, Any]:
     if not math.isfinite(style_strength):
         raise ValueError(f"Style strength must be finite, got {style_strength!r}")
-    return _canonical_json({
-        "kind": KIND,
+    provenance = {
+        "kind": experiment.kind,
         "candidate": POSE_CANDIDATE,
-        "frozen_spec": {"sha256": SPEC_SHA256, "record_count": len(rows)},
+        "frozen_spec": {"sha256": experiment.sha256, "record_count": len(rows)},
         "conditions": rows,
         "variants": list(variants),
         "sampling_seeds": dict(seed_by_stem),
@@ -203,7 +268,13 @@ def _immutable_provenance(*, rows: list[dict[str, Any]], variants: tuple[str, ..
         "final_val_spec_sha256": final_digest,
         "source_rgb_fallback_permitted": False,
         **_immutable_candidate_contract(candidate, checkpoint),
-    })
+    }
+    # Keep historical v1 provenance byte-for-byte semantically compatible.
+    # v2's separate prompt plan makes trigger spelling/order part of its identity.
+    if experiment.trigger_correct:
+        provenance.update({"experiment_id": experiment.experiment_id,
+                           "prompt_construction": _prompt_provenance(rows, variants, experiment)})
+    return _canonical_json(provenance)
 
 
 def _validate_runtime() -> None:
@@ -212,7 +283,7 @@ def _validate_runtime() -> None:
         raise ValueError("Style-LoRA composition violates native/aspect-preserving geometry")
 
 
-def _inputs(args: argparse.Namespace, rows: list[dict[str, Any]]) -> tuple[dict[str, Any], PreparedLatentShardDataset, dict[str, Path], dict[str, Any], Path | None, dict[str, Any], Path, dict[str, dict[str, Any]]]:
+def _inputs(args: argparse.Namespace, rows: list[dict[str, Any]], experiment: ExperimentSpec) -> tuple[dict[str, Any], PreparedLatentShardDataset, dict[str, Path], dict[str, Any], Path | None, dict[str, Any], Path, dict[str, dict[str, Any]]]:
     _validate_runtime()
     output = Path(args.output_root)
     audits = _audits()
@@ -240,7 +311,7 @@ def _inputs(args: argparse.Namespace, rows: list[dict[str, Any]]) -> tuple[dict[
     contract = _immutable_provenance(
         rows=rows, variants=variants, seed_by_stem=seed_by_stem, control_hashes=control_hashes,
         bucket_by_stem=bucket_by_stem, style_strength=float(args.style_strength), audits=audits,
-        final_digest=final_digest, candidate=candidate, checkpoint=checkpoint,
+        final_digest=final_digest, candidate=candidate, checkpoint=checkpoint, experiment=experiment,
     )
     _validate_or_write_provenance(output, contract)
     return contract, dataset, controls, candidate, checkpoint, training, output, audits
@@ -262,12 +333,17 @@ def _copy_control(source: Path, target: Path) -> None:
         target.write_bytes(source.read_bytes())
 
 
-def _metadata(row: Mapping[str, Any], style: str, contract: Mapping[str, Any], control: Path) -> dict[str, Any]:
-    result = {"condition_id": row["condition_id"], "stem": row["stem"], "prompt": row["prompt"],
+def _metadata(row: Mapping[str, Any], style: str, contract: Mapping[str, Any], control: Path,
+              experiment: ExperimentSpec = EXPERIMENTS[DEFAULT_EXPERIMENT]) -> dict[str, Any]:
+    prompt = _prompt_parts(row, style, experiment)
+    # v1's completed no-trigger sanity artifacts retain their original metadata
+    # schema and semantics.  v2 records the three prompt components separately.
+    prompt_metadata = ({"prompt": prompt["effective_prompt"], "style_trigger": ""} if not experiment.trigger_correct else prompt)
+    result = {"condition_id": row["condition_id"], "stem": row["stem"], **prompt_metadata,
               "style_id": style, "style_strength": contract["style_strength"] if style != "pose-only" else 0.0,
-              "style_trigger": row["style_trigger"], "seed": contract["sampling_seeds"][row["stem"]],
+              "seed": contract["sampling_seeds"][row["stem"]],
               "control_path": str(control), "control_sha256": contract["control_sha256"][row["stem"]], "bucket": contract["buckets"][row["stem"]],
-              "geometry": NATIVE_GEOMETRY, "frozen_spec_sha256": SPEC_SHA256, "candidate": POSE_CANDIDATE,
+              "geometry": NATIVE_GEOMETRY, "frozen_spec_sha256": experiment.sha256, "candidate": POSE_CANDIDATE,
               "source_rgb_fallback_used": False, **contract["turbo"],
               **{key: contract[key] for key in ("candidate_kind", "checkpoint_step", "checkpoint_interpolation", "checkpoint_sha256") if key in contract}}
     if style != "pose-only":
@@ -277,7 +353,7 @@ def _metadata(row: Mapping[str, Any], style: str, contract: Mapping[str, Any], c
     return result
 
 
-def _generation_status(output: Path, rows: list[dict[str, Any]], contract: Mapping[str, Any]) -> str:
+def _generation_status(output: Path, rows: list[dict[str, Any]], contract: Mapping[str, Any], experiment: ExperimentSpec) -> str:
     payload_path = output / "generation_results.json"; payload = _read_json(payload_path) if payload_path.exists() else None
     observed, recorded = [], []
     for row in rows:
@@ -289,7 +365,7 @@ def _generation_status(output: Path, rows: list[dict[str, Any]], contract: Mappi
                     with Image.open(image) as opened: opened.verify()
                     with Image.open(control) as opened: opened.verify()
                     metadata = _read_json(metadata_path)
-                    expected = _metadata(row, style, contract, control)
+                    expected = _metadata(row, style, contract, control, experiment)
                     if metadata != expected:
                         raise ValueError("generation metadata contract mismatch")
                 except Exception as exc:
@@ -310,8 +386,9 @@ def _generation_status(output: Path, rows: list[dict[str, Any]], contract: Mappi
 
 
 def audit(args: argparse.Namespace) -> None:
-    rows = load_rows(args.prompt_file)
-    contract, _, _, _, _, _, output, audits = _inputs(args, rows)
+    experiment = _experiment(args.experiment)
+    rows = load_rows(experiment.experiment_id)
+    contract, _, _, _, _, _, output, audits = _inputs(args, rows, experiment)
     _write_audits(output, audits)
     _write(output / "style_lora_audit_summary.json", _stage_payload(
         contract, style_lora_audit_details=audits, variants_if_preflight_passes=list(_variants(audits)), rows=len(rows),
@@ -320,8 +397,9 @@ def audit(args: argparse.Namespace) -> None:
 
 
 def preflight(args: argparse.Namespace) -> None:
-    rows = load_rows(args.prompt_file)
-    contract, dataset, controls, _, _, training, output, _ = _inputs(args, rows)
+    experiment = _experiment(args.experiment)
+    rows = load_rows(experiment.experiment_id)
+    contract, dataset, controls, _, _, training, output, _ = _inputs(args, rows, experiment)
     _write(output / "checkpoint_preflight.json", _stage_payload(
         contract, dataset_sample_count=len(dataset), control_paths_resolved={stem: str(path) for stem, path in controls.items()},
         training_metadata=training, generation_count=len(rows) * len(contract["variants"]),
@@ -333,9 +411,10 @@ def preflight(args: argparse.Namespace) -> None:
 def generate(args: argparse.Namespace) -> None:
     if not torch.cuda.is_available():
         raise RuntimeError("Run Style-LoRA generation from the GH200 host shell with CUDA visible")
-    rows = load_rows(args.prompt_file)
-    contract, dataset, controls, candidate, checkpoint, training, output, audits = _inputs(args, rows)
-    if _generation_status(output, rows, contract) == "complete":
+    experiment = _experiment(args.experiment)
+    rows = load_rows(experiment.experiment_id)
+    contract, dataset, controls, candidate, checkpoint, training, output, audits = _inputs(args, rows, experiment)
+    if _generation_status(output, rows, contract, experiment) == "complete":
         print(json.dumps({"already_complete": POSE_CANDIDATE, "generation_count": len(rows) * len(contract["variants"])})); return
     model = final_val.build_turbo_pose_model(args.turbo_ckpt, 64, 64, "cuda").eval()
     trainable = final_val.candidate_trainable_state(candidate, checkpoint)
@@ -347,14 +426,15 @@ def generate(args: argparse.Namespace) -> None:
     for row in rows:
         sample = dict(_sample_by_stem(dataset, row["stem"])); bucket = [sample["latent"].shape[-1] * 8, sample["latent"].shape[-2] * 8]
         control_output = output / "controls" / f"{row['stem']}.png"; _copy_control(controls[row["stem"]], control_output)
-        context, mask = guide._conditioning(conditioner, row["prompt"], sample)
-        generated_sample = dict(sample, prompt=row["prompt"], context=context, mask=mask)
         for style in contract["variants"]:
-            directory = _directory(output, row["stem"]); metadata = _metadata(row, style, contract, control_output)
+            directory = _directory(output, row["stem"]); metadata = _metadata(row, style, contract, control_output, experiment)
             metadata_path = directory / f"{style}.json"
             if metadata_path.exists() and _read_json(metadata_path) != metadata:
                 raise ValueError(f"Existing Style-LoRA metadata conflicts with frozen contract: {metadata_path}")
             if not metadata_path.exists(): _write(metadata_path, metadata)
+            effective_prompt = metadata["effective_prompt"] if experiment.trigger_correct else metadata["prompt"]
+            context, mask = guide._conditioning(conditioner, effective_prompt, sample)
+            generated_sample = dict(sample, prompt=effective_prompt, context=context, mask=mask)
             if style == "pose-only":
                 pixels = sample_turbo_pose_image(model, lambda latent: decode_normalized_latents(vae, latent), generated_sample, torch.device("cuda"), metadata["seed"], control_scale=1.0)
             else:
@@ -400,9 +480,10 @@ def _score_records(payload: Mapping[str, Any], rows: list[dict[str, Any]], varia
 
 
 def score(args: argparse.Namespace) -> None:
-    rows = load_rows(args.prompt_file)
-    contract, dataset, _, _, _, _, output, _ = _inputs(args, rows)
-    if _generation_status(output, rows, contract) != "complete":
+    experiment = _experiment(args.experiment)
+    rows = load_rows(experiment.experiment_id)
+    contract, dataset, _, _, _, _, output, _ = _inputs(args, rows, experiment)
+    if _generation_status(output, rows, contract, experiment) != "complete":
         raise FileNotFoundError("Style-LoRA scoring requires the complete validated generation matrix")
     if not args.reference_sidecar:
         raise ValueError("Style-LoRA PCK requires the authoritative final-val --reference-sidecar")
@@ -424,8 +505,10 @@ def score(args: argparse.Namespace) -> None:
             image = _directory(output, row["stem"]) / _image_name(style)
             result = score_authoritative_pck(sidecar={"records": [by_stem[row["stem"]]]}, geometry_by_stem={row["stem"]: geometry[row["stem"]]}, image_for=lambda _: image, detector=detector, confidence_threshold=.5, require_images=True)
             pck = result["per_image"][0] if result["per_image"] else {"stem": row["stem"], "reference_available": False, "reason": result["unavailable"][0]["reason"]}
-            records.append({"condition_id": row["condition_id"], "stem": row["stem"], "style_id": style, "prompt": row["prompt"], "seed": contract["sampling_seeds"][row["stem"]],
-                            "image": str(image.relative_to(output)), "pck": pck, "clip_cosine_similarity": _clip_score(clip, processor, device, row["prompt"], image)})
+            prompt = _prompt_parts(row, style, experiment)
+            prompt_record = prompt if experiment.trigger_correct else {"prompt": prompt["effective_prompt"]}
+            records.append({"condition_id": row["condition_id"], "stem": row["stem"], "style_id": style, **prompt_record, "seed": contract["sampling_seeds"][row["stem"]],
+                            "image": str(image.relative_to(output)), "pck": pck, "clip_cosine_similarity": _clip_score(clip, processor, device, prompt["effective_prompt"], image)})
     _write(score_path, _stage_payload(
         contract, scoring_provenance=score_provenance, reference_sidecar=str(Path(args.reference_sidecar).resolve()),
         per_generation=records,
@@ -457,9 +540,10 @@ def _validated_scores(output: Path, contract: Mapping[str, Any], rows: list[dict
 
 
 def report(args: argparse.Namespace) -> None:
-    rows = load_rows(args.prompt_file)
-    contract, _, _, _, _, training, output, _ = _inputs(args, rows)
-    if _generation_status(output, rows, contract) != "complete":
+    experiment = _experiment(args.experiment)
+    rows = load_rows(experiment.experiment_id)
+    contract, _, _, _, _, training, output, _ = _inputs(args, rows, experiment)
+    if _generation_status(output, rows, contract, experiment) != "complete":
         raise FileNotFoundError("Style-LoRA report requires the complete validated generation matrix")
     records = _validated_scores(output, contract, rows)
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -485,9 +569,10 @@ def report(args: argparse.Namespace) -> None:
 
 
 def summary(args: argparse.Namespace) -> None:
-    rows = load_rows(args.prompt_file)
-    contract, _, _, _, _, _, output, _ = _inputs(args, rows)
-    if _generation_status(output, rows, contract) != "complete":
+    experiment = _experiment(args.experiment)
+    rows = load_rows(experiment.experiment_id)
+    contract, _, _, _, _, _, output, _ = _inputs(args, rows, experiment)
+    if _generation_status(output, rows, contract, experiment) != "complete":
         raise FileNotFoundError("Style-LoRA summary requires the complete validated generation matrix")
     records = _validated_scores(output, contract, rows)
     print(json.dumps({"candidate": POSE_CANDIDATE, "style_strength": contract["style_strength"], "generation_count": len(records),
@@ -500,7 +585,8 @@ def parser() -> argparse.ArgumentParser:
     parser.add_argument("--candidate", choices=(POSE_CANDIDATE,), default=POSE_CANDIDATE)
     parser.add_argument("--output-root", required=True)
     parser.add_argument("--style-strength", type=float, default=1.0)
-    parser.add_argument("--prompt-file", default=str(SPEC_FILE))
+    parser.add_argument("--experiment", choices=tuple(EXPERIMENTS), default=DEFAULT_EXPERIMENT,
+                        help="Named immutable spec; use v2-triggers for the trigger-corrected matrix.")
     parser.add_argument("--final-spec", default=str(final_val.FINAL_SPEC))
     parser.add_argument("--latent-root", default="/lambda/nfs/adhit/krea2-pose/posebridge_latents")
     parser.add_argument("--text-conditioning-root", default="/lambda/nfs/adhit/krea2-pose/text_conditioning")

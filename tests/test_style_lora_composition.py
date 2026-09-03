@@ -118,6 +118,49 @@ class StyleLoRACompositionContractTest(unittest.TestCase):
                 self.assertTrue(all(required <= set(entry) for entry in metadata))
                 self.assertIn("style_lora", metadata[1])
 
+    def test_v2_trigger_prompts_are_exact_deterministic_and_preserve_semantics(self):
+        v1_rows = composition.load_rows("v1")
+        v2_rows = composition.load_rows("v2-triggers")
+        v2 = composition.EXPERIMENTS["v2-triggers"]
+        self.assertEqual(sha256(v2.path), v2.sha256)
+        self.assertEqual(len(v1_rows), len(v2_rows))
+        self.assertEqual([row["condition_id"] for row in v1_rows], [row["condition_id"] for row in v2_rows])
+        self.assertEqual([row["stem"] for row in v1_rows], [row["stem"] for row in v2_rows])
+        prompt_provenance = composition._prompt_provenance(v2_rows, composition.STYLE_ORDER, v2)
+        self.assertEqual([entry["stem"] for entry in prompt_provenance], [row["stem"] for row in v2_rows])
+        for v1_row, row in zip(v1_rows, v2_rows):
+            with self.subTest(condition=row["condition_id"]):
+                self.assertEqual(row["semantic_base_prompt"], v1_row["prompt"])
+                parts = {style: composition._prompt_parts(row, style, v2) for style in composition.STYLE_ORDER}
+                self.assertEqual({part["semantic_base_prompt"] for part in parts.values()}, {row["semantic_base_prompt"]})
+                provenance_parts = {entry["style_id"]: entry for entry in next(
+                    entry for entry in prompt_provenance if entry["stem"] == row["stem"]
+                )["variants"]}
+                self.assertEqual(provenance_parts, {style: {"style_id": style, **part} for style, part in parts.items()})
+                self.assertEqual(parts["pose-only"]["trigger_phrase"], "")
+                self.assertEqual(parts["realism"]["trigger_phrase"], "")
+                self.assertEqual(parts["pose-only"]["effective_prompt"], row["semantic_base_prompt"])
+                self.assertEqual(parts["realism"]["effective_prompt"], row["semantic_base_prompt"])
+                for style, phrase in (("darkbrush", "monochrome ink wash style"),
+                                      ("rainywindow", "rainy window style"),
+                                      ("retroanime", "Purple retro anime style")):
+                    self.assertEqual(parts[style]["trigger_phrase"], phrase)
+                    self.assertEqual(parts[style]["effective_prompt"], f"{row['semantic_base_prompt']}, {phrase}")
+                    self.assertEqual(parts[style], composition._prompt_parts(row, style, v2))
+
+    def test_v1_and_v2_cannot_share_immutable_provenance_or_output_identity(self):
+        v1, v2 = composition.EXPERIMENTS["v1"], composition.EXPERIMENTS["v2-triggers"]
+        self.assertNotEqual((v1.kind, v1.sha256), (v2.kind, v2.sha256))
+        v1_identity = composition._canonical_json({"kind": v1.kind, "frozen_spec": {"sha256": v1.sha256}, "experiment_id": v1.experiment_id})
+        v2_identity = composition._canonical_json({"kind": v2.kind, "frozen_spec": {"sha256": v2.sha256}, "experiment_id": v2.experiment_id,
+                                                    "prompt_construction": composition._prompt_provenance(composition.load_rows("v2-triggers"), composition.STYLE_ORDER, v2)})
+        self.assertNotEqual(v1_identity, v2_identity)
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            composition._validate_or_write_provenance(output, v1_identity)
+            with self.assertRaisesRegex(ValueError, "conflicting immutable Style-LoRA provenance"):
+                composition._validate_or_write_provenance(output, v2_identity)
+
     def test_staged_immutable_provenance_lifecycle_and_drift_fail_closed(self):
         """Audit/preflight/generate share identity; stage output never alters it."""
         provenance = composition._canonical_json({
