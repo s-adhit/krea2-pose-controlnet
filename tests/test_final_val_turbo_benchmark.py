@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import torch
 from PIL import Image
@@ -60,6 +61,48 @@ class FinalValTurboBenchmarkTest(unittest.TestCase):
                 evaluator.load_final_spec(path, expected_sha256=None)
         with self.assertRaisesRegex(ValueError, "supports only"):
             evaluator.candidate_checkpoint("turbo-base")
+
+    def test_candidate_checkpoint_keeps_gate_e_validation_when_metadata_is_present(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            checkpoint = Path(temporary) / "step_000123.pt"; checkpoint.write_bytes(b"metadata-present")
+            candidates = {"candidate": {
+                "checkpoint_root": temporary, "step": 123, "label": "candidate",
+                "sha256": hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
+                "production_provenance": {"format": 1, "run_name": "unused", "max_steps": 123},
+            }}
+            state = {"global_step": 123, "gate_e": {"present": True}, "config": {}}
+            with patch.object(evaluator, "CANDIDATES", candidates), \
+                 patch.object(evaluator, "load_training_state", return_value=state), \
+                 patch.object(evaluator, "controlled_branch_metadata", return_value={"validation": "gate_e"}) as controlled:
+                _, resolved, metadata = evaluator.candidate_checkpoint("candidate")
+            self.assertEqual(resolved, checkpoint)
+            self.assertEqual(metadata, {"validation": "gate_e"})
+            controlled.assert_called_once_with([(123, checkpoint)])
+
+    def test_candidate_checkpoint_accepts_only_pinned_legacy_production_metadata(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            checkpoint = Path(temporary) / "step_000123.pt"; checkpoint.write_bytes(b"legacy-metadata-absent")
+            provenance = {"format": 1, "run_name": "trusted-run", "max_steps": 456}
+            candidates = {"candidate": {
+                "checkpoint_root": temporary, "step": 123, "label": "candidate",
+                "sha256": hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
+                "production_provenance": provenance,
+            }}
+            state = {"global_step": 123, "config": {}, "production_pose_control": {
+                **provenance, "current_step": 123,
+            }}
+            with patch.object(evaluator, "CANDIDATES", candidates), \
+                 patch.object(evaluator, "load_training_state", return_value=state), \
+                 patch.object(evaluator, "controlled_branch_metadata", side_effect=AssertionError("legacy checkpoint must not require gate_e")):
+                _, _, metadata = evaluator.candidate_checkpoint("candidate")
+            self.assertEqual(metadata["validation"], "pinned_final_val_legacy_production_metadata")
+            self.assertEqual(metadata["checkpoint_sha256"], candidates["candidate"]["sha256"])
+
+            state["production_pose_control"]["run_name"] = "wrong-run"
+            with patch.object(evaluator, "CANDIDATES", candidates), \
+                 patch.object(evaluator, "load_training_state", return_value=state):
+                with self.assertRaisesRegex(ValueError, "compatible production provenance"):
+                    evaluator.candidate_checkpoint("candidate")
 
     def test_final_sidecar_requires_exact_frozen_order_and_non_diagnostic_sources(self):
         with tempfile.TemporaryDirectory() as temporary:

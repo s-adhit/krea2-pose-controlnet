@@ -2,59 +2,60 @@
 
 ## Current objective
 
-The frozen final-val 48-item Turbo benchmark now has its canonical immutable
-authoritative v3 pose-reference sidecar. No image generation, training,
-network operation, commit, or push occurred. Historical 24-item diagnostic
-scoring remains unchanged.
+The final-val Turbo evaluator is ready to preflight the two frozen selected
+controlled checkpoints. No checkpoint was modified. No generation, training,
+network operation, commit, or push occurred.
 
-## Locked final-val pose-reference contract
+## Final-val checkpoint compatibility contract
 
-- Frozen selection: `docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48.jsonl`, SHA-256 `23d448d573a2ffd20adfd73fa88f34ebc08df280a051cb0931d9ecdcc1231ceb`.
-- Frozen spec: `docs/evaluation/final-val-benchmark-selection/final_val_benchmark_spec.json`, SHA-256 `93a5254e57fa208263f6188573e0760ffedd954bf3b3b3425109ea0178957cd0`.
-- Canonical sidecar: `docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48_pose_targets_v3/`.
-  - `records.jsonl` SHA-256 `3cc4defc282cb11e956ec06517eff4e8369622d4c0b3b567ab2247efb4a499a7`; exactly 48 records in frozen order.
-  - `metadata.json` is read-only and binds the selection/spec hashes above and authoritative export `data/pose_targets_authoritative_v1.jsonl`, SHA-256 `6d4469ba8118f78d6bc7f99f59136ac6699d3bcec4bf89165b7ae82dabed4b4f`.
-  - Coverage is 100%: COCO 16, painting 12, real_human 12, sculpture 8. All targets are original annotations.
-- `scripts/build_final_val_pose_sidecar.py` fails closed on frozen-input hash/provenance drift, duplicate/missing latent stems, duplicate authoritatives, unavailable targets, source-size/geometry mismatches, and order mismatch.
-- `pck_records_from_v3` is the narrow source-space representation adapter used only by `scripts/final_val_turbo_benchmark.py`; it does not detect, render, or derive pose annotations. The historical diagnostic sidecar path and historical scorer behavior were not changed.
+- Only `parent-4000` and `finish-control-a4300` are accepted.
+- Each candidate is pinned to its exact absolute root, `step_XXXXXX.pt`
+  filename, embedded `global_step`, and SHA-256:
+  - parent-4000 / step 4000:
+    `0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd`.
+  - finish-control-a4300 / step 4300:
+    `17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff`.
+- `load_training_state` remains the full-training checkpoint schema gate.
+- If `gate_e` is present, the evaluator still uses the unchanged strict
+  `controlled_branch_metadata()` validation used by historical diagnostics.
+- These two legitimate older checkpoints lack `gate_e`; for them only, the
+  evaluator instead verifies their pinned project-owned
+  `production_pose_control` format, run name, maximum step, and current step.
+  This validated provenance is recorded in final-val outputs.
 
 ## Completed / green gates
-
-- Built the canonical v3 final-val sidecar against the actual persisted validation shard geometry.
-- PCK loader validates canonical sidecar kind, frozen stem order, selection/spec provenance, sidecar record SHA, and authoritative-export SHA presence before adapting v3 source points for the existing scorer.
 
 PASS:
 
 ```bash
-PYTHONPATH=. python -m py_compile pose_controlnet/pose_targets.py scripts/build_final_val_pose_sidecar.py scripts/final_val_turbo_benchmark.py
-PYTHONPATH=. python scripts/build_final_val_pose_sidecar.py
-PYTHONPATH=. python -m unittest tests.test_pose_targets tests.test_final_val_turbo_benchmark tests.test_final_val_benchmark_spec -v
-# 25 tests passed
+python -m py_compile scripts/final_val_turbo_benchmark.py tests/test_final_val_turbo_benchmark.py
+python -m unittest tests.test_final_val_turbo_benchmark -v
+# 7 tests passed
 git diff --check
 ```
 
+Focused coverage proves metadata-present checkpoints retain strict historical
+validation, while metadata-absent final-val checkpoints require the pinned
+SHA and production provenance and reject mismatched provenance.
+
 ## Files changed this session
 
-- `pose_controlnet/pose_targets.py`
-- `scripts/build_final_val_pose_sidecar.py`
 - `scripts/final_val_turbo_benchmark.py`
-- `tests/test_pose_targets.py`
 - `tests/test_final_val_turbo_benchmark.py`
-- `docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48_pose_targets_v3/records.jsonl`
-- `docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48_pose_targets_v3/metadata.json`
 - `docs/CODEX_HANDOFF.md`
 
-## Exact score/report commands
+Pre-existing untracked final-val sidecar/build-script work remains untouched.
 
-Run only after the matching 48-image generation set is complete on the GH200 host:
+## Exact next preflight commands
+
+Run from the GH200 host shell only:
 
 ```bash
-uv run python scripts/final_val_turbo_benchmark.py score --candidate parent-4000 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/final-val-turbo/parent-4000 --reference-sidecar docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48_pose_targets_v3
-uv run python scripts/final_val_turbo_benchmark.py report --candidate parent-4000 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/final-val-turbo/parent-4000
-uv run python scripts/final_val_turbo_benchmark.py score --candidate finish-control-a4300 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/final-val-turbo/finish-control-a4300 --reference-sidecar docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48_pose_targets_v3
-uv run python scripts/final_val_turbo_benchmark.py report --candidate finish-control-a4300 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/final-val-turbo/finish-control-a4300
+uv run python scripts/final_val_turbo_benchmark.py preflight --candidate parent-4000 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/final-val-turbo/parent-4000
+uv run python scripts/final_val_turbo_benchmark.py preflight --candidate finish-control-a4300 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/final-val-turbo/finish-control-a4300
 ```
 
-## Exact next task
-
-Run the already-implemented final-val Turbo preflight/generation for the two allowed real controlled checkpoints, then use the score/report commands above. Do not evaluate Turbo base/zero-adapter, interpolate checkpoints, or alter the frozen benchmark contract.
+After both preflights pass, the next bounded task is the already-authorized
+final-val generation/scoring workflow for only those two candidates. Do not
+evaluate Turbo base/zero-adapter, interpolate checkpoints, or alter the
+frozen benchmark contract.

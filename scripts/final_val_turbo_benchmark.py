@@ -44,11 +44,23 @@ CANDIDATES = {
         "checkpoint_root": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000",
         "step": 4000,
         "label": "parent-4000",
+        "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+        "production_provenance": {
+            "format": 1,
+            "run_name": "pose-control-production-cooldown-3000-to5000",
+            "max_steps": 5000,
+        },
     },
     "finish-control-a4300": {
         "checkpoint_root": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500",
         "step": 4300,
         "label": "finish-control-a4300",
+        "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff",
+        "production_provenance": {
+            "format": 1,
+            "run_name": "pose-control-finish-control-4000-to4500",
+            "max_steps": 4500,
+        },
     },
 }
 
@@ -139,7 +151,29 @@ def candidate_checkpoint(candidate: str) -> tuple[dict[str, Any], Path, dict[str
     state = load_training_state(checkpoint)
     if state.get("global_step") != selected["step"]:
         raise ValueError(f"Final-val checkpoint filename/embedded step mismatch: {checkpoint}")
-    metadata = controlled_branch_metadata([(selected["step"], checkpoint)])
+    observed_sha256 = _sha256(checkpoint)
+    if observed_sha256 != selected["sha256"]:
+        raise ValueError(f"Final-val checkpoint SHA-256 mismatch: {checkpoint}")
+    gate = state.get("gate_e")
+    if gate is not None:
+        # Keep the historical diagnostic provenance contract strict whenever a
+        # checkpoint actually carries that schema.
+        metadata = controlled_branch_metadata([(selected["step"], checkpoint)])
+    else:
+        # These two final-val candidates predate gate_e.  Their full-training
+        # state has already been schema-validated by load_training_state; bind
+        # its project-owned production provenance to this exact pinned file.
+        production = state.get("production_pose_control")
+        expected = selected["production_provenance"]
+        if (not isinstance(production, Mapping)
+                or any(production.get(key) != value for key, value in expected.items())
+                or production.get("current_step") != selected["step"]):
+            raise ValueError(f"Final-val checkpoint lacks compatible production provenance: {checkpoint}")
+        metadata = {
+            "validation": "pinned_final_val_legacy_production_metadata",
+            "checkpoint_sha256": observed_sha256,
+            "production_pose_control": production,
+        }
     return selected, checkpoint, metadata
 
 
