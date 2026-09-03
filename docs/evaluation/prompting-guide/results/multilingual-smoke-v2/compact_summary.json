@@ -1,0 +1,92 @@
+{
+  "by_language": {
+    "en": {
+      "clip": {
+        "mean_cosine_similarity": 0.3081476458522796,
+        "median_cosine_similarity": 0.3081476458522796,
+        "sample_count": 1,
+        "std_cosine_similarity": 0.0
+      },
+      "generation_count": 1,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 17,
+        "evaluable_sample_count": 1,
+        "evaluated_joint_count": 17,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 1,
+        "pck_005": 0.8823529411764706,
+        "pck_010": 0.9411764705882353,
+        "pck_020": 1.0,
+        "predicted_people": 1,
+        "rendered_joint_count": 17,
+        "rendered_reference_people": 1,
+        "source_visible_joint_count": 17,
+        "unmatched_predicted_people": 0,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0
+    },
+    "te": {
+      "clip": {
+        "mean_cosine_similarity": 0.22787627654084888,
+        "median_cosine_similarity": 0.22787627654084888,
+        "sample_count": 1,
+        "std_cosine_similarity": 0.0
+      },
+      "generation_count": 1,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 17,
+        "evaluable_sample_count": 1,
+        "evaluated_joint_count": 17,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 1,
+        "pck_005": 0.8235294117647058,
+        "pck_010": 0.8823529411764706,
+        "pck_020": 1.0,
+        "predicted_people": 1,
+        "rendered_joint_count": 17,
+        "rendered_reference_people": 1,
+        "source_visible_joint_count": 17,
+        "unmatched_predicted_people": 0,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0
+    },
+    "zh": {
+      "clip": {
+        "mean_cosine_similarity": 0.23574063163549996,
+        "median_cosine_similarity": 0.23574063163549996,
+        "sample_count": 1,
+        "std_cosine_similarity": 0.0
+      },
+      "generation_count": 1,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 17,
+        "evaluable_sample_count": 1,
+        "evaluated_joint_count": 17,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 1,
+        "pck_005": 0.7647058823529411,
+        "pck_010": 1.0,
+        "pck_020": 1.0,
+        "predicted_people": 1,
+        "rendered_joint_count": 17,
+        "rendered_reference_people": 1,
+        "source_visible_joint_count": 17,
+        "unmatched_predicted_people": 0,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0
+    }
+  },
+  "candidate": "mix-025",
+  "generation_count": 3,
+  "sampling_seed": 8675987726486463627,
+  "stem": "sculpture_humanart_14000000003803"
+}

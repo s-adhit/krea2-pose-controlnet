@@ -1,0 +1,175 @@
+{
+  "bucket": [
+    1024,
+    1024
+  ],
+  "candidate": "mix-025",
+  "candidate_kind": "trainable_tensor_interpolation",
+  "checkpoint_interpolation": {
+    "alpha": 0.25,
+    "candidate_id": "mix-025",
+    "compute_dtype": "float32",
+    "endpoints": [
+      {
+        "candidate": "parent-4000",
+        "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt",
+        "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+        "step": 4000
+      },
+      {
+        "candidate": "finish-control-a4300",
+        "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+        "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff",
+        "step": 4300
+      }
+    ],
+    "formula": "(1 - alpha) * parent-4000 + alpha * finish-control-a4300",
+    "tensor_scope": "state['model'] trainable control/LoRA tensors only"
+  },
+  "checkpoint_step": null,
+  "clip_model": "openai/clip-vit-base-patch32",
+  "confidence_threshold": 0.5,
+  "control_sha256": "80eb64d325b349ed0dc57b82916ecedbc8e350253bd05c14b87d1f333207206a",
+  "final_val_spec_sha256": "93a5254e57fa208263f6188573e0760ffedd954bf3b3b3425109ea0178957cd0",
+  "geometry": "native_aspect_preserving_cached_latent_bucket",
+  "kind": "prompting_guide_english_chinese_telugu_turbo_fixed_pose_v2",
+  "per_generation": [
+    {
+      "clip_cosine_similarity": 0.3081476458522796,
+      "image": "generations/sculpture_humanart_14000000003803/en/mix-025.png",
+      "language": "en",
+      "pck": {
+        "detection_coverage": 1.0,
+        "evaluated_joint_count": 17,
+        "excluded": [],
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "joint_evaluation_covered_count": 17,
+        "matched_people": 1,
+        "pck_005": 0.8823529411764706,
+        "pck_005_correct_count": 15,
+        "pck_010": 0.9411764705882353,
+        "pck_010_correct_count": 16,
+        "pck_020": 1.0,
+        "pck_020_correct_count": 17,
+        "pck_eligible_joint_count": 17,
+        "person_group": "single-person",
+        "predicted_people": 1,
+        "reference_available": true,
+        "reference_people": 1,
+        "rendered_joint_count": 17,
+        "rendered_reference_people": 1,
+        "source": "humanart",
+        "source_visible_joint_count": 17,
+        "stem": "sculpture_humanart_14000000003803",
+        "unmatched_predicted_people": 0,
+        "unmatched_reference_people": 0
+      },
+      "prompt": "A single adult woman wearing a simple cream outfit in a quiet botanical courtyard, soft overcast daylight, natural textures.",
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "clip_cosine_similarity": 0.23574063163549996,
+      "image": "generations/sculpture_humanart_14000000003803/zh/mix-025.png",
+      "language": "zh",
+      "pck": {
+        "detection_coverage": 1.0,
+        "evaluated_joint_count": 17,
+        "excluded": [],
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "joint_evaluation_covered_count": 17,
+        "matched_people": 1,
+        "pck_005": 0.7647058823529411,
+        "pck_005_correct_count": 13,
+        "pck_010": 1.0,
+        "pck_010_correct_count": 17,
+        "pck_020": 1.0,
+        "pck_020_correct_count": 17,
+        "pck_eligible_joint_count": 17,
+        "person_group": "single-person",
+        "predicted_people": 1,
+        "reference_available": true,
+        "reference_people": 1,
+        "rendered_joint_count": 17,
+        "rendered_reference_people": 1,
+        "source": "humanart",
+        "source_visible_joint_count": 17,
+        "stem": "sculpture_humanart_14000000003803",
+        "unmatched_predicted_people": 0,
+        "unmatched_reference_people": 0
+      },
+      "prompt": "一位成年女性，穿着简洁的奶油色服装，身处安静的植物庭院中，柔和的阴天天光，自然真实的材质质感。",
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "clip_cosine_similarity": 0.22787627654084888,
+      "image": "generations/sculpture_humanart_14000000003803/te/mix-025.png",
+      "language": "te",
+      "pck": {
+        "detection_coverage": 1.0,
+        "evaluated_joint_count": 17,
+        "excluded": [],
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "joint_evaluation_covered_count": 17,
+        "matched_people": 1,
+        "pck_005": 0.8235294117647058,
+        "pck_005_correct_count": 14,
+        "pck_010": 0.8823529411764706,
+        "pck_010_correct_count": 15,
+        "pck_020": 1.0,
+        "pck_020_correct_count": 17,
+        "pck_eligible_joint_count": 17,
+        "person_group": "single-person",
+        "predicted_people": 1,
+        "reference_available": true,
+        "reference_people": 1,
+        "rendered_joint_count": 17,
+        "rendered_reference_people": 1,
+        "source": "humanart",
+        "source_visible_joint_count": 17,
+        "stem": "sculpture_humanart_14000000003803",
+        "unmatched_predicted_people": 0,
+        "unmatched_reference_people": 0
+      },
+      "prompt": "ఒక వయోజన మహిళ సరళమైన క్రీమ్ రంగు దుస్తులు ధరించి, నిశ్శబ్దమైన బొటానికల్ ప్రాంగణంలో ఉంది, మృదువైన మేఘావృత దినకాంతి, సహజమైన వాస్తవిక పదార్థాల స్పర్శ.",
+      "stem": "sculpture_humanart_14000000003803"
+    }
+  ],
+  "prompt_file": {
+    "path": "docs/evaluation/prompting-guide/multilingual_prompt_smoke_v2.jsonl",
+    "record_count": 3,
+    "sha256": "bc178f1e6c0559b3bfc92c7d48edbdd2a825e9451eb9d230aed794edaf23d9e5"
+  },
+  "prompt_mapping": [
+    {
+      "language": "en",
+      "prompt": "A single adult woman wearing a simple cream outfit in a quiet botanical courtyard, soft overcast daylight, natural textures.",
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "language": "zh",
+      "prompt": "一位成年女性，穿着简洁的奶油色服装，身处安静的植物庭院中，柔和的阴天天光，自然真实的材质质感。",
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "language": "te",
+      "prompt": "ఒక వయోజన మహిళ సరళమైన క్రీమ్ రంగు దుస్తులు ధరించి, నిశ్శబ్దమైన బొటానికల్ ప్రాంగణంలో ఉంది, మృదువైన మేఘావృత దినకాంతి, సహజమైన వాస్తవిక పదార్థాల స్పర్శ.",
+      "stem": "sculpture_humanart_14000000003803"
+    }
+  ],
+  "reference_sidecar": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48_pose_targets_v3",
+  "reference_sidecar_sha256": "3cc4defc282cb11e956ec06517eff4e8369622d4c0b3b567ab2247efb4a499a7",
+  "sampling_seed": 8675987726486463627,
+  "stem": "sculpture_humanart_14000000003803",
+  "turbo": {
+    "cfg": 0.0,
+    "control_scale": 1.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  }
+}

@@ -1,0 +1,390 @@
+{
+  "bucket": [
+    1024,
+    1024
+  ],
+  "candidate": "mix-025",
+  "candidate_kind": "trainable_tensor_interpolation",
+  "checkpoint_interpolation": {
+    "alpha": 0.25,
+    "candidate_id": "mix-025",
+    "compute_dtype": "float32",
+    "endpoints": [
+      {
+        "candidate": "parent-4000",
+        "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt",
+        "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+        "step": 4000
+      },
+      {
+        "candidate": "finish-control-a4300",
+        "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+        "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff",
+        "step": 4300
+      }
+    ],
+    "formula": "(1 - alpha) * parent-4000 + alpha * finish-control-a4300",
+    "tensor_scope": "state['model'] trainable control/LoRA tensors only"
+  },
+  "checkpoint_step": null,
+  "clip_behavior": "unchanged existing CLIP implementation applied to all three UTF-8 prompts",
+  "comparison": "multilingual_comparison.png",
+  "control_sha256": "80eb64d325b349ed0dc57b82916ecedbc8e350253bd05c14b87d1f333207206a",
+  "final_val_spec_sha256": "93a5254e57fa208263f6188573e0760ffedd954bf3b3b3425109ea0178957cd0",
+  "generation_count": 3,
+  "geometry": "native_aspect_preserving_cached_latent_bucket",
+  "kind": "prompting_guide_english_chinese_telugu_turbo_fixed_pose_v2",
+  "metrics_by_language": "metrics_by_language.json",
+  "prompt_file": {
+    "path": "docs/evaluation/prompting-guide/multilingual_prompt_smoke_v2.jsonl",
+    "record_count": 3,
+    "sha256": "bc178f1e6c0559b3bfc92c7d48edbdd2a825e9451eb9d230aed794edaf23d9e5"
+  },
+  "prompt_mapping": [
+    {
+      "language": "en",
+      "prompt": "A single adult woman wearing a simple cream outfit in a quiet botanical courtyard, soft overcast daylight, natural textures.",
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "language": "zh",
+      "prompt": "一位成年女性，穿着简洁的奶油色服装，身处安静的植物庭院中，柔和的阴天天光，自然真实的材质质感。",
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "language": "te",
+      "prompt": "ఒక వయోజన మహిళ సరళమైన క్రీమ్ రంగు దుస్తులు ధరించి, నిశ్శబ్దమైన బొటానికల్ ప్రాంగణంలో ఉంది, మృదువైన మేఘావృత దినకాంతి, సహజమైన వాస్తవిక పదార్థాల స్పర్శ.",
+      "stem": "sculpture_humanart_14000000003803"
+    }
+  ],
+  "sampling_seed": 8675987726486463627,
+  "score_artifact": "pck_clip_results.json",
+  "source_rgb_fallback_used": false,
+  "stem": "sculpture_humanart_14000000003803",
+  "training_metadata": {
+    "candidate_kind": "trainable_tensor_interpolation",
+    "endpoint_training_metadata": {
+      "finish-control-a4300": {
+        "checkpoint_sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff",
+        "production_pose_control": {
+          "artifact_identity": {
+            "dataset_root": "/lambda/nfs/adhit/krea2-pose/posebridge_hf",
+            "latent_cache": {
+              "cache_contract_sha256": "4a4013cbe0d45e80722e7e8b68440a3c4c43a252e668b65c8ed5b5913b561107",
+              "metadata_sha256": "6effe24c26e955028ca122b219713af5d29b78070fca01aae535de83a5963943",
+              "path": "/lambda/nfs/adhit/krea2-pose/posebridge_latents_768"
+            },
+            "pose_sidecar": {
+              "metadata_sha256": "6c96afdf5ffafca209dc39be4b883b7446e4a4e7a06faebc93e856409d69f968",
+              "path": "/lambda/nfs/adhit/krea2-pose/pose_targets_v3_768",
+              "records_sha256": "2176dfcb6bd841dd83a6deeabb3d03f38b1abb47fe5afed2f4dc4555bccd897e"
+            },
+            "raw_checkpoint": {
+              "path": "/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors",
+              "sha256": "f99bb0ff8e362b77342bc4994e0c50906fe7ef7074864b181b7d48d2fa6d03d7"
+            },
+            "text_conditioning": {
+              "metadata_sha256": "d99420ddc4c7b4f04abcc9e0f873b537d0eb9a636d998310a870b548a94d0b45",
+              "path": "/lambda/nfs/adhit/krea2-pose/text_conditioning",
+              "unconditional_sha256": "de1d31f230dd209cfdd17108d5bfc29b245acedde2823862377c53f82b04279e"
+            },
+            "train_manifest": {
+              "ordered_stems_sha256": "c525304e1ce3d4ec83fb355655be60eea653156b4fdcc5e7bd3cdb6786c1f0e9",
+              "path": "/home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl",
+              "raw_sha256": "0de42b99e40dea0726a9368a92d91ba950349999f2b2c590df85ac91df147542",
+              "records_sha256": "15851dcdecaa9de7aaf52322ef5cffe596b3bd8aab92ce9cd4b9cf044d83ed03"
+            }
+          },
+          "code_git_revision": "c5771ef6235d33c96d79b4b4152a7874fcdaa95a",
+          "continuation": {
+            "branch_type": "finish-control",
+            "continuation_steps": 500,
+            "end_global_step": 4500,
+            "exact_resume": false,
+            "final_lr": 5e-06,
+            "kind": "scientific_continuation",
+            "lr_schedule": {
+              "final": 5e-06,
+              "name": "cosine",
+              "start": 2e-05
+            },
+            "parent_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt",
+            "parent_checkpoint_sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+            "parent_global_step": 4000,
+            "parent_run_name": "pose-control-production-cooldown-3000-to5000",
+            "pose_lambda_schedule": {
+              "final": 0.04,
+              "name": "constant",
+              "start": 0.04
+            },
+            "scheduler": "cosine",
+            "start_lr": 2e-05
+          },
+          "current_step": 4300,
+          "data_position": {
+            "batch_position": 5576,
+            "epoch": 8,
+            "sample_position": 5576
+          },
+          "format": 1,
+          "gradient_accumulation_position": 0,
+          "loader": {
+            "persistent_workers": true,
+            "pin_memory": true,
+            "prefetch_factor": 4,
+            "workers": 4
+          },
+          "max_steps": 4500,
+          "observability": {
+            "hf": {
+              "mirror_every_steps": 100,
+              "repo_id": "adhit-420/Krea-2-PoseControl-LoRA-checkpoints"
+            },
+            "wandb": {
+              "enabled": true,
+              "entity": "adhit-projects",
+              "name": "pose-control-finish-control-4000-to4500",
+              "project": "Krea-2-PoseControl-Lora",
+              "run_id": "lr55nmk8"
+            }
+          },
+          "optimizer": {
+            "betas": [
+              0.9,
+              0.99
+            ],
+            "lr": 0.0001,
+            "name": "AdamW",
+            "weight_decay": 0.0
+          },
+          "pose_cumulative_counters": {
+            "eligible_samples_seen": 119819,
+            "forced_samples": 0,
+            "naturally_active_samples": 1881,
+            "total_active_samples": 1881
+          },
+          "run_name": "pose-control-finish-control-4000-to4500",
+          "scheduler": {
+            "continuation_steps": 500,
+            "final_lr": 5e-06,
+            "name": "CosineContinuation",
+            "parent_step": 4000,
+            "pose_lambda_schedule": {
+              "final": 0.04,
+              "name": "constant",
+              "start": 0.04
+            },
+            "start_lr": 2e-05
+          },
+          "scientific_recipe": {
+            "alpha": 64,
+            "betas": [
+              0.9,
+              0.99
+            ],
+            "caption_dropout": 0.1,
+            "compile": false,
+            "control_dropout": 0.0,
+            "data_loader_workers": 4,
+            "effective_batch_size": 32,
+            "forced_pose_exposure_probability": 0.0,
+            "fused_adamw": false,
+            "gradient_accumulation_steps": 32,
+            "gradient_checkpointing_blocks": 0,
+            "lambda_pose": 0.04,
+            "learning_rate": 0.0001,
+            "max_grad_norm": 1.0,
+            "microbatch_size": 1,
+            "mu_x1": 256.0,
+            "mu_x2": 6400.0,
+            "mu_y1": 0.5,
+            "mu_y2": 1.15,
+            "persistent_workers": true,
+            "pin_memory": true,
+            "pose_loss": "normalized_coordinate_huber",
+            "pose_timestep_max": 0.2,
+            "pose_timestep_min": 0.1,
+            "prefetch_factor": 4,
+            "rank": 64,
+            "resolution_policy": "768",
+            "seed": 42,
+            "timestep_aux_max": 1.0,
+            "timestep_aux_min": 0.0,
+            "timestep_aux_prob": 0.0,
+            "warmup_steps": 200,
+            "weight_decay": 0.0
+          }
+        },
+        "validation": "pinned_final_val_legacy_production_metadata"
+      },
+      "parent-4000": {
+        "checkpoint_sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+        "production_pose_control": {
+          "artifact_identity": {
+            "dataset_root": "/lambda/nfs/adhit/krea2-pose/posebridge_hf",
+            "latent_cache": {
+              "cache_contract_sha256": "4a4013cbe0d45e80722e7e8b68440a3c4c43a252e668b65c8ed5b5913b561107",
+              "metadata_sha256": "6effe24c26e955028ca122b219713af5d29b78070fca01aae535de83a5963943",
+              "path": "/lambda/nfs/adhit/krea2-pose/posebridge_latents_768"
+            },
+            "pose_sidecar": {
+              "metadata_sha256": "6c96afdf5ffafca209dc39be4b883b7446e4a4e7a06faebc93e856409d69f968",
+              "path": "/lambda/nfs/adhit/krea2-pose/pose_targets_v3_768",
+              "records_sha256": "2176dfcb6bd841dd83a6deeabb3d03f38b1abb47fe5afed2f4dc4555bccd897e"
+            },
+            "raw_checkpoint": {
+              "path": "/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors",
+              "sha256": "f99bb0ff8e362b77342bc4994e0c50906fe7ef7074864b181b7d48d2fa6d03d7"
+            },
+            "text_conditioning": {
+              "metadata_sha256": "d99420ddc4c7b4f04abcc9e0f873b537d0eb9a636d998310a870b548a94d0b45",
+              "path": "/lambda/nfs/adhit/krea2-pose/text_conditioning",
+              "unconditional_sha256": "de1d31f230dd209cfdd17108d5bfc29b245acedde2823862377c53f82b04279e"
+            },
+            "train_manifest": {
+              "ordered_stems_sha256": "c525304e1ce3d4ec83fb355655be60eea653156b4fdcc5e7bd3cdb6786c1f0e9",
+              "path": "/home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl",
+              "raw_sha256": "0de42b99e40dea0726a9368a92d91ba950349999f2b2c590df85ac91df147542",
+              "records_sha256": "15851dcdecaa9de7aaf52322ef5cffe596b3bd8aab92ce9cd4b9cf044d83ed03"
+            }
+          },
+          "code_git_revision": "5fe29293065738459a1db04ebd04aa43f4615769",
+          "continuation": {
+            "continuation_steps": 2000,
+            "end_global_step": 5000,
+            "exact_resume": false,
+            "final_lr": 1e-05,
+            "kind": "scientific_continuation",
+            "parent_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-3000/step_003000.pt",
+            "parent_checkpoint_sha256": "78ee5355bee7558456c6ad4381d35fb368675c6ec5aac5b2b5fc4879529f4e4d",
+            "parent_global_step": 3000,
+            "parent_run_name": "pose-control-production-3000",
+            "scheduler": "cosine",
+            "start_lr": 0.0001
+          },
+          "current_step": 4000,
+          "data_position": {
+            "batch_position": 12479,
+            "epoch": 7,
+            "sample_position": 12479
+          },
+          "format": 1,
+          "gradient_accumulation_position": 0,
+          "loader": {
+            "persistent_workers": true,
+            "pin_memory": true,
+            "prefetch_factor": 4,
+            "workers": 4
+          },
+          "max_steps": 5000,
+          "observability": {
+            "hf": {
+              "mirror_every_steps": 250,
+              "repo_id": "adhit-420/Krea-2-PoseControl-LoRA-checkpoints"
+            },
+            "wandb": {
+              "enabled": true,
+              "entity": "adhit-projects",
+              "name": "pose-control-production-cooldown-3000-to5000",
+              "project": "Krea-2-PoseControl-Lora",
+              "run_id": "lnevot4t"
+            }
+          },
+          "optimizer": {
+            "betas": [
+              0.9,
+              0.99
+            ],
+            "lr": 0.0001,
+            "name": "AdamW",
+            "weight_decay": 0.0
+          },
+          "pose_cumulative_counters": {
+            "eligible_samples_seen": 111459,
+            "forced_samples": 0,
+            "naturally_active_samples": 1764,
+            "total_active_samples": 1764
+          },
+          "run_name": "pose-control-production-cooldown-3000-to5000",
+          "scheduler": {
+            "continuation_steps": 2000,
+            "final_lr": 1e-05,
+            "name": "CosineContinuation",
+            "parent_step": 3000,
+            "start_lr": 0.0001
+          },
+          "scientific_recipe": {
+            "alpha": 64,
+            "betas": [
+              0.9,
+              0.99
+            ],
+            "caption_dropout": 0.1,
+            "compile": false,
+            "control_dropout": 0.0,
+            "data_loader_workers": 4,
+            "effective_batch_size": 32,
+            "forced_pose_exposure_probability": 0.0,
+            "fused_adamw": false,
+            "gradient_accumulation_steps": 32,
+            "gradient_checkpointing_blocks": 0,
+            "lambda_pose": 0.04,
+            "learning_rate": 0.0001,
+            "max_grad_norm": 1.0,
+            "microbatch_size": 1,
+            "mu_x1": 256.0,
+            "mu_x2": 6400.0,
+            "mu_y1": 0.5,
+            "mu_y2": 1.15,
+            "persistent_workers": true,
+            "pin_memory": true,
+            "pose_loss": "normalized_coordinate_huber",
+            "pose_timestep_max": 0.2,
+            "pose_timestep_min": 0.1,
+            "prefetch_factor": 4,
+            "rank": 64,
+            "resolution_policy": "768",
+            "seed": 42,
+            "timestep_aux_max": 1.0,
+            "timestep_aux_min": 0.0,
+            "timestep_aux_prob": 0.0,
+            "warmup_steps": 200,
+            "weight_decay": 0.0
+          }
+        },
+        "validation": "pinned_final_val_legacy_production_metadata"
+      }
+    },
+    "interpolation": {
+      "alpha": 0.25,
+      "candidate_id": "mix-025",
+      "compute_dtype": "float32",
+      "endpoints": [
+        {
+          "candidate": "parent-4000",
+          "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt",
+          "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+          "step": 4000
+        },
+        {
+          "candidate": "finish-control-a4300",
+          "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+          "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff",
+          "step": 4300
+        }
+      ],
+      "formula": "(1 - alpha) * parent-4000 + alpha * finish-control-a4300",
+      "tensor_scope": "state['model'] trainable control/LoRA tensors only"
+    },
+    "validation": "interpolated_trainable_model_tensors_only"
+  },
+  "turbo": {
+    "cfg": 0.0,
+    "control_scale": 1.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  }
+}
