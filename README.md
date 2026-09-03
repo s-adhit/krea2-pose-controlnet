@@ -78,7 +78,9 @@ Isolated runtime composition has been implemented and tested with `darkbrush`, `
 
 ## Multilingual prompting
 
-An English/Chinese fixed-pose sanity test exists. An English / Chinese / Telugu fixed-pose sanity comparison is available through the multilingual smoke harness; it is a small sanity test, not a multilingual benchmark or a claim of parity.
+A fixed-pose English / Chinese / Telugu sanity comparison is available. All three generations use the same pose control, seed, candidate, and Turbo settings. This is a small sanity test, not a multilingual benchmark or a claim of language parity.
+
+![English / Chinese / Telugu fixed-pose sanity comparison](docs/evaluation/prompting-guide/results/multilingual-smoke-v2/multilingual_comparison.png)
 
 ## Evaluation
 
