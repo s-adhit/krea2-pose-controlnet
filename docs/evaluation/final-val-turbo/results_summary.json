@@ -7,24 +7,42 @@
     "mu": 1.15,
     "control_scale": 1.0
   },
-  "parent-4000": {
-    "checkpoint_step": 4000,
-    "pck_005": 0.43005181347150256,
-    "pck_010": 0.572538860103627,
-    "pck_020": 0.7104922279792746,
-    "matched_people": 94,
-    "clip_mean": 0.33649168088805387,
-    "clip_median": 0.3343463370127765,
-    "clip_std": 0.03113802229179184
+  "results": {
+    "parent-4000": {
+      "pck_005": 0.4301,
+      "pck_010": 0.5725,
+      "pck_020": 0.7105,
+      "clip_mean": 0.33649,
+      "matched_people": 94
+    },
+    "mix-025": {
+      "pck_005": 0.4521,
+      "pck_010": 0.6043,
+      "pck_020": 0.7241,
+      "clip_mean": 0.33694,
+      "matched_people": 95
+    },
+    "mix-050": {
+      "pck_005": 0.4443,
+      "pck_010": 0.5991,
+      "pck_020": 0.7131,
+      "clip_mean": 0.33411,
+      "matched_people": 95
+    },
+    "mix-075": {
+      "pck_005": 0.4475,
+      "pck_010": 0.6036,
+      "pck_020": 0.7085,
+      "clip_mean": 0.33542,
+      "matched_people": 94
+    },
+    "finish-control-a4300": {
+      "pck_005": 0.4404,
+      "pck_010": 0.5939,
+      "pck_020": 0.7170,
+      "clip_mean": 0.33698,
+      "matched_people": 93
+    }
   },
-  "finish-control-a4300": {
-    "checkpoint_step": 4300,
-    "pck_005": 0.44041450777202074,
-    "pck_010": 0.5939119170984456,
-    "pck_020": 0.7169689119170984,
-    "matched_people": 93,
-    "clip_mean": 0.33697881687370806,
-    "clip_median": 0.3360039876821562,
-    "clip_std": 0.03275625947909036
-  }
+  "current_best": "mix-025"
 }
