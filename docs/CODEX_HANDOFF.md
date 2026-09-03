@@ -2,89 +2,105 @@
 
 ## Current objective
 
-Frozen prompt-injection evaluation and same-pose hero generation support are
-implemented as a separate opt-in evaluator. No generation, scoring, training,
-network operation, commit, or push was performed in this session.
+The reproducible prompting-guide experiment is implemented as separate,
+opt-in tooling. It has not been run on GH200. No training, network access,
+commit, or push occurred in this session.
 
-## New frozen contracts
+## Frozen prompting-study contract
 
-- Entry point: `scripts/frozen_prompt_turbo.py`.
-- Modes are separate from the source-caption final-val evaluator:
-  - `prompt-injection {preflight,generate,score,report}`;
-  - `hero {preflight,generate,report}`. Hero rejects `score` because it is
-    generation-only.
-- Candidate defaults to `mix-025`, while allowlisting and reusing the existing
-  `parent-4000`, `finish-control-a4300`, `mix-025`, `mix-050`, and `mix-075`
-  candidate/interpolation implementation from `final_val_turbo_benchmark.py`.
-  Interpolation provenance remains endpoint paths, embedded steps, pinned
-  SHA-256 values, alpha, and the model-only FP32 blend formula.
-- Prompt injection verifies byte SHA-256
-  `a7c6f3aa8aa1e18bc0767b9ad940b1c0d33fbabdfcdf568cffabb883b605bdf3`,
-  exact five-field schema, exactly 48 unique stems, and exact frozen final-val
-  stem order before any output is touched. It validates the original cached
-  final-val identity, then replaces only runtime Qwen text conditioning with
-  the frozen injected prompt. The original source-caption benchmark is not
-  modified or used as a sampling fallback.
-- Prompt injection uses the frozen final-val controls, frozen per-stem sampling
-  seeds, native/aspect-preserving cached-latent bucket geometry, and locked
-  Turbo 8 steps / CFG 0 / mu 1.15 / control scale 1.0. PCK uses the canonical
-  v3 sidecar; CLIP receives the injected prompt text. Provenance records the
-  exact prompt mapping, prompt/control SHA values, final spec SHA, seeds,
-  geometry, candidate, and sampler settings. Incomplete/corrupt/mismatched artifact sets fail
-  closed. Reports contain only pose control + candidate output contact sheets.
-- Hero verifies byte SHA-256
-  `1b28d8b9cc8754327727a317de03543aa71876ba0f878acd0ad8dc45897e9345`,
-  exact three-field schema, six unique hero IDs, and the sole canonical stem
-  `real_human_humanart_15000000000930`. Every interpretation starts from that
-  same frozen latent/control geometry; per-prompt sampling seeds are derived
-  deterministically as `SHA256('420600:<hero_id>:sampling')[:8] mod (2^63-1)`.
-  Metadata and the hero summary retain prompt, seed, candidate/interpolation,
-  sampler settings, prompt/control hashes, and native geometry. The hero contact sheet
-  is pose control plus six generated outputs only; source RGB fallback is
-  explicitly prohibited.
+- Entry point: `scripts/prompting_guide_study.py` with staged actions
+  `preflight`, `generate`, `score`, `report`, and read-only `summary`.
+- Frozen source: `docs/evaluation/prompting-guide/prompting_study.jsonl`.
+  Byte SHA-256 is
+  `4fae6d39ac7354d451ca13556d3a2a89e303691ceb30727b8561b13b494450df`.
+- The loader requires exactly 64 rows: exactly 8 unique pose conditions and
+  exactly these eight ordered modes per stem: `P0_minimal`, `P1_style`,
+  `P2_environment`, `P3_neutral`, `P4_supportive`, `P5_conflicting`,
+  `P6_semantic_prior`, and `P7_framing_count_conflict`. It rejects SHA drift,
+  schema drift, missing modes, unexpected names, duplicate stem/mode pairs,
+  conflicting classes, or an incomplete matrix.
+- Candidate is hard-locked to `mix-025`. It validates the existing pinned
+  interpolation endpoints and provenance. Geometry is native/aspect-preserving
+  cached-latent bucket geometry. Turbo is locked to 8 steps, CFG 0, mu 1.15,
+  and control scale 1.0.
+- All eight study stems are verified members of the frozen final-val set and
+  must have a pinned final-val sampling seed. That same seed is used for every
+  prompt mode of its stem; no substitute seed path exists.
+- Controls are resolved only through the authoritative final-val DatasetIndex
+  helper. Their SHA-256 values, frozen prompt mapping, seeds, native buckets,
+  candidate interpolation provenance, and exact prompt text are retained in
+  immutable output provenance and per-generation metadata.
+- The tool requires the canonical final-val v3 pose sidecar for scoring. It
+  scores PCK separately for every one of the 64 images and CLIP against the
+  row's exact experimental prompt, then verifies and aggregates those records
+  by prompt mode and pose class.
+- It fails closed on candidate/provenance conflicts, missing/incomplete or
+  duplicate generation manifests, corrupted images, orphan controls/metadata,
+  wrong control hashes, wrong native bucket/geometry, non-locked Turbo fields,
+  and incomplete or reordered scored records. Source RGB is never sampled,
+  copied, or used as a qualitative fallback.
+
+## Expected output artifacts
+
+The separate output root contains immutable `prompting_study_provenance.json`,
+one copied authoritative control per stem under `controls/`, 64 generation
+directories with exact-prompt metadata, `pck_clip_results.json`, and:
+
+- `comparison_grids/<stem>.png` for every skeleton, each with pose control
+  plus P0 through P7;
+- `prompting_study_contact_sheet.png` covering all eight skeletons;
+- `metrics_by_prompt_mode.json` and `metrics_by_pose_class.json` compact
+  aggregate tables;
+- `evaluation_summary.json` binding the above to provenance.
+
+The frozen 48 source-caption benchmark, frozen prompt-injection benchmark,
+canonical `inference.py`, and all training code remain untouched.
 
 ## Files changed this session
 
-- `scripts/frozen_prompt_turbo.py`
-- `tests/test_frozen_prompt_turbo.py`
+- `scripts/prompting_guide_study.py` (new isolated study tool)
+- `tests/test_prompting_guide_study.py` (new focused contract tests)
 - `docs/CODEX_HANDOFF.md`
 
-Frozen final-val benchmark/spec/sidecar and all prior final-val results were
-not modified.
+The frozen `docs/evaluation/prompting-guide/prompting_study.jsonl` is present
+as an untracked supplied input and was not modified.
 
 ## Completed / green checks
 
 PASS:
 
 ```bash
-UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python -m unittest tests.test_frozen_prompt_turbo tests.test_final_val_turbo_benchmark -v
-# 19 tests passed
-UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python -m py_compile scripts/frozen_prompt_turbo.py tests/test_frozen_prompt_turbo.py
-UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python scripts/frozen_prompt_turbo.py --help
+UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python -m unittest tests.test_prompting_guide_study tests.test_frozen_prompt_turbo tests.test_final_val_turbo_benchmark -v
+# 27 tests passed
+UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python -m py_compile scripts/prompting_guide_study.py tests/test_prompting_guide_study.py
+UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python scripts/prompting_guide_study.py --help
 git diff --check
 ```
 
-Focused coverage verifies pinned prompt loading, hash drift rejection,
-duplicate/wrong-order rejection, canonical six-prompt hero binding,
-deterministic unique hero seeds, and fail-closed incomplete generation status.
-The existing final-val suite remains green.
+Focused coverage includes pinned SHA/matrix validation, hash drift rejection,
+unexpected/duplicate modes, locked Turbo settings, reuse of frozen final-val
+seeds, incomplete or orphaned generation artifact rejection, and complete
+ordered score-record requirements. Existing prompt-injection and final-val
+evaluator tests remain green.
 
 ## Exact GH200 commands
 
-Run from the repository root in the writable GH200 host shell. Use new output
-roots; do not place these artifacts in source-caption final-val directories.
+Run from the repository root in the GH200 host shell. Use a new output root;
+do not write under any frozen final-val or prompt-injection root.
 
 ```bash
-uv run python scripts/frozen_prompt_turbo.py prompt-injection preflight --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/prompt-injection/mix-025
-uv run python scripts/frozen_prompt_turbo.py prompt-injection generate --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/prompt-injection/mix-025
-uv run python scripts/frozen_prompt_turbo.py prompt-injection score --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/prompt-injection/mix-025 --reference-sidecar docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48_pose_targets_v3
-uv run python scripts/frozen_prompt_turbo.py prompt-injection report --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/prompt-injection/mix-025
+uv run python scripts/prompting_guide_study.py preflight --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/prompting-guide/mix-025
+uv run python scripts/prompting_guide_study.py generate --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/prompting-guide/mix-025
+uv run python scripts/prompting_guide_study.py score --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/prompting-guide/mix-025 --reference-sidecar docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48_pose_targets_v3
+uv run python scripts/prompting_guide_study.py report --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/prompting-guide/mix-025
+```
 
-uv run python scripts/frozen_prompt_turbo.py hero preflight --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/hero-same-pose/mix-025
-uv run python scripts/frozen_prompt_turbo.py hero generate --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/hero-same-pose/mix-025
-uv run python scripts/frozen_prompt_turbo.py hero report --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/hero-same-pose/mix-025
+Exact compact result-summary command:
+
+```bash
+uv run python scripts/prompting_guide_study.py summary --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/prompting-guide/mix-025
 ```
 
 ## Exact next task
 
-Style-LoRA composition support.
+Inspect prompting results and write root-level `prompting.md`.
