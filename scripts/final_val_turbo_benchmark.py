@@ -2,8 +2,8 @@
 
 This is deliberately separate from ``turbo_benchmark.py``: that script's
 24-item diagnostic contract is historical and must remain byte-for-byte
-strict.  This entry point evaluates only the two selected real checkpoints
-against the immutable final-val benchmark specification.
+strict.  This entry point evaluates selected real checkpoints and allowlisted
+trainable-tensor interpolations against the immutable final-val benchmark.
 """
 from __future__ import annotations
 
@@ -61,6 +61,24 @@ CANDIDATES = {
             "run_name": "pose-control-finish-control-4000-to4500",
             "max_steps": 4500,
         },
+    },
+    "mix-025": {
+        "kind": "trainable_tensor_interpolation",
+        "label": "mix-025",
+        "alpha": 0.25,
+        "endpoints": ("parent-4000", "finish-control-a4300"),
+    },
+    "mix-050": {
+        "kind": "trainable_tensor_interpolation",
+        "label": "mix-050",
+        "alpha": 0.50,
+        "endpoints": ("parent-4000", "finish-control-a4300"),
+    },
+    "mix-075": {
+        "kind": "trainable_tensor_interpolation",
+        "label": "mix-075",
+        "alpha": 0.75,
+        "endpoints": ("parent-4000", "finish-control-a4300"),
     },
 }
 
@@ -144,6 +162,8 @@ def candidate_checkpoint(candidate: str) -> tuple[dict[str, Any], Path, dict[str
     if candidate not in CANDIDATES:
         raise ValueError(f"Final-val supports only {', '.join(CANDIDATES)}")
     selected = dict(CANDIDATES[candidate])
+    if selected.get("kind") == "trainable_tensor_interpolation":
+        raise ValueError("Interpolated final-val candidates do not have a standalone checkpoint")
     root = Path(selected["checkpoint_root"])
     checkpoint = root / f"step_{selected['step']:06d}.pt"
     if not checkpoint.is_file():
@@ -177,11 +197,154 @@ def candidate_checkpoint(candidate: str) -> tuple[dict[str, Any], Path, dict[str
     return selected, checkpoint, metadata
 
 
-def _output_contract(spec: Mapping[str, Any], spec_sha256: str, candidate: Mapping[str, Any], checkpoint: Path) -> dict[str, Any]:
-    return {"kind": "final_val_turbo_fixed_pose", "final_spec_sha256": spec_sha256,
-            "stems": list(spec["stems"]), "candidate": candidate["label"],
-            "checkpoint_step": candidate["step"], "checkpoint_sha256": _sha256(checkpoint),
-            "turbo": FINAL_TURBO}
+def _endpoint_provenance(candidate: Mapping[str, Any], checkpoint: Path) -> dict[str, Any]:
+    return {"candidate": candidate["label"], "path": str(checkpoint),
+            "step": candidate["step"], "sha256": _sha256(checkpoint)}
+
+
+def resolve_candidate(candidate: str) -> tuple[dict[str, Any], Path | None, dict[str, Any]]:
+    """Resolve a pinned real checkpoint or one explicit in-memory interpolation."""
+    if candidate not in CANDIDATES:
+        raise ValueError(f"Final-val supports only {', '.join(CANDIDATES)}")
+    selected = dict(CANDIDATES[candidate])
+    if selected.get("kind") != "trainable_tensor_interpolation":
+        return candidate_checkpoint(candidate)
+    endpoint_ids = selected.get("endpoints")
+    alpha = selected.get("alpha")
+    if (not isinstance(endpoint_ids, tuple) or len(endpoint_ids) != 2
+            or not isinstance(alpha, float) or not 0.0 < alpha < 1.0):
+        raise ValueError(f"Invalid final-val interpolation definition: {candidate}")
+    parent, parent_path, parent_metadata = candidate_checkpoint(endpoint_ids[0])
+    finish, finish_path, finish_metadata = candidate_checkpoint(endpoint_ids[1])
+    endpoints = [_endpoint_provenance(parent, parent_path), _endpoint_provenance(finish, finish_path)]
+    selected["interpolation"] = {
+        "candidate_id": candidate,
+        "alpha": alpha,
+        "formula": "(1 - alpha) * parent-4000 + alpha * finish-control-a4300",
+        "endpoints": endpoints,
+        "tensor_scope": "state['model'] trainable control/LoRA tensors only",
+        "compute_dtype": "float32",
+    }
+    metadata = {
+        "validation": "interpolated_trainable_model_tensors_only",
+        "candidate_kind": selected["kind"],
+        "interpolation": selected["interpolation"],
+        "endpoint_training_metadata": {
+            parent["label"]: parent_metadata,
+            finish["label"]: finish_metadata,
+        },
+    }
+    return selected, None, metadata
+
+
+def validate_interpolation_trainable_state(parent: Mapping[str, Any], finish: Mapping[str, Any]) -> None:
+    """Prove the two trainable-state mappings are safe to interpolate."""
+    parent_keys, finish_keys = set(parent), set(finish)
+    if parent_keys != finish_keys:
+        raise ValueError(
+            "Final-val interpolation requires exact matching trainable keys: "
+            f"missing={sorted(parent_keys - finish_keys)[:5]}, "
+            f"unexpected={sorted(finish_keys - parent_keys)[:5]}"
+        )
+    for key in sorted(parent_keys):
+        parent_tensor, finish_tensor = parent[key], finish[key]
+        if not isinstance(parent_tensor, torch.Tensor) or not isinstance(finish_tensor, torch.Tensor):
+            raise ValueError(f"Final-val interpolation requires tensors only: {key}")
+        if parent_tensor.shape != finish_tensor.shape:
+            raise ValueError(f"Final-val interpolation tensor shape mismatch for {key}: "
+                             f"{tuple(parent_tensor.shape)} != {tuple(finish_tensor.shape)}")
+        if not (parent_tensor.is_floating_point() and finish_tensor.is_floating_point()):
+            raise ValueError(f"Final-val interpolation requires floating trainable tensor: {key}")
+
+
+def interpolate_trainable_state(parent: Mapping[str, Any], finish: Mapping[str, Any], alpha: float) -> dict[str, torch.Tensor]:
+    """Blend only matching trainable model tensors, in FP32, back to parent dtype."""
+    if not isinstance(alpha, float) or not 0.0 < alpha < 1.0:
+        raise ValueError(f"Interpolation alpha must be strictly between zero and one, got {alpha!r}")
+    validate_interpolation_trainable_state(parent, finish)
+    blended: dict[str, torch.Tensor] = {}
+    for key in sorted(parent):
+        parent_tensor, finish_tensor = parent[key], finish[key]
+        blended[key] = (
+            parent_tensor.detach().to(device="cpu", dtype=torch.float32) * (1.0 - alpha)
+            + finish_tensor.detach().to(device="cpu", dtype=torch.float32) * alpha
+        ).to(dtype=parent_tensor.dtype)
+    return blended
+
+
+def candidate_trainable_state(candidate: Mapping[str, Any], checkpoint: Path | None) -> dict[str, torch.Tensor]:
+    """Return the evaluation model state, never optimizer/scheduler/RNG metadata."""
+    if candidate.get("kind") != "trainable_tensor_interpolation":
+        if checkpoint is None:
+            raise ValueError("Real final-val candidate is missing its checkpoint")
+        state = load_training_state(checkpoint)
+        model = state.get("model")
+        if not isinstance(model, Mapping):
+            raise ValueError(f"Final-val checkpoint lacks trainable model state: {checkpoint}")
+        return dict(model)
+    interpolation = candidate.get("interpolation")
+    if not isinstance(interpolation, Mapping):
+        raise ValueError("Interpolated final-val candidate lacks resolved endpoint provenance")
+    endpoints = interpolation.get("endpoints")
+    if not isinstance(endpoints, list) or len(endpoints) != 2:
+        raise ValueError("Interpolated final-val candidate lacks exactly two endpoints")
+    endpoint_states = _interpolation_endpoint_models(interpolation)
+    return interpolate_trainable_state(endpoint_states[0], endpoint_states[1], float(interpolation["alpha"]))
+
+
+def _interpolation_endpoint_models(interpolation: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    endpoints = interpolation.get("endpoints")
+    if not isinstance(endpoints, list) or len(endpoints) != 2:
+        raise ValueError("Interpolated final-val candidate lacks exactly two endpoints")
+    endpoint_states: list[Mapping[str, Any]] = []
+    for endpoint in endpoints:
+        if not isinstance(endpoint, Mapping):
+            raise ValueError("Interpolated final-val endpoint provenance is invalid")
+        path = Path(str(endpoint.get("path", "")))
+        if _sha256(path) != endpoint.get("sha256"):
+            raise ValueError(f"Interpolation endpoint SHA-256 changed after preflight: {path}")
+        state = load_training_state(path)
+        if state.get("global_step") != endpoint.get("step"):
+            raise ValueError(f"Interpolation endpoint filename/embedded step mismatch: {path}")
+        model = state.get("model")
+        if not isinstance(model, Mapping):
+            raise ValueError(f"Interpolation endpoint lacks trainable model state: {path}")
+        endpoint_states.append(model)
+    return endpoint_states
+
+
+def candidate_raw_to_turbo_state(candidate: Mapping[str, Any], checkpoint: Path | None,
+                                 trainable_state: Mapping[str, torch.Tensor]) -> dict[str, Any]:
+    """Keep Raw/Turbo validation provenance separate from the interpolated tensors."""
+    if not _is_interpolation(candidate):
+        if checkpoint is None:
+            raise ValueError("Real final-val candidate is missing its checkpoint")
+        return load_training_state(checkpoint)
+    endpoints = candidate["interpolation"]["endpoints"]
+    states = [load_training_state(Path(endpoint["path"])) for endpoint in endpoints]
+    raw_checkpoints = [state.get("config", {}).get("raw_ckpt") for state in states]
+    if not all(isinstance(raw, str) and raw for raw in raw_checkpoints) or raw_checkpoints[0] != raw_checkpoints[1]:
+        raise ValueError("Interpolation endpoints do not share exact Krea-2 Raw provenance")
+    return {"config": {"raw_ckpt": raw_checkpoints[0]}, "model": dict(trainable_state)}
+
+
+def _is_interpolation(candidate: Mapping[str, Any]) -> bool:
+    return candidate.get("kind") == "trainable_tensor_interpolation"
+
+
+def _image_name(candidate: Mapping[str, Any]) -> str:
+    return f"{candidate['label']}.png" if _is_interpolation(candidate) else f"step_{candidate['step']:06d}.png"
+
+
+def _output_contract(spec: Mapping[str, Any], spec_sha256: str, candidate: Mapping[str, Any], checkpoint: Path | None) -> dict[str, Any]:
+    contract = {"kind": "final_val_turbo_fixed_pose", "final_spec_sha256": spec_sha256,
+                "stems": list(spec["stems"]), "candidate": candidate["label"], "turbo": FINAL_TURBO}
+    if _is_interpolation(candidate):
+        return {**contract, "candidate_kind": candidate["kind"], "checkpoint_step": None,
+                "checkpoint_interpolation": candidate["interpolation"]}
+    if checkpoint is None:
+        raise ValueError("Real final-val candidate is missing its checkpoint")
+    return {**contract, "checkpoint_step": candidate["step"], "checkpoint_sha256": _sha256(checkpoint)}
 
 
 def _validate_or_write_output(output: Path, contract: Mapping[str, Any]) -> None:
@@ -194,11 +357,17 @@ def _validate_or_write_output(output: Path, contract: Mapping[str, Any]) -> None
 
 
 def _sample_metadata(stem: str, sample: Mapping[str, Any], control: Path, spec_sha256: str,
-                     candidate: Mapping[str, Any], checkpoint: Path) -> dict[str, Any]:
-    return {"stem": stem, "prompt": sample["prompt"], "control_path": str(control),
-            "seed": int(sample["_final_seed"]), "bucket": [sample["latent"].shape[-1] * 8, sample["latent"].shape[-2] * 8],
-            "candidate": candidate["label"], "checkpoint_step": candidate["step"], "checkpoint_sha256": _sha256(checkpoint),
-            "final_spec_sha256": spec_sha256, "control_scale": 1.0, **turbo_metadata()}
+                     candidate: Mapping[str, Any], checkpoint: Path | None) -> dict[str, Any]:
+    metadata = {"stem": stem, "prompt": sample["prompt"], "control_path": str(control),
+                "seed": int(sample["_final_seed"]), "bucket": [sample["latent"].shape[-1] * 8, sample["latent"].shape[-2] * 8],
+                "candidate": candidate["label"], "final_spec_sha256": spec_sha256,
+                "control_scale": 1.0, **turbo_metadata()}
+    if _is_interpolation(candidate):
+        return {**metadata, "candidate_kind": candidate["kind"], "checkpoint_step": None,
+                "checkpoint_interpolation": candidate["interpolation"]}
+    if checkpoint is None:
+        raise ValueError("Real final-val candidate is missing its checkpoint")
+    return {**metadata, "checkpoint_step": candidate["step"], "checkpoint_sha256": _sha256(checkpoint)}
 
 
 def _generation_status(output: Path, stems: list[str], candidate: Mapping[str, Any], spec_sha256: str) -> str:
@@ -207,13 +376,17 @@ def _generation_status(output: Path, stems: list[str], candidate: Mapping[str, A
     observed, recorded = [], []
     for stem in stems:
         directory = output / "fixed_pose" / stem
-        image = directory / f"step_{candidate['step']:06d}.png"
+        image = directory / _image_name(candidate)
         if image.is_file():
             try:
                 with Image.open(image) as opened:
                     opened.verify()
                 metadata = _read_json(directory / "metadata.json")
-                if metadata.get("stem") != stem or metadata.get("candidate") != candidate["label"] or metadata.get("checkpoint_step") != candidate["step"] or metadata.get("final_spec_sha256") != spec_sha256 or metadata.get("control_scale") != 1.0 or any(metadata.get(key) != value for key, value in turbo_metadata().items()):
+                if (metadata.get("stem") != stem or metadata.get("candidate") != candidate["label"]
+                        or metadata.get("checkpoint_step") != (None if _is_interpolation(candidate) else candidate["step"])
+                        or metadata.get("final_spec_sha256") != spec_sha256 or metadata.get("control_scale") != 1.0
+                        or any(metadata.get(key) != value for key, value in turbo_metadata().items())
+                        or (_is_interpolation(candidate) and metadata.get("checkpoint_interpolation") != candidate.get("interpolation"))):
                     raise ValueError("metadata contract mismatch")
             except Exception as exc:
                 raise ValueError(f"Final-val generation artifact is corrupt or contract-inconsistent: {image}") from exc
@@ -221,7 +394,10 @@ def _generation_status(output: Path, stems: list[str], candidate: Mapping[str, A
         else:
             observed.append(False)
         if payload is not None:
-            recorded.append(payload.get("generated_steps", {}).get(stem) == [candidate["step"]])
+            generated = (payload.get("generated_artifacts", {}).get(stem) == [_image_name(candidate)]
+                         if _is_interpolation(candidate)
+                         else payload.get("generated_steps", {}).get(stem) == [candidate["step"]])
+            recorded.append(generated)
     if not any(observed) and (payload is None or not any(recorded)):
         return "missing"
     if all(observed) and payload is not None and all(recorded) and payload.get("stems") == stems and payload.get("candidate") == candidate["label"] and payload.get("final_spec_sha256") == spec_sha256 and payload.get("turbo") == FINAL_TURBO:
@@ -238,7 +414,7 @@ def _qualitative_image_paths(output: Path, stem: str, candidate: Mapping[str, An
     """
     directory = output / "fixed_pose" / stem
     control = directory / "control.png"
-    generated = directory / f"step_{candidate['step']:06d}.png"
+    generated = directory / _image_name(candidate)
     if not control.is_file():
         raise FileNotFoundError(f"Final-val report is missing pose control for {stem}: {control}")
     if not generated.is_file():
@@ -246,7 +422,7 @@ def _qualitative_image_paths(output: Path, stem: str, candidate: Mapping[str, An
     return [control, generated]
 
 
-def _inputs(args) -> tuple[dict[str, Any], str, PreparedLatentShardDataset, dict[str, Path], dict[str, Any], Path, dict[str, Any], Path]:
+def _inputs(args) -> tuple[dict[str, Any], str, PreparedLatentShardDataset, dict[str, Path], dict[str, Any], Path | None, dict[str, Any], Path]:
     spec, spec_sha256 = load_final_spec(args.final_spec)
     dataset = PreparedLatentShardDataset(args.latent_root, "val", text_conditioning_root=args.text_conditioning_root)
     validate_cached_contract(dataset, spec)
@@ -255,16 +431,24 @@ def _inputs(args) -> tuple[dict[str, Any], str, PreparedLatentShardDataset, dict
     if not isinstance(dataset_root, str) or not dataset_root:
         raise ValueError("Final-val requires --dataset-root or latent shards.json.dataset_root")
     controls = resolve_final_controls(dataset_root, list(spec["stems"]))
-    candidate, checkpoint, training_metadata = candidate_checkpoint(args.candidate)
+    candidate, checkpoint, training_metadata = resolve_candidate(args.candidate)
     return spec, spec_sha256, dataset, controls, candidate, checkpoint, training_metadata, Path(args.output_root)
 
 
 def preflight(args) -> None:
     spec, digest, dataset, controls, candidate, checkpoint, training, output = _inputs(args)
+    if _is_interpolation(candidate):
+        endpoint_models = _interpolation_endpoint_models(candidate["interpolation"])
+        validate_interpolation_trainable_state(endpoint_models[0], endpoint_models[1])
     contract = _output_contract(spec, digest, candidate, checkpoint); _validate_or_write_output(output, contract)
+    preflight_metadata = {"local_checkpoint": str(checkpoint)} if checkpoint is not None else {
+        "interpolation_endpoints": candidate["interpolation"]["endpoints"],
+        "interpolation_alpha": candidate["interpolation"]["alpha"],
+        "interpolation_candidate_id": candidate["interpolation"]["candidate_id"],
+    }
     _write(output / "checkpoint_preflight.json", {**contract, "sample_count": len(dataset),
            "final_sample_count": len(spec["stems"]), "control_paths_resolved": len(controls),
-           "local_checkpoint": str(checkpoint), "training_metadata": training})
+           **preflight_metadata, "training_metadata": training})
     print(output / "checkpoint_preflight.json")
 
 
@@ -276,8 +460,10 @@ def generate(args) -> None:
     if _generation_status(output, list(spec["stems"]), candidate, digest) == "complete":
         print(json.dumps({"already_complete": candidate["label"]})); return
     model = build_turbo_pose_model(args.turbo_ckpt, 64, 64, "cuda").eval(); vae = load_krea_vae("cuda")
-    state = load_training_state(checkpoint); load_trainable_state_dict(model, state["model"])
-    compatibility = raw_to_turbo_control_compatibility(model, state)
+    trainable_state = candidate_trainable_state(candidate, checkpoint)
+    load_trainable_state_dict(model, trainable_state)
+    compatibility_state = candidate_raw_to_turbo_state(candidate, checkpoint, trainable_state)
+    compatibility = raw_to_turbo_control_compatibility(model, compatibility_state)
     for stem in spec["stems"]:
         sample = dict(_sample_by_stem(dataset, stem)); sample["_final_seed"] = spec["per_stem_seeds"][stem]["sampling"]
         directory = output / "fixed_pose" / stem; directory.mkdir(parents=True, exist_ok=True)
@@ -292,9 +478,12 @@ def generate(args) -> None:
         if not metadata_path.exists(): _write(metadata_path, metadata)
         pixels = sample_turbo_pose_image(model, lambda latent: decode_normalized_latents(vae, latent), sample,
                                          torch.device("cuda"), metadata["seed"], control_scale=1.0)
-        save_image(pixels, directory / f"step_{candidate['step']:06d}.png")
+        save_image(pixels, directory / _image_name(candidate))
+    generation_artifacts = ({"generated_artifacts": {stem: [_image_name(candidate)] for stem in spec["stems"]}}
+                            if _is_interpolation(candidate)
+                            else {"generated_steps": {stem: [candidate["step"]] for stem in spec["stems"]}})
     _write(output / "generation_results.json", {**contract, "stems": list(spec["stems"]),
-           "generated_steps": {stem: [candidate["step"]] for stem in spec["stems"]},
+           **generation_artifacts,
            "turbo_base_checkpoint_report": getattr(model, "_krea_checkpoint_report", None),
            "raw_to_turbo_control_compatibility": compatibility, "training_metadata": training})
     print(output / "generation_results.json")
@@ -337,12 +526,13 @@ def score(args) -> None:
     geometry = {stem: turbo_scoring_geometry(_sample_by_stem(dataset, stem)) for stem in spec["stems"]}
     device = "cuda" if torch.cuda.is_available() else "cpu"; detector = KeypointRCNNEstimator(device, .5)
     processor = CLIPProcessor.from_pretrained(args.clip_model_id); clip = CLIPModel.from_pretrained(args.clip_model_id).to(device).eval()
-    image_for = lambda stem: output / "fixed_pose" / stem / f"step_{candidate['step']:06d}.png"
+    image_for = lambda stem: output / "fixed_pose" / stem / _image_name(candidate)
     pose = score_authoritative_pck(sidecar=sidecar, geometry_by_stem=geometry, image_for=image_for, detector=detector, confidence_threshold=.5, require_images=True)
     from scripts.turbo_benchmark import _clip_score  # shared frozen CLIP scoring implementation
     clip_rows = [{"stem": stem, "cosine_similarity": _clip_score(clip, processor, device, _read_json(output / "fixed_pose" / stem / "metadata.json")["prompt"], image_for(stem))} for stem in spec["stems"]]
     values = aggregate([row["cosine_similarity"] for row in clip_rows])
-    row = {"checkpoint_step": candidate["step"], "candidate": candidate["label"], "pose": pose,
+    row = {"checkpoint_step": None if _is_interpolation(candidate) else candidate["step"], "candidate": candidate["label"],
+           "candidate_kind": candidate.get("kind", "real_checkpoint"), "pose": pose,
            "clip": {"mean_cosine_similarity": values["mean"], "median_cosine_similarity": values["median"], "std_cosine_similarity": values["std"], "sample_count": values["sample_count"], "per_sample": clip_rows}}
     _write(output / "pck_clip_results.json", {**contract, "reference_sidecar": str(Path(args.reference_sidecar).resolve()), "reference_sidecar_sha256": sidecar_digest,
            "clip_model": args.clip_model_id, "confidence_threshold": .5, "checkpoints": [row]})
@@ -358,7 +548,9 @@ def report(args) -> None:
     if any(score_payload.get(key) != value for key, value in contract.items()):
         raise ValueError("Final-val score artifact conflicts with frozen output provenance")
     rows = score_payload.get("checkpoints")
-    if not isinstance(rows, list) or len(rows) != 1 or rows[0].get("checkpoint_step") != candidate["step"]:
+    expected_step = None if _is_interpolation(candidate) else candidate["step"]
+    if (not isinstance(rows, list) or len(rows) != 1 or rows[0].get("candidate") != candidate["label"]
+            or rows[0].get("checkpoint_step") != expected_step):
         raise ValueError("Final-val report requires exactly one scored selected checkpoint")
     row = rows[0]; grid_rows = []
     for stem in spec["stems"]:
@@ -369,15 +561,17 @@ def report(args) -> None:
     _write(output / "evaluation_summary.json", {**contract, "training_metadata": training, "checkpoints": rows,
            "benchmark": spec["benchmark"], "reference_sidecar": score_payload.get("reference_sidecar"),
            "qualitative_grids": {"checkpoint_selection": "checkpoint_selection_grid.png", "full_contact_sheet": "full_contact_sheet.png"},
-           "comparison_kind": "separate real-checkpoint final-val evaluation", "base_or_zero_adapter_included": False,
-           "checkpoint_interpolation_included": False, "production_winner_declared": False})
+           "comparison_kind": ("interpolated-trainable-state final-val evaluation" if _is_interpolation(candidate)
+                               else "separate real-checkpoint final-val evaluation"),
+           "base_or_zero_adapter_included": False,
+           "checkpoint_interpolation_included": _is_interpolation(candidate), "production_winner_declared": False})
     print(output / "evaluation_summary.json")
 
 
 def parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("preflight", "generate", "score", "report"), help="staged final-val action")
-    parser.add_argument("--candidate", required=True, choices=tuple(CANDIDATES), help="one selected real controlled checkpoint")
+    parser.add_argument("--candidate", required=True, choices=tuple(CANDIDATES), help="one allowlisted real or interpolated controlled candidate")
     parser.add_argument("--output-root", required=True, help="new or matching candidate-specific final-val output directory")
     parser.add_argument("--final-spec", default=str(FINAL_SPEC), help="immutable frozen final-val spec (pinned SHA-256 by default)")
     parser.add_argument("--latent-root", default="/lambda/nfs/adhit/krea2-pose/posebridge_latents")

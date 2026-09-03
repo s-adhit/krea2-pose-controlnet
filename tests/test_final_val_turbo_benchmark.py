@@ -104,6 +104,80 @@ class FinalValTurboBenchmarkTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "compatible production provenance"):
                     evaluator.candidate_checkpoint("candidate")
 
+    def test_interpolation_blends_trainable_tensors_in_fp32_and_preserves_output_dtype(self):
+        parent = {"first.weight": torch.tensor([1.0, 1.5], dtype=torch.bfloat16),
+                  "layers.0.attn.wq.A": torch.tensor([2.0], dtype=torch.float32)}
+        finish = {"first.weight": torch.tensor([5.0, 6.5], dtype=torch.bfloat16),
+                  "layers.0.attn.wq.A": torch.tensor([10.0], dtype=torch.float32)}
+
+        blended = evaluator.interpolate_trainable_state(parent, finish, 0.25)
+
+        self.assertEqual(set(blended), set(parent))
+        self.assertEqual(blended["first.weight"].dtype, torch.bfloat16)
+        self.assertEqual(blended["layers.0.attn.wq.A"].dtype, torch.float32)
+        self.assertTrue(torch.equal(
+            blended["first.weight"],
+            (parent["first.weight"].float() * .75 + finish["first.weight"].float() * .25).to(torch.bfloat16),
+        ))
+        self.assertTrue(torch.equal(blended["layers.0.attn.wq.A"], torch.tensor([4.0])))
+        self.assertTrue(torch.equal(parent["first.weight"], torch.tensor([1.0, 1.5], dtype=torch.bfloat16)))
+
+    def test_interpolation_rejects_mismatched_trainable_keys_and_shapes(self):
+        with self.assertRaisesRegex(ValueError, "exact matching trainable keys"):
+            evaluator.interpolate_trainable_state({"first.weight": torch.ones(2)}, {"first.bias": torch.ones(2)}, .5)
+        with self.assertRaisesRegex(ValueError, "shape mismatch"):
+            evaluator.interpolate_trainable_state({"first.weight": torch.ones(2)}, {"first.weight": torch.ones(3)}, .5)
+
+    def test_interpolation_candidate_records_exact_endpoint_provenance(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            parent_path = root / "step_004000.pt"; parent_path.write_bytes(b"parent")
+            finish_path = root / "step_004300.pt"; finish_path.write_bytes(b"finish")
+            parent = {"label": "parent-4000", "step": 4000}
+            finish = {"label": "finish-control-a4300", "step": 4300}
+            with patch.object(evaluator, "candidate_checkpoint", side_effect=[
+                (parent, parent_path, {"validation": "parent"}),
+                (finish, finish_path, {"validation": "finish"}),
+            ]):
+                candidate, checkpoint, metadata = evaluator.resolve_candidate("mix-025")
+
+            self.assertIsNone(checkpoint)
+            interpolation = candidate["interpolation"]
+            self.assertEqual(interpolation["candidate_id"], "mix-025")
+            self.assertEqual(interpolation["alpha"], .25)
+            self.assertEqual(
+                interpolation["endpoints"],
+                [{"candidate": "parent-4000", "path": str(parent_path), "step": 4000,
+                  "sha256": hashlib.sha256(b"parent").hexdigest()},
+                 {"candidate": "finish-control-a4300", "path": str(finish_path), "step": 4300,
+                  "sha256": hashlib.sha256(b"finish").hexdigest()}],
+            )
+            self.assertEqual(metadata["candidate_kind"], "trainable_tensor_interpolation")
+            contract = evaluator._output_contract(self.spec, "frozen-digest", candidate, checkpoint)
+            self.assertEqual(contract["candidate_kind"], "trainable_tensor_interpolation")
+            self.assertEqual(contract["checkpoint_interpolation"], interpolation)
+
+    def test_interpolation_state_loader_uses_only_model_tensors(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            parent_path = root / "parent.pt"; parent_path.write_bytes(b"parent")
+            finish_path = root / "finish.pt"; finish_path.write_bytes(b"finish")
+            candidate = {"kind": "trainable_tensor_interpolation", "interpolation": {
+                "alpha": .5,
+                "endpoints": [
+                    {"path": str(parent_path), "step": 4000, "sha256": hashlib.sha256(b"parent").hexdigest()},
+                    {"path": str(finish_path), "step": 4300, "sha256": hashlib.sha256(b"finish").hexdigest()},
+                ],
+            }}
+            states = [
+                {"global_step": 4000, "model": {"first.weight": torch.tensor([2.0])}, "optimizer": {"must": "not blend"}},
+                {"global_step": 4300, "model": {"first.weight": torch.tensor([6.0])}, "scheduler": {"must": "not blend"}},
+            ]
+            with patch.object(evaluator, "load_training_state", side_effect=states):
+                blended = evaluator.candidate_trainable_state(candidate, None)
+            self.assertEqual(set(blended), {"first.weight"})
+            self.assertTrue(torch.equal(blended["first.weight"], torch.tensor([4.0])))
+
     def test_final_sidecar_requires_exact_frozen_order_and_non_diagnostic_sources(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "sidecar.json"
