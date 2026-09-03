@@ -148,6 +148,66 @@ class StyleLoRACompositionContractTest(unittest.TestCase):
                     self.assertEqual(parts[style]["effective_prompt"], f"{row['semantic_base_prompt']}, {phrase}")
                     self.assertEqual(parts[style], composition._prompt_parts(row, style, v2))
 
+    def test_strength_sweep_spec_is_frozen_complete_and_keeps_comparison_identity(self):
+        experiment = composition.EXPERIMENTS["strength-sweep-v1"]
+        rows = composition.load_rows(experiment.experiment_id)
+        self.assertEqual(sha256(experiment.path), experiment.sha256)
+        self.assertEqual(tuple(composition.SWEEP_STYLE_ORDER), ("darkbrush", "rainywindow", "retroanime", "realism"))
+        self.assertEqual(tuple(composition.SWEEP_STRENGTHS), (0.25, 0.50, 0.75, 1.00))
+        cells = composition._generation_cells({"variants": composition.STYLE_ORDER}, experiment)
+        self.assertEqual(cells[0], ("pose-only", 0.0))
+        self.assertEqual(len(cells), 17)
+        self.assertEqual(len({composition._cell_key(style, strength) for style, strength in cells}), 17)
+        self.assertEqual(len({composition._image_name(style, strength, sweep=True) for style, strength in cells}), 17)
+        for row in rows:
+            self.assertEqual(tuple(row["style_ids"]), composition.SWEEP_STYLE_ORDER)
+            self.assertEqual(tuple(row["style_strengths"]), composition.SWEEP_STRENGTHS)
+            self.assertTrue(row["pose_only_baseline"])
+            for style, strength in cells:
+                prompt = composition._prompt_parts(row, style, experiment)
+                self.assertEqual(prompt["semantic_base_prompt"], row["semantic_base_prompt"])
+                self.assertEqual(prompt["effective_prompt"], row["semantic_base_prompt"] if style in ("pose-only", "realism") else f"{row['semantic_base_prompt']}, {prompt['trigger_phrase']}")
+                self.assertEqual(prompt["trigger_phrase"], "" if style in ("pose-only", "realism") else composition.V2_TRIGGER_PHRASES[style])
+                self.assertIn(strength, (0.0,) + composition.SWEEP_STRENGTHS)
+        for sweep_row, v2_row in zip(rows, composition.load_rows("v2-triggers")):
+            self.assertEqual(sweep_row["stem"], v2_row["stem"])
+            self.assertEqual(sweep_row["semantic_base_prompt"], v2_row["semantic_base_prompt"])
+            self.assertEqual(sweep_row["style_hashes"], v2_row["style_hashes"])
+
+    def test_strength_sweep_metadata_changes_only_style_scaling(self):
+        experiment = composition.EXPERIMENTS["strength-sweep-v1"]
+        row = composition.load_rows(experiment.experiment_id)[0]
+        with tempfile.TemporaryDirectory() as directory:
+            control = Path(directory) / "control.png"; control.write_bytes(b"authoritative-control")
+            contract = {"style_strength": 1.0, "sampling_seeds": {row["stem"]: 42}, "control_sha256": {row["stem"]: sha256(control)},
+                        "buckets": {row["stem"]: [1024, 1024]}, "style_loras": composition._immutable_style_loras({style: self.audits[style].json() for style in STYLE_LORA_SPECS}),
+                        "turbo": composition.guide.TURBO, "candidate_kind": "trainable_tensor_interpolation", "checkpoint_step": None,
+                        "checkpoint_interpolation": {"alpha": .25}}
+            metadata = [composition._metadata(row, "darkbrush", contract, control, experiment, strength) for strength in composition.SWEEP_STRENGTHS]
+            invariant_keys = set(metadata[0]) - {"style_strength"}
+            self.assertTrue(all({key: item[key] for key in invariant_keys} == {key: metadata[0][key] for key in invariant_keys} for item in metadata))
+            self.assertEqual([item["style_strength"] for item in metadata], list(composition.SWEEP_STRENGTHS))
+            self.assertTrue(all(item["seed"] == 42 and item["control_sha256"] == sha256(control) for item in metadata))
+            self.assertTrue(all(item["control_scale"] == 1.0 and item["geometry"] == composition.NATIVE_GEOMETRY for item in metadata))
+            pose_only = composition._metadata(row, "pose-only", contract, control, experiment, 0.0)
+            self.assertEqual(pose_only["style_strength"], 0.0)
+            self.assertNotIn("style_lora", pose_only)
+
+    def test_strength_sweep_report_grouping_and_baseline_deltas(self):
+        def pck(value):
+            return {"reference_available": True, "pck_005": value, "pck_010": value + .1, "pck_020": value + .2,
+                    "pck_005_correct_count": int(value * 10), "pck_010_correct_count": int((value + .1) * 10), "pck_020_correct_count": int((value + .2) * 10),
+                    "pck_eligible_joint_count": 10, "reference_people": 1, "rendered_reference_people": 1, "predicted_people": 1, "matched_people": 1,
+                    "unmatched_reference_people": 0, "unmatched_predicted_people": 0, "source_visible_joint_count": 10, "rendered_joint_count": 10, "joint_evaluation_covered_count": 10}
+        baseline = [{"pck": pck(.2), "clip_cosine_similarity": .3} for _ in range(4)]
+        styled = [{"pck": pck(.4), "clip_cosine_similarity": .5} for _ in range(4)]
+        row = composition._sweep_group_row("darkbrush", .25, styled, baseline)
+        self.assertEqual(row["generation_count"], 4)
+        self.assertAlmostEqual(row["deltas_relative_to_pose_only"]["delta_pck_005"], .2)
+        self.assertAlmostEqual(row["deltas_relative_to_pose_only"]["delta_pck_010"], .2)
+        self.assertAlmostEqual(row["deltas_relative_to_pose_only"]["delta_pck_020"], .2)
+        self.assertAlmostEqual(row["deltas_relative_to_pose_only"]["delta_clip"], .2)
+
     def test_v1_and_v2_cannot_share_immutable_provenance_or_output_identity(self):
         v1, v2 = composition.EXPERIMENTS["v1"], composition.EXPERIMENTS["v2-triggers"]
         self.assertNotEqual((v1.kind, v1.sha256), (v2.kind, v2.sha256))
@@ -160,6 +220,11 @@ class StyleLoRACompositionContractTest(unittest.TestCase):
             composition._validate_or_write_provenance(output, v1_identity)
             with self.assertRaisesRegex(ValueError, "conflicting immutable Style-LoRA provenance"):
                 composition._validate_or_write_provenance(output, v2_identity)
+            sweep = composition.EXPERIMENTS["strength-sweep-v1"]
+            sweep_identity = composition._canonical_json({"kind": sweep.kind, "frozen_spec": {"sha256": sweep.sha256},
+                                                           "experiment_id": sweep.experiment_id, "style_strengths": list(composition.SWEEP_STRENGTHS)})
+            with self.assertRaisesRegex(ValueError, "conflicting immutable Style-LoRA provenance"):
+                composition._validate_or_write_provenance(output, sweep_identity)
 
     def test_staged_immutable_provenance_lifecycle_and_drift_fail_closed(self):
         """Audit/preflight/generate share identity; stage output never alters it."""

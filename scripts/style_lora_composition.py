@@ -34,12 +34,14 @@ from scripts import prompting_guide_study as guide
 class ExperimentSpec:
     """A frozen composition-spec identity; v1 remains a historical control."""
 
-    def __init__(self, experiment_id: str, path: Path, sha256_digest: str, kind: str, trigger_correct: bool) -> None:
+    def __init__(self, experiment_id: str, path: Path, sha256_digest: str, kind: str, trigger_correct: bool,
+                 strength_sweep: bool = False) -> None:
         self.experiment_id = experiment_id
         self.path = path
         self.sha256 = sha256_digest
         self.kind = kind
         self.trigger_correct = trigger_correct
+        self.strength_sweep = strength_sweep
 
 
 EXPERIMENTS = {
@@ -53,6 +55,10 @@ EXPERIMENTS = {
         "89916989cdf8bc083cf868793647cf7239313ed7e8cc4badabb44eb40a13736d",
         "isolated_turbo_pose_lora_plus_single_style_lora_v2_triggers", True,
     ),
+    "strength-sweep-v1": ExperimentSpec(
+        "strength-sweep-v1", Path("docs/evaluation/style-lora-composition/style_lora_strength_sweep_v1.jsonl"),
+        "4dd68fb2773c31122f5289cc52f14d8f5334558d3a364e9d4b83e8721f2e5fdb", "isolated_turbo_pose_lora_single_style_lora_strength_sweep_v1", True, True,
+    ),
 }
 DEFAULT_EXPERIMENT = "v1"
 # Compatibility aliases for callers and the historical v1 test contract.
@@ -61,6 +67,8 @@ SPEC_SHA256 = EXPERIMENTS[DEFAULT_EXPERIMENT].sha256
 KIND = EXPERIMENTS[DEFAULT_EXPERIMENT].kind
 POSE_CANDIDATE = "mix-025"
 STYLE_ORDER = ("pose-only", "darkbrush", "rainywindow", "retroanime", "realism")
+SWEEP_STYLE_ORDER = ("darkbrush", "rainywindow", "retroanime", "realism")
+SWEEP_STRENGTHS = (0.25, 0.50, 0.75, 1.00)
 EXPECTED_CONDITIONS = ("simple_single", "dynamic_airborne", "inversion", "multi_person")
 NATIVE_GEOMETRY = "native_aspect_preserving_cached_latent_bucket"
 V2_TRIGGER_PHRASES = {
@@ -150,7 +158,9 @@ def load_rows(experiment_id: str = DEFAULT_EXPERIMENT) -> list[dict[str, Any]]:
         raise ValueError(f"Frozen Style-LoRA composition spec contains invalid JSON: {source}") from exc
     fields = ({"condition_id", "stem", "prompt", "style_ids", "style_trigger", "style_hashes"}
               if not experiment.trigger_correct else
-              {"condition_id", "stem", "semantic_base_prompt", "style_ids", "style_triggers", "style_hashes"})
+              ({"condition_id", "stem", "semantic_base_prompt", "style_ids", "style_triggers", "style_hashes",
+                "style_strengths", "pose_only_baseline"} if experiment.strength_sweep else
+               {"condition_id", "stem", "semantic_base_prompt", "style_ids", "style_triggers", "style_hashes"}))
     if len(rows) != 4 or any(not isinstance(row, dict) or set(row) != fields for row in rows):
         raise ValueError("Style-LoRA composition spec must contain exactly four exact-schema rows")
     if tuple(row["condition_id"] for row in rows) != EXPECTED_CONDITIONS:
@@ -163,8 +173,21 @@ def load_rows(experiment_id: str = DEFAULT_EXPERIMENT) -> list[dict[str, Any]]:
     for row in rows:
         triggers = row["style_triggers"] if experiment.trigger_correct else {style: row["style_trigger"] for style in STYLE_ORDER}
         expected_triggers = V2_TRIGGER_PHRASES if experiment.trigger_correct else {style: "" for style in STYLE_ORDER}
-        if tuple(row["style_ids"]) != STYLE_ORDER or triggers != expected_triggers or row["style_hashes"] != expected_hashes:
+        expected_styles = SWEEP_STYLE_ORDER if experiment.strength_sweep else STYLE_ORDER
+        expected_sweep_triggers = {style: V2_TRIGGER_PHRASES[style] for style in SWEEP_STYLE_ORDER}
+        if (tuple(row["style_ids"]) != expected_styles
+                or triggers != (expected_sweep_triggers if experiment.strength_sweep else expected_triggers)
+                or row["style_hashes"] != expected_hashes
+                or (experiment.strength_sweep and (tuple(row["style_strengths"]) != SWEEP_STRENGTHS or row["pose_only_baseline"] is not True))):
             raise ValueError("Style-LoRA composition spec has unsupported variants, trigger wording, or hashes")
+    if experiment.strength_sweep:
+        # The sweep must stay coupled to the already frozen trigger-corrected
+        # semantic/control panel, rather than merely looking structurally valid.
+        v2_rows = load_rows("v2-triggers")
+        for sweep_row, v2_row in zip(rows, v2_rows):
+            if (any(sweep_row[key] != v2_row[key] for key in ("condition_id", "stem", "semantic_base_prompt", "style_hashes"))
+                    or sweep_row["style_triggers"] != {style: v2_row["style_triggers"][style] for style in SWEEP_STYLE_ORDER}):
+                raise ValueError("Style-LoRA strength sweep drifted from the frozen v2 trigger-corrected pose/prompt panel")
     return rows
 
 
@@ -173,10 +196,21 @@ def _prompt_parts(row: Mapping[str, Any], style: str, experiment: ExperimentSpec
     if style not in STYLE_ORDER:
         raise ValueError(f"Unsupported Style-LoRA composition variant: {style}")
     semantic_base_prompt = str(row["semantic_base_prompt"] if experiment.trigger_correct else row["prompt"])
-    trigger_phrase = str(row["style_triggers"][style] if experiment.trigger_correct else "")
+    trigger_phrase = str(row["style_triggers"].get(style, "") if experiment.trigger_correct else "")
     effective_prompt = semantic_base_prompt if not trigger_phrase else f"{semantic_base_prompt}, {trigger_phrase}"
     return {"semantic_base_prompt": semantic_base_prompt, "trigger_phrase": trigger_phrase,
             "effective_prompt": effective_prompt}
+
+
+def _generation_cells(contract: Mapping[str, Any], experiment: ExperimentSpec) -> tuple[tuple[str, float], ...]:
+    """Ordered, complete matrix cells; sweep pose-only is intentionally one cell."""
+    if not experiment.strength_sweep:
+        return tuple((style, 0.0 if style == "pose-only" else float(contract["style_strength"])) for style in contract["variants"])
+    return (("pose-only", 0.0),) + tuple((style, strength) for style in SWEEP_STYLE_ORDER for strength in SWEEP_STRENGTHS)
+
+
+def _cell_key(style: str, strength: float) -> str:
+    return "pose-only" if style == "pose-only" else f"{style}@{strength:.2f}"
 
 
 def _prompt_provenance(rows: list[dict[str, Any]], variants: tuple[str, ...], experiment: ExperimentSpec) -> list[dict[str, Any]]:
@@ -274,6 +308,13 @@ def _immutable_provenance(*, rows: list[dict[str, Any]], variants: tuple[str, ..
     if experiment.trigger_correct:
         provenance.update({"experiment_id": experiment.experiment_id,
                            "prompt_construction": _prompt_provenance(rows, variants, experiment)})
+    if experiment.strength_sweep:
+        # There is no global Style-LoRA scale in the sweep; every styled cell
+        # receives exactly one spec-pinned scale at hook application time.
+        provenance.pop("style_strength")
+        provenance.update({"style_ids": list(SWEEP_STYLE_ORDER), "style_strengths": list(SWEEP_STRENGTHS),
+                           "pose_only_baselines": len(rows), "styled_generation_count": len(rows) * len(SWEEP_STYLE_ORDER) * len(SWEEP_STRENGTHS),
+                           "generation_count": len(rows) * (1 + len(SWEEP_STYLE_ORDER) * len(SWEEP_STRENGTHS))})
     return _canonical_json(provenance)
 
 
@@ -285,9 +326,13 @@ def _validate_runtime() -> None:
 
 def _inputs(args: argparse.Namespace, rows: list[dict[str, Any]], experiment: ExperimentSpec) -> tuple[dict[str, Any], PreparedLatentShardDataset, dict[str, Path], dict[str, Any], Path | None, dict[str, Any], Path, dict[str, dict[str, Any]]]:
     _validate_runtime()
+    if experiment.strength_sweep and float(args.style_strength) != 1.0:
+        raise ValueError("strength-sweep-v1 pins all strengths in its immutable spec; do not pass --style-strength")
     output = Path(args.output_root)
     audits = _audits()
     variants = _variants(audits)
+    if experiment.strength_sweep and variants != STYLE_ORDER:
+        raise ValueError("Frozen Style-LoRA strength sweep requires all four pinned Style-LoRAs to pass audit")
     spec, final_digest = final_val.load_final_spec(args.final_spec)
     stems = [row["stem"] for row in rows]
     if any(stem not in spec["stems"] for stem in stems):
@@ -310,7 +355,7 @@ def _inputs(args: argparse.Namespace, rows: list[dict[str, Any]], experiment: Ex
                              int(_sample_by_stem(dataset, stem)["latent"].shape[-2] * 8)] for stem in stems}
     contract = _immutable_provenance(
         rows=rows, variants=variants, seed_by_stem=seed_by_stem, control_hashes=control_hashes,
-        bucket_by_stem=bucket_by_stem, style_strength=float(args.style_strength), audits=audits,
+        bucket_by_stem=bucket_by_stem, style_strength=(1.0 if experiment.strength_sweep else float(args.style_strength)), audits=audits,
         final_digest=final_digest, candidate=candidate, checkpoint=checkpoint, experiment=experiment,
     )
     _validate_or_write_provenance(output, contract)
@@ -321,8 +366,10 @@ def _directory(output: Path, stem: str) -> Path:
     return output / "generations" / stem
 
 
-def _image_name(style: str) -> str:
-    return f"{style}.png"
+def _image_name(style: str, strength: float = 0.0, *, sweep: bool = False) -> str:
+    if not sweep:
+        return f"{style}.png"
+    return "pose-only.png" if style == "pose-only" else f"{style}_strength-{strength:.2f}.png"
 
 
 def _copy_control(source: Path, target: Path) -> None:
@@ -334,13 +381,13 @@ def _copy_control(source: Path, target: Path) -> None:
 
 
 def _metadata(row: Mapping[str, Any], style: str, contract: Mapping[str, Any], control: Path,
-              experiment: ExperimentSpec = EXPERIMENTS[DEFAULT_EXPERIMENT]) -> dict[str, Any]:
+              experiment: ExperimentSpec = EXPERIMENTS[DEFAULT_EXPERIMENT], strength: float | None = None) -> dict[str, Any]:
     prompt = _prompt_parts(row, style, experiment)
     # v1's completed no-trigger sanity artifacts retain their original metadata
     # schema and semantics.  v2 records the three prompt components separately.
     prompt_metadata = ({"prompt": prompt["effective_prompt"], "style_trigger": ""} if not experiment.trigger_correct else prompt)
     result = {"condition_id": row["condition_id"], "stem": row["stem"], **prompt_metadata,
-              "style_id": style, "style_strength": contract["style_strength"] if style != "pose-only" else 0.0,
+              "style_id": style, "style_strength": (float(strength) if style != "pose-only" and strength is not None else (contract["style_strength"] if style != "pose-only" else 0.0)),
               "seed": contract["sampling_seeds"][row["stem"]],
               "control_path": str(control), "control_sha256": contract["control_sha256"][row["stem"]], "bucket": contract["buckets"][row["stem"]],
               "geometry": NATIVE_GEOMETRY, "frozen_spec_sha256": experiment.sha256, "candidate": POSE_CANDIDATE,
@@ -358,14 +405,15 @@ def _generation_status(output: Path, rows: list[dict[str, Any]], contract: Mappi
     observed, recorded = [], []
     for row in rows:
         control = output / "controls" / f"{row['stem']}.png"
-        for style in contract["variants"]:
-            directory = _directory(output, row["stem"]); image = directory / _image_name(style); metadata_path = directory / f"{style}.json"
+        for style, strength in _generation_cells(contract, experiment):
+            key = _cell_key(style, strength)
+            directory = _directory(output, row["stem"]); image = directory / _image_name(style, strength, sweep=experiment.strength_sweep); metadata_path = directory / f"{key}.json"
             if image.is_file():
                 try:
                     with Image.open(image) as opened: opened.verify()
                     with Image.open(control) as opened: opened.verify()
                     metadata = _read_json(metadata_path)
-                    expected = _metadata(row, style, contract, control, experiment)
+                    expected = _metadata(row, style, contract, control, experiment, strength)
                     if metadata != expected:
                         raise ValueError("generation metadata contract mismatch")
                 except Exception as exc:
@@ -376,7 +424,7 @@ def _generation_status(output: Path, rows: list[dict[str, Any]], contract: Mappi
                     raise ValueError("Existing Style-LoRA generation output is incomplete; refusing to overwrite")
                 observed.append(False)
             if payload is not None:
-                recorded.append(payload.get("generated_artifacts", {}).get(row["stem"], {}).get(style) == str(image.relative_to(output)))
+                recorded.append(payload.get("generated_artifacts", {}).get(row["stem"], {}).get(key) == str(image.relative_to(output)))
     if not any(observed) and payload is None:
         return "missing"
     if (all(observed) and payload is not None and all(recorded)
@@ -402,7 +450,7 @@ def preflight(args: argparse.Namespace) -> None:
     contract, dataset, controls, _, _, training, output, _ = _inputs(args, rows, experiment)
     _write(output / "checkpoint_preflight.json", _stage_payload(
         contract, dataset_sample_count=len(dataset), control_paths_resolved={stem: str(path) for stem, path in controls.items()},
-        training_metadata=training, generation_count=len(rows) * len(contract["variants"]),
+        training_metadata=training, generation_count=len(rows) * len(_generation_cells(contract, experiment)),
         text_conditioning="online frozen semantic prompts; source captions are never sampled",
     ))
     print(output / "checkpoint_preflight.json")
@@ -415,7 +463,7 @@ def generate(args: argparse.Namespace) -> None:
     rows = load_rows(experiment.experiment_id)
     contract, dataset, controls, candidate, checkpoint, training, output, audits = _inputs(args, rows, experiment)
     if _generation_status(output, rows, contract, experiment) == "complete":
-        print(json.dumps({"already_complete": POSE_CANDIDATE, "generation_count": len(rows) * len(contract["variants"])})); return
+        print(json.dumps({"already_complete": POSE_CANDIDATE, "generation_count": len(rows) * len(_generation_cells(contract, experiment))})); return
     model = final_val.build_turbo_pose_model(args.turbo_ckpt, 64, 64, "cuda").eval()
     trainable = final_val.candidate_trainable_state(candidate, checkpoint)
     final_val.load_trainable_state_dict(model, trainable)
@@ -426,9 +474,10 @@ def generate(args: argparse.Namespace) -> None:
     for row in rows:
         sample = dict(_sample_by_stem(dataset, row["stem"])); bucket = [sample["latent"].shape[-1] * 8, sample["latent"].shape[-2] * 8]
         control_output = output / "controls" / f"{row['stem']}.png"; _copy_control(controls[row["stem"]], control_output)
-        for style in contract["variants"]:
-            directory = _directory(output, row["stem"]); metadata = _metadata(row, style, contract, control_output, experiment)
-            metadata_path = directory / f"{style}.json"
+        for style, strength in _generation_cells(contract, experiment):
+            key = _cell_key(style, strength)
+            directory = _directory(output, row["stem"]); metadata = _metadata(row, style, contract, control_output, experiment, strength)
+            metadata_path = directory / f"{key}.json"
             if metadata_path.exists() and _read_json(metadata_path) != metadata:
                 raise ValueError(f"Existing Style-LoRA metadata conflicts with frozen contract: {metadata_path}")
             if not metadata_path.exists(): _write(metadata_path, metadata)
@@ -444,7 +493,8 @@ def generate(args: argparse.Namespace) -> None:
                 # A fresh scope for every image prevents persistent or double application.
                 with applied_style_lora(model, adapters[style], metadata["style_strength"]):
                     pixels = sample_turbo_pose_image(model, lambda latent: decode_normalized_latents(vae, latent), generated_sample, torch.device("cuda"), metadata["seed"], control_scale=1.0)
-            save_image(pixels, directory / _image_name(style)); artifacts[row["stem"]][style] = str((_directory(output, row["stem"]) / _image_name(style)).relative_to(output))
+            image = directory / _image_name(style, strength, sweep=experiment.strength_sweep)
+            save_image(pixels, image); artifacts[row["stem"]][key] = str(image.relative_to(output))
     _write(output / "generation_results.json", _stage_payload(
         contract, generated_artifacts=artifacts, raw_to_turbo_control_compatibility=compatibility,
         training_metadata=training, source_rgb_fallback_used=False,
@@ -471,10 +521,16 @@ def _score_provenance(contract: Mapping[str, Any], *, sidecar_sha256: str, clip_
     })
 
 
-def _score_records(payload: Mapping[str, Any], rows: list[dict[str, Any]], variants: list[str]) -> list[dict[str, Any]]:
+def _score_records(payload: Mapping[str, Any], rows: list[dict[str, Any]], contract: Mapping[str, Any], experiment: ExperimentSpec) -> list[dict[str, Any]]:
     records = payload.get("per_generation")
-    expected = [(row["stem"], style) for row in rows for style in variants]
-    if not isinstance(records, list) or [(item.get("stem"), item.get("style_id")) for item in records] != expected:
+    if not experiment.strength_sweep:
+        expected_legacy = [(row["stem"], style) for row in rows for style in contract["variants"]]
+        if not isinstance(records, list) or [(item.get("stem"), item.get("style_id")) for item in records] != expected_legacy:
+            raise ValueError("Style-LoRA score artifact is incomplete or does not match the frozen matrix")
+        return records
+    expected = [(row["stem"], style, strength) for row in rows for style, strength in _generation_cells(contract, experiment)]
+    observed = [(item.get("stem"), item.get("style_id"), float(item.get("style_strength", -1))) for item in records] if isinstance(records, list) else []
+    if observed != expected:
         raise ValueError("Style-LoRA score artifact is incomplete or does not match the frozen matrix")
     return records
 
@@ -501,13 +557,13 @@ def score(args: argparse.Namespace) -> None:
     from scripts.turbo_benchmark import _clip_score
     records = []
     for row in rows:
-        for style in contract["variants"]:
-            image = _directory(output, row["stem"]) / _image_name(style)
+        for style, strength in _generation_cells(contract, experiment):
+            image = _directory(output, row["stem"]) / _image_name(style, strength, sweep=experiment.strength_sweep)
             result = score_authoritative_pck(sidecar={"records": [by_stem[row["stem"]]]}, geometry_by_stem={row["stem"]: geometry[row["stem"]]}, image_for=lambda _: image, detector=detector, confidence_threshold=.5, require_images=True)
             pck = result["per_image"][0] if result["per_image"] else {"stem": row["stem"], "reference_available": False, "reason": result["unavailable"][0]["reason"]}
             prompt = _prompt_parts(row, style, experiment)
             prompt_record = prompt if experiment.trigger_correct else {"prompt": prompt["effective_prompt"]}
-            records.append({"condition_id": row["condition_id"], "stem": row["stem"], "style_id": style, **prompt_record, "seed": contract["sampling_seeds"][row["stem"]],
+            records.append({"condition_id": row["condition_id"], "stem": row["stem"], "style_id": style, "style_strength": strength, **prompt_record, "seed": contract["sampling_seeds"][row["stem"]],
                             "image": str(image.relative_to(output)), "pck": pck, "clip_cosine_similarity": _clip_score(clip, processor, device, prompt["effective_prompt"], image)})
     _write(score_path, _stage_payload(
         contract, scoring_provenance=score_provenance, reference_sidecar=str(Path(args.reference_sidecar).resolve()),
@@ -536,7 +592,72 @@ def _validated_scores(output: Path, contract: Mapping[str, Any], rows: list[dict
             or not isinstance(score_provenance.get("clip_model_id"), str)
             or score_provenance.get("confidence_threshold") != 0.5):
         raise ValueError("Style-LoRA score artifact lacks immutable scoring provenance")
-    return _score_records(scores, rows, contract["variants"])
+    return _score_records(scores, rows, contract, _experiment(str(contract.get("experiment_id", DEFAULT_EXPERIMENT))))
+
+
+def _baseline_deltas(styled: Mapping[str, Any], baseline: Mapping[str, Any]) -> dict[str, float | None]:
+    """Only the requested pose/CLIP deltas; no automated style-fidelity claim."""
+    result: dict[str, float | None] = {}
+    for key in ("pck_005", "pck_010", "pck_020"):
+        left, right = styled["pck"].get(key), baseline["pck"].get(key)
+        result[f"delta_{key}"] = None if left is None or right is None else float(left) - float(right)
+    left, right = styled["clip"]["mean_cosine_similarity"], baseline["clip"]["mean_cosine_similarity"]
+    result["delta_clip"] = None if left is None or right is None else float(left) - float(right)
+    return result
+
+
+def _sweep_group_row(style: str, strength: float, records: list[dict[str, Any]], baseline: list[dict[str, Any]]) -> dict[str, Any]:
+    compact, base = _compact(records), _compact(baseline)
+    return {"style_id": style, "style_strength": strength, **compact,
+            "pose_only_baseline": base, "deltas_relative_to_pose_only": _baseline_deltas(compact, base),
+            "style_fidelity_metric": "not_claimed; qualitative review required"}
+
+
+def _report_strength_sweep(output: Path, contract: Mapping[str, Any], rows: list[dict[str, Any]], records: list[dict[str, Any]], training: Mapping[str, Any]) -> None:
+    baseline = [record for record in records if record["style_id"] == "pose-only"]
+    if len(baseline) != len(rows):
+        raise ValueError("Style-LoRA strength sweep lacks exactly one pose-only baseline per pose")
+    styled = [record for record in records if record["style_id"] != "pose-only"]
+    if len(styled) != len(rows) * len(SWEEP_STYLE_ORDER) * len(SWEEP_STRENGTHS):
+        raise ValueError("Style-LoRA strength sweep does not contain the complete 64 styled-generation matrix")
+    by_style_strength: list[dict[str, Any]] = []
+    by_style: list[dict[str, Any]] = []
+    by_strength: list[dict[str, Any]] = []
+    for style in SWEEP_STYLE_ORDER:
+        style_records = [record for record in styled if record["style_id"] == style]
+        for strength in SWEEP_STRENGTHS:
+            group = [record for record in style_records if float(record["style_strength"]) == strength]
+            if len(group) != len(rows):
+                raise ValueError("Style-LoRA strength sweep has an incomplete style/strength group")
+            by_style_strength.append(_sweep_group_row(style, strength, group, baseline))
+        by_style.append({"style_id": style, "secondary_diagnostic": True,
+                         **_sweep_group_row(style, -1.0, style_records, baseline)})
+    for strength in SWEEP_STRENGTHS:
+        group = [record for record in styled if float(record["style_strength"]) == strength]
+        by_strength.append({"style_strength": strength, "secondary_diagnostic": True,
+                            **_sweep_group_row("all_styles", strength, group, baseline)})
+    _write(output / "metrics_by_style_strength.json", _stage_payload(contract, group_by="style_id,style_strength", rows=by_style_strength))
+    _write(output / "metrics_by_style.json", _stage_payload(contract, group_by="style_id", secondary_diagnostic=True, rows=by_style))
+    _write(output / "metrics_by_strength.json", _stage_payload(contract, group_by="style_strength", secondary_diagnostic=True, rows=by_strength))
+    _write(output / "pose_retention_vs_strength.json", _stage_payload(contract, group_by="style_strength", rows=by_strength,
+        interpretation="pose metrics only; use qualitative grids to assess style visibility"))
+    labels = ("pose control", "pose-only") + tuple(f"{strength:.2f}" for strength in SWEEP_STRENGTHS)
+    for style in SWEEP_STYLE_ORDER:
+        aggregate_rows = []
+        for row in rows:
+            paths = [output / "controls" / f"{row['stem']}.png", _directory(output, row["stem"]) / _image_name("pose-only", sweep=True)]
+            paths += [_directory(output, row["stem"]) / _image_name(style, strength, sweep=True) for strength in SWEEP_STRENGTHS]
+            if any(not path.is_file() for path in paths):
+                raise FileNotFoundError(f"Style-LoRA strength grid requires every cell: {row['stem']} / {style}")
+            make_contact_sheet([(row["condition_id"], paths)], output / "strength_grids" / style / f"{row['condition_id']}.png", thumbnail_width=220, thumbnail_height=220, column_labels=labels)
+            aggregate_rows.append((row["condition_id"], paths))
+        make_contact_sheet(aggregate_rows, output / "strength_grids" / f"{style}_all_poses.png", thumbnail_width=160, thumbnail_height=160, column_labels=labels)
+    overall_rows = []
+    for style in SWEEP_STYLE_ORDER:
+        for row in rows:
+            overall_rows.append((f"{style} / {row['condition_id']}", [output / "controls" / f"{row['stem']}.png", _directory(output, row["stem"]) / _image_name("pose-only", sweep=True)] + [_directory(output, row["stem"]) / _image_name(style, strength, sweep=True) for strength in SWEEP_STRENGTHS]))
+    make_contact_sheet(overall_rows, output / "style_lora_strength_sweep_contact_sheet.png", thumbnail_width=130, thumbnail_height=130, column_labels=labels)
+    _write(output / "evaluation_summary.json", _stage_payload(contract, training_metadata=training, generation_count=len(records), styled_generation_count=len(styled), pose_only_baseline_count=len(baseline), score_artifact="pck_clip_results.json", compact_metrics="metrics_by_style_strength.json", secondary_diagnostics=("metrics_by_style.json", "metrics_by_strength.json", "pose_retention_vs_strength.json"), per_style_strength_grids={style: str(Path("strength_grids") / f"{style}_all_poses.png") for style in SWEEP_STYLE_ORDER}, aggregate_contact_sheet="style_lora_strength_sweep_contact_sheet.png", source_rgb_fallback_used=False, style_fidelity="qualitative_only; no automated style-fidelity claim"))
 
 
 def report(args: argparse.Namespace) -> None:
@@ -546,6 +667,10 @@ def report(args: argparse.Namespace) -> None:
     if _generation_status(output, rows, contract, experiment) != "complete":
         raise FileNotFoundError("Style-LoRA report requires the complete validated generation matrix")
     records = _validated_scores(output, contract, rows)
+    if experiment.strength_sweep:
+        _report_strength_sweep(output, contract, rows, records, training)
+        print(output / "evaluation_summary.json")
+        return
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for record in records: grouped[record["style_id"]].append(record)
     if tuple(grouped) != tuple(contract["variants"]) or any(len(grouped[style]) != len(rows) for style in grouped):
@@ -575,6 +700,14 @@ def summary(args: argparse.Namespace) -> None:
     if _generation_status(output, rows, contract, experiment) != "complete":
         raise FileNotFoundError("Style-LoRA summary requires the complete validated generation matrix")
     records = _validated_scores(output, contract, rows)
+    if experiment.strength_sweep:
+        metrics = _read_json(output / "metrics_by_style_strength.json")
+        if metrics.get("immutable_provenance") != contract:
+            raise ValueError("Style-LoRA strength-sweep metrics conflict with immutable provenance")
+        print(json.dumps({"candidate": POSE_CANDIDATE, "generation_count": len(records), "styled_generation_count": len(records) - len(rows),
+                          "pose_only_baselines": len(rows), "style_strengths": list(SWEEP_STRENGTHS),
+                          "metrics_by_style_strength": metrics["rows"], "style_fidelity": "qualitative_only"}, sort_keys=True))
+        return
     print(json.dumps({"candidate": POSE_CANDIDATE, "style_strength": contract["style_strength"], "generation_count": len(records),
                       "by_style": [{"style_id": style, **_compact([record for record in records if record["style_id"] == style])} for style in contract["variants"]]}, sort_keys=True))
 
