@@ -8,13 +8,13 @@ Training uses **Krea-2 Raw**. Inference and evaluation use **Krea-2 Turbo**.
 
 The Pose Control-LoRA has been trained for Krea-2 Raw and evaluated/deployed on Krea-2 Turbo. The current quantitative release candidate is **mix-025**, pending the remaining release experiments; it is not final.
 
-![mix-025 held-out Turbo contact sheet](docs/evaluation/final-val-turbo/mix-025/full_contact_sheet.png)
-
 ### Curated generations
 
-| Fantasy Mage | Gojo-inspired Mural | Dark-fantasy Jester |
-|---|---|---|
-| ![Fantasy Mage](docs/assets/showcase/final/fantasy-mage/generation.png) | ![Gojo-inspired Mural](docs/assets/showcase/final/gojo-mural/generation.png) | ![Dark-fantasy Jester](docs/assets/showcase/final/jester/generation.png) |
+| Condition | Generation |
+|---|---|
+| ![Fantasy Mage condition](docs/assets/showcase/final/fantasy-mage/condition.png) | ![Fantasy Mage generation](docs/assets/showcase/final/fantasy-mage/generation.png) |
+| ![Gojo-inspired Mural condition](docs/assets/showcase/final/gojo-mural/condition.png) | ![Gojo-inspired Mural generation](docs/assets/showcase/final/gojo-mural/generation.png) |
+| ![Dark-fantasy Jester condition](docs/assets/showcase/final/jester/condition.png) | ![Dark-fantasy Jester generation](docs/assets/showcase/final/jester/generation.png) |
 
 These are curated qualitative demonstrations. Franchise-inspired examples are fan-art-style demonstrations only.
 
