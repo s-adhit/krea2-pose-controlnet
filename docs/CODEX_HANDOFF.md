@@ -2,30 +2,47 @@
 
 ## Current objective
 
-Run and inspect the frozen, isolated Krea-2 Turbo `mix-025` Style-LoRA strength sweep. Do not train, access the network from Codex, commit, push, alter canonical `inference.py`, alter training code, alter historical v1/v2 artifacts, or begin another composition/grid experiment.
+Run and inspect the isolated English / Chinese / Telugu fixed-pose multilingual v2 smoke on the GH200. Do not train, access the network from Codex, commit, push, modify canonical `inference.py`, modify training code, or alter frozen historical EN/ZH artifacts.
 
-## Frozen strength-sweep-v1 contract
+## Multilingual smoke v2 contract
 
-- Immutable spec: `docs/evaluation/style-lora-composition/style_lora_strength_sweep_v1.jsonl`; SHA-256 `4dd68fb2773c31122f5289cc52f14d8f5334558d3a364e9d4b83e8721f2e5fdb`. The loader validates it fail-closed and verifies its stems, semantic base prompts, triggers, and Style-LoRA hashes match frozen v2.
-- Candidate: `mix-025`, FP32 `(0.75 * parent-4000) + (0.25 * finish-control-a4300)` over only `state['model']` trainable tensors. Pinned endpoint hashes are revalidated at every stage.
-- Runtime: Krea-2 Turbo, 8 steps, CFG 0, `mu=1.15`, no resolution-dependent mu shift, native/aspect-preserving cached-latent geometry, pose/control scale `1.0`, and frozen final-val sampling seed per pose. Source RGB is neither sampled nor used as fallback.
-- Poses: `simple_single` / `sculpture_humanart_14000000003803`; `dynamic_airborne` / `coco_49731_461706`; `inversion` / `real_human_humanart_15000000000521`; `multi_person` / `real_human_humanart_17000000001263`.
-- Styled cells: darkbrush, rainywindow, retroanime, realism at exactly `[0.25, 0.50, 0.75, 1.00]` in that order: 64 styled generations. Generate one pose-only baseline per pose (4 more), for 68 total. The sweep does not permit `--style-strength`; per-cell values are spec-pinned.
-- Prompts: darkbrush appends `, monochrome ink wash style`; rainywindow appends `, rainy window style`; retroanime appends `, Purple retro anime style`; realism and pose-only have no trigger. CLIP uses this exact effective prompt. Style fidelity is qualitative only.
-- Style adapters retain the pinned hashes and strict 528-FP32-tensor / 264-pair / rank-32 mapping audit. They are scoped temporary hooks and never merge into Pose-LoRA state.
+- Immutable spec: `docs/evaluation/prompting-guide/multilingual_prompt_smoke_v2.jsonl`; SHA-256 `bc178f1e6c0559b3bfc92c7d48edbdd2a825e9451eb9d230aed794edaf23d9e5`.
+- Ordered rows, all for `sculpture_humanart_14000000003803`:
+  - `en`: `A single adult woman wearing a simple cream outfit in a quiet botanical courtyard, soft overcast daylight, natural textures.`
+  - `zh`: `一位成年女性，穿着简洁的奶油色服装，身处安静的植物庭院中，柔和的阴天天光，自然真实的材质质感。`
+  - `te`: `ఒక వయోజన మహిళ సరళమైన క్రీమ్ రంగు దుస్తులు ధరించి, నిశ్శబ్దమైన బొటానికల్ ప్రాంగణంలో ఉంది, మృదువైన మేఘావృత దినకాంతి, సహజమైన వాస్తవిక పదార్థాల స్పర్శ.`
+- Every row uses the authoritative final-val sampling seed `8675987726486463627`, the same resolved pose control and SHA-256, `mix-025`, native/aspect-preserving cached-latent geometry, Krea-2 Turbo, 8 steps, CFG 0, `mu=1.15`, and control scale 1.0.
+- The new `scripts/multilingual_prompt_smoke.py` scopes the existing frozen generation/PCK/CLIP mechanics to this v2 contract. It leaves `scripts/chinese_prompt_smoke.py`, `chinese_prompt_smoke.jsonl`, and completed EN/ZH artifacts unchanged. CLIP is the unchanged existing UTF-8 prompt path; it is not given Telugu-specific metric behavior.
+- It writes immutable `language_smoke_provenance.json`, exactly three generations, `pck_clip_results.json`, `metrics_by_language.json`, `evaluation_summary.json`, `multilingual_comparison.png` (pose control | English | Chinese | Telugu), and `compact_summary.json`. Incomplete/drifted roots fail closed.
 
-## Isolation and output contract
+## Exact GH200 commands
 
-- New output root only: `/lambda/nfs/adhit/krea2-pose/evaluation/style-lora-composition/strength-sweep-v1`.
-- Immutable provenance records the spec, candidate interpolation, Turbo/control contract, prompts, style hashes, seeds, control hashes, geometry, exact styles, strengths, and counts. Drift or v1/v2 output-root identity collision fails closed.
-- Generation rejects a partial matrix. Reporting requires all 64 styled cells plus exactly four pose-only baselines.
-- Outputs: `metrics_by_style_strength.json` (primary, with PCK@0.05/0.10/0.20, coverage/person counts, CLIP, and pose-only deltas); `metrics_by_style.json` and `metrics_by_strength.json` (secondary diagnostics); `pose_retention_vs_strength.json`; grids; contact sheet; summary; provenance; compact summary.
+Output root:
+
+```bash
+/lambda/nfs/adhit/krea2-pose/evaluation/prompting-guide/multilingual-smoke-v2
+```
+
+```bash
+uv run python scripts/multilingual_prompt_smoke.py preflight --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/prompting-guide/multilingual-smoke-v2
+uv run python scripts/multilingual_prompt_smoke.py generate --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/prompting-guide/multilingual-smoke-v2
+uv run python scripts/multilingual_prompt_smoke.py score --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/prompting-guide/multilingual-smoke-v2 --reference-sidecar docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48_pose_targets_v3
+uv run python scripts/multilingual_prompt_smoke.py report --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/prompting-guide/multilingual-smoke-v2
+uv run python scripts/multilingual_prompt_smoke.py summary --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/prompting-guide/multilingual-smoke-v2
+```
+
+## README refresh
+
+- Added current status and the frozen mix interpolation table; mix-025 remains a release candidate, not final.
+- Added concise prompting, Style-LoRA composition, multilingual, evaluation, repository-tree, and GH200 helper coverage.
+- Verified README links/images: final-val mix-025 contact sheet, prompting-study contact sheet, Style-LoRA strength-sweep contact sheet, trigger-correct and strength-sweep result directories, three curated showcase images, `prompting.md`, and `scripts/bootstrap_gh200.sh`.
 
 ## Files changed this session
 
-- `docs/evaluation/style-lora-composition/style_lora_strength_sweep_v1.jsonl`
-- `scripts/style_lora_composition.py`
-- `tests/test_style_lora_composition.py`
+- `README.md`
+- `docs/evaluation/prompting-guide/multilingual_prompt_smoke_v2.jsonl`
+- `scripts/multilingual_prompt_smoke.py`
+- `tests/test_multilingual_prompt_smoke.py`
 - `docs/CODEX_HANDOFF.md`
 
 ## Completed / green checks
@@ -33,28 +50,14 @@ Run and inspect the frozen, isolated Krea-2 Turbo `mix-025` Style-LoRA strength 
 PASS:
 
 ```bash
-UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python -m py_compile scripts/style_lora_composition.py tests/test_style_lora_composition.py
-UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python -m unittest tests.test_style_lora_composition -v
-# 11 tests passed
-UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python scripts/style_lora_composition.py --help
-UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python -c "... load_rows('strength-sweep-v1') ..."
-# frozen SHA verified; 68 total / 64 styled generations
-git diff --check
+UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python -m py_compile scripts/multilingual_prompt_smoke.py tests/test_multilingual_prompt_smoke.py scripts/chinese_prompt_smoke.py tests/test_chinese_prompt_smoke.py
+UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python -m unittest tests.test_multilingual_prompt_smoke tests.test_chinese_prompt_smoke tests.test_prompting_guide_study tests.test_style_lora_composition -v
+# 30 tests passed
+UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python scripts/multilingual_prompt_smoke.py --help
 ```
 
-Tests cover frozen style/strength lists and ordering; v2 semantic/control parity; exact triggers/effective prompts at every strength; per-strength metadata invariance except Style-LoRA scale; fixed pose scale; scoped hook non-leakage; seed/control identity; full 64-cell completeness; one pose-only baseline per pose; immutable provenance drift and v1/v2 collision failure; and baseline-delta aggregation.
-
-## Exact GH200 commands
-
-```bash
-uv run python scripts/style_lora_composition.py audit --experiment strength-sweep-v1 --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/style-lora-composition/strength-sweep-v1
-uv run python scripts/style_lora_composition.py preflight --experiment strength-sweep-v1 --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/style-lora-composition/strength-sweep-v1
-uv run python scripts/style_lora_composition.py generate --experiment strength-sweep-v1 --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/style-lora-composition/strength-sweep-v1
-uv run python scripts/style_lora_composition.py score --experiment strength-sweep-v1 --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/style-lora-composition/strength-sweep-v1 --reference-sidecar docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48_pose_targets_v3
-uv run python scripts/style_lora_composition.py report --experiment strength-sweep-v1 --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/style-lora-composition/strength-sweep-v1
-uv run python scripts/style_lora_composition.py summary --experiment strength-sweep-v1 --candidate mix-025 --output-root /lambda/nfs/adhit/krea2-pose/evaluation/style-lora-composition/strength-sweep-v1
-```
+Tests pin the v2 byte hash, exact Telugu UTF-8 text, EN/ZH/TE order, common seed/control/candidate/runtime, incomplete output refusal, score ordering, immutable drift failure, and unchanged legacy EN/ZH hash/rows. No generation or network access was performed in Codex.
 
 ## Next action
 
-Run and inspect the Style-LoRA strength sweep; identify the lowest qualitatively clear style strength with acceptable pose retention. Do not hard-code a recommendation before review.
+Run the Telugu multilingual smoke on GH200, inspect the comparison, then continue the remaining release evaluations.

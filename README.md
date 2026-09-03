@@ -1,47 +1,32 @@
-
 # Krea-2 Pose Control-LoRA
 
-Skeleton-conditioned pose control for Krea-2.
-
-The pose image controls **body geometry**. The prompt controls **identity, clothing, style, lighting, and environment**.
+Skeleton-conditioned pose control for Krea-2. The pose image controls **body geometry**; the prompt controls **identity, clothing, style, lighting, and environment**.
 
 Training uses **Krea-2 Raw**. Inference and evaluation use **Krea-2 Turbo**.
 
----
+## Status
 
-## Showcase
+The Pose Control-LoRA has been trained for Krea-2 Raw and evaluated/deployed on Krea-2 Turbo. The current quantitative release candidate is **mix-025**, pending the remaining release experiments; it is not final.
 
-### Fantasy Mage
+![mix-025 held-out Turbo contact sheet](docs/evaluation/final-val-turbo/mix-025/full_contact_sheet.png)
 
-| Pose condition | Generation |
-|---|---|
-| <img src="docs/assets/showcase/final/fantasy-mage/condition.png" width="320"> | <img src="docs/assets/showcase/final/fantasy-mage/generation.png" width="320"> |
+Curated demonstrations remain available for [Fantasy Mage](docs/assets/showcase/final/fantasy-mage/generation.png), [Gojo-inspired Mural](docs/assets/showcase/final/gojo-mural/generation.png), and [Dark-fantasy Jester](docs/assets/showcase/final/jester/generation.png). Franchise-inspired examples are fan-art-style demonstrations only.
 
-### Gojo-inspired Mural
+## Current evaluation candidate
 
-| Pose condition | Generation |
-|---|---|
-| <img src="docs/assets/showcase/final/gojo-mural/condition.png" width="320"> | <img src="docs/assets/showcase/final/gojo-mural/generation.png" width="320"> |
+`mix-025` is `75% parent-4000 + 25% A4300`, interpolated over trainable `state['model']` tensors only.
 
-### Dark-fantasy Jester
-
-| Pose condition | Generation |
-|---|---|
-| <img src="docs/assets/showcase/final/jester/condition.png" width="320"> | <img src="docs/assets/showcase/final/jester/generation.png" width="320"> |
-
-<p align="center">
-  <strong>Pose condition → generated interpretation</strong>
-</p>
-
-> Franchise-inspired examples are fan-art-style demonstrations only.
-
----
+| Candidate | PCK@0.05 | PCK@0.10 | PCK@0.20 | CLIP |
+|---|---:|---:|---:|---:|
+| parent-4000 | 0.4301 | 0.5725 | 0.7105 | 0.33649 |
+| **mix-025** | **0.4521** | **0.6043** | **0.7241** | 0.33694 |
+| mix-050 | 0.4443 | 0.5991 | 0.7131 | 0.33411 |
+| mix-075 | 0.4475 | 0.6036 | 0.7085 | 0.33542 |
+| A4300 | 0.4404 | 0.5939 | 0.7170 | **0.33698** |
 
 ## How it works
 
-The pose image is encoded with the VAE and spatially aligned with the noisy image latent.
-
-The two are concatenated before entering an expanded `ControlInputLayer`:
+The pose image is VAE-encoded and spatially aligned with the noisy image latent. The two are channel-concatenated before the expanded `ControlInputLayer`:
 
 ```text
 noisy image latent + pose latent
@@ -49,111 +34,52 @@ noisy image latent + pose latent
       ControlInputLayer
               ↓
           Krea-2
-````
+```
 
-The pretrained image-input weights are preserved while the new control portion starts from zero.
+Pretrained image-input weights are preserved; the new control portion starts from zero. The backbone stays frozen while the expanded control input and rank-64 LoRA adapters learn pose control.
 
-The backbone remains frozen, and the model learns pose control through:
-
-* the expanded control input;
-* rank-64 LoRA adapters across the transformer.
-
-The control-input design was informed by [Tanmay Patil's Krea-2 ControlNet](https://github.com/Tanmaypatil123/Krea-2-controlnet), a public depth-conditioned Krea-2 ControlNet implementation. This project adapts that idea to skeleton conditioning and adds the pose training, evaluation, inference, and data pipeline used here.
-
----
+The control-input design was informed by [Tanmay Patil's Krea-2 ControlNet](https://github.com/Tanmaypatil123/Krea-2-controlnet), a public depth-conditioned Krea-2 ControlNet implementation. This project adapts that lineage to skeleton conditioning and provides its own pose training, evaluation, inference, and data pipeline.
 
 ## Training objective
-
-Training combines the normal flow-matching objective with explicit pose consistency:
 
 ```text
 loss = flow_loss + 0.04 * pose_loss
 ```
 
-Flow matching uses:
+Flow matching uses `x_t = t * noise + (1 - t) * x0` with target `noise - x0`. Pose consistency uses a frozen Keypoint R-CNN path and normalized-coordinate Huber loss. The idea of condition-consistency feedback was inspired by [ControlNet++](https://arxiv.org/abs/2404.07987); the exact pose loss is project-specific.
 
-```text
-x_t = t * noise + (1 - t) * x0
-target = noise - x0
-x0_hat = x_t - t * v_hat
-```
+| Setting | Value |
+|---|---|
+| LoRA rank / alpha | 64 / 64 |
+| Trainable parameters | ~215.5M |
+| Precision / effective batch | BF16 / 32 |
+| Optimizer / base LR | AdamW / `1e-4` |
+| Pose-loss weight / seed | `0.04` / 42 |
+| Resolution | Dynamic 768 buckets |
 
-Pose consistency is calculated from the predicted clean image using a frozen Keypoint R-CNN path and a normalized-coordinate Huber loss.
+## Prompting
 
-The idea of explicit condition-consistency feedback was inspired by [ControlNet++](https://arxiv.org/abs/2404.07987). The exact pose loss used here is project-specific.
+See the concise [prompting guide](prompting.md). The main rule is simple: **pose image = geometry; prompt = appearance, environment, and rendering**. Controlled studies show that framing/count conflicts and strong semantic priors can fight the pose condition.
 
----
+![Prompting study contact sheet](docs/evaluation/prompting-guide/results/mix-025/prompting_study_contact_sheet.png)
 
-## Training setup
+## Style-LoRA composition
 
-| Setting              | Value               |
-| -------------------- | ------------------- |
-| LoRA rank / alpha    | 64 / 64             |
-| Trainable parameters | ~215.5M             |
-| Precision            | BF16                |
-| Effective batch      | 32                  |
-| Optimizer            | AdamW               |
-| Base LR              | `1e-4`              |
-| Pose-loss weight     | `0.04`              |
-| Resolution           | Dynamic 768 buckets |
-| Seed                 | 42                  |
+Isolated runtime composition has been implemented and tested with `darkbrush`, `rainywindow`, `retroanime`, and `realism`. Official trigger words matter for the first three; Style-LoRA deltas remain separate from the Pose-LoRA. The style-strength sweep is complete, but recommendations are still under review, so final strengths are not hard-coded here.
 
-Training used a staged process:
+[Trigger-correct composition results](docs/evaluation/style-lora-composition/results/mix-025-strength-1.0-triggers) · [strength-sweep results](docs/evaluation/style-lora-composition/results/strength-sweep-v1)
 
-```text
-production training
-      ↓
-cooldown
-      ↓
-finishing experiments
-```
+![Style-LoRA strength sweep](docs/evaluation/style-lora-composition/results/strength-sweep-v1/grids/style_lora_strength_sweep_contact_sheet.png)
 
-The two checkpoints still under consideration are:
+## Multilingual prompting
 
-* **parent-4000** — more balanced
-* **A4300** — stronger pose adherence
-
-The annealed finishing branch was tested and rejected as a final candidate.
-
----
-
-## Resolution buckets
-
-Training uses nine aspect-ratio-preserving 768-class buckets:
-
-```text
-768x768
-704x896   896x704
-640x960   960x640
-576x1024  1024x576
-512x1152  1152x512
-```
-
----
+An English/Chinese fixed-pose sanity test exists. An English / Chinese / Telugu fixed-pose sanity comparison is available through the multilingual smoke harness; it is a small sanity test, not a multilingual benchmark or a claim of parity.
 
 ## Evaluation
 
-The locked Turbo evaluation setup is:
+Evaluation includes a frozen held-out 48-condition benchmark; PCK@0.05 / 0.10 / 0.20; CLIP; and an authoritative pose sidecar. Additional controlled studies cover semantic prompt-injection stress, prompting guidance, and Style-LoRA composition.
 
-```text
-8 steps
-CFG 0
-mu 1.15
-```
-
-Pose quality is evaluated using:
-
-* Keypoint R-CNN;
-* deterministic person matching;
-* bbox-normalized PCK;
-* detection coverage;
-* CLIP similarity.
-
-The diagnostic split is used for development and checkpoint selection.
-
-The validation split was held out from training, but has since been inspected during inference evaluation, so it is not treated as an untouched test set.
-
----
+The locked Turbo contract is 8 steps, CFG 0, `mu=1.15`, and control scale 1.0. The diagnostic split is used for development and checkpoint selection; validation was held out from training but inspected for inference evaluation and is not an untouched test set.
 
 ## Inference
 
@@ -166,115 +92,35 @@ PYTHONPATH=. python inference.py \
   --prompt "fantasy mage, ornate robes, cinematic lighting" \
   --pose-image /path/to/pose.png \
   --output output.png \
-  --seed 42 \
-  --width 768 \
-  --height 768 \
-  --steps 8 \
-  --cfg 0 \
-  --mu 1.15 \
-  --control-scale 1.0
+  --seed 42 --width 768 --height 768 \
+  --steps 8 --cfg 0 --mu 1.15 --control-scale 1.0
 ```
 
-Dynamic production bucket selection is also available with:
-
-```bash
---dynamic-768-bucket
-```
-
-Each output includes a JSON sidecar with the prompt, seed, resolution, checkpoint, pose image, and Turbo settings.
-
----
-
-## Prompting
-
-The model works best when the pose image controls **geometry** and the prompt controls **appearance**.
-
-Good prompt content:
-
-```text
-character
-clothing
-materials
-lighting
-environment
-art style
-color palette
-```
-
-Be careful with prompt language that also tries to control pose:
-
-```text
-close-up
-low angle
-looking over shoulder
-hand on hip
-arms raised
-specific stance
-```
-
-Those instructions can compete with the skeleton.
-
-Portrait-heavy prompts are currently one of the harder cases.
-
-For showcase and evaluation conditions, the current curation policy uses **COCO and Human-Art** pose controls.
-
----
+Use `--dynamic-768-bucket` for production bucket selection. Each output includes a JSON sidecar with its prompt, seed, resolution, checkpoint, pose image, and Turbo settings.
 
 ## Repository
 
 ```text
-inference.py
-    Canonical Turbo pose inference
-
-scripts/train_production.py
-    Production training entry point
-
-pose_controlnet/production_training.py
-    Training, checkpointing, and resume
-
-pose_controlnet/pose_consistency.py
-    Pose-consistency objective
-
-pose_controlnet/turbo_runtime.py
-    Locked Turbo runtime
-
-pose_controlnet/resolution_policy.py
-    Shared resolution buckets
-
-docs/inference_eval/
-    Evaluation artifacts
-
-docs/assets/showcase/
-    Curated examples
+.
+├── inference.py
+├── prompting.md
+├── pose_controlnet/
+│   ├── production_training.py
+│   ├── turbo_runtime.py
+│   └── style_lora.py
+├── scripts/
+│   ├── final_val_turbo_benchmark.py
+│   ├── frozen_prompt_turbo.py
+│   ├── prompting_guide_study.py
+│   ├── multilingual_prompt_smoke.py
+│   └── style_lora_composition.py
+├── docs/
+│   ├── CODEX_HANDOFF.md
+│   └── evaluation/
+└── tests/
 ```
 
----
-
-## Status
-
-Completed:
-
-* pose-conditioning architecture;
-* production training;
-* pose-consistency supervision;
-* dynamic-resolution training;
-* exact checkpoint resume;
-* Turbo inference;
-* quantitative pose evaluation;
-* parent-4000 vs A4300 comparison;
-* initial showcase curation.
-
-Still being explored:
-
-* parent-4000 ↔ A4300 checkpoint mixing;
-* style-LoRA composition;
-* control-strength sweeps;
-* hand/finger quality;
-* difficult and multi-person poses;
-* ComfyUI support;
-* Hugging Face demo.
-
----
+For GH200 development/restart setup, see [`scripts/bootstrap_gh200.sh`](scripts/bootstrap_gh200.sh).
 
 ## References
 
@@ -290,5 +136,3 @@ Still being explored:
 * [A Recipe for Training Neural Networks](https://karpathy.github.io/2019/04/25/recipe/)
 * [CLIP](https://arxiv.org/abs/2103.00020)
 * [Mask R-CNN](https://arxiv.org/abs/1703.06870)
-
-
