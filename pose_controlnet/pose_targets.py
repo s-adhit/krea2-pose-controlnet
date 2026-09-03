@@ -271,6 +271,7 @@ def load_authoritative_export(path: str | Path) -> tuple[dict[str, _Authoritativ
 
 def build_authoritative_sidecar_records(
     geometry_by_stem: Mapping[str, Mapping[str, Any]], *, authoritative_jsonl: str | Path,
+    stem_order: Iterable[str] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Build v3 records from the authoritative export and persisted shard geometry."""
     export, export_metadata = load_authoritative_export(authoritative_jsonl)
@@ -282,9 +283,11 @@ def build_authoritative_sidecar_records(
             f"unexpected={source_oob['unexpected_count']}, missing_reviewed={source_oob['missing_reviewed_count']}, "
             f"altered_reviewed={source_oob['altered_reviewed_count']}"
         )
+    ordered_stems = _ordered_stems(geometry_by_stem, stem_order)
     records: list[dict[str, Any]] = []
     unresolved: list[str] = []
-    for stem, geometry in sorted(geometry_by_stem.items()):
+    for stem in ordered_stems:
+        geometry = geometry_by_stem[stem]
         source = source_for_stem(stem)
         if source == "danbooru":
             records.append(_unavailable_record(stem, source, geometry))
@@ -347,6 +350,16 @@ def build_authoritative_sidecar_records(
     if summary["diagnostic_coverage"]["status"] == "FAIL":
         raise PoseTargetError(f"Authoritative diagnostic stems unresolved: {summary['diagnostic_coverage']}")
     return records, summary
+
+
+def _ordered_stems(geometry_by_stem: Mapping[str, Mapping[str, Any]], stem_order: Iterable[str] | None) -> list[str]:
+    """Validate an optional immutable consumer order; default to legacy sort."""
+    if stem_order is None:
+        return sorted(geometry_by_stem)
+    ordered = list(stem_order)
+    if len(ordered) != len(set(ordered)) or set(ordered) != set(geometry_by_stem):
+        raise PoseTargetError("Requested authoritative sidecar order does not exactly match geometry stems")
+    return ordered
 
 
 def _authoritative_export_row(row: Any, line_number: int) -> tuple[str, _AuthoritativePeople]:
@@ -532,12 +545,18 @@ def _unavailable_record(stem: str, source: str, geometry: Mapping[str, Any]) -> 
     }
 
 
-def write_sidecar(records: Iterable[Mapping[str, Any]], output_dir: str | Path, *, build_metadata: Mapping[str, Any]) -> dict[str, Any]:
+def write_sidecar(records: Iterable[Mapping[str, Any]], output_dir: str | Path, *, build_metadata: Mapping[str, Any],
+                  preserve_order: bool = False) -> dict[str, Any]:
     """Atomically publish an immutable sidecar directory after deterministic hashing."""
     destination = Path(output_dir)
     if destination.exists():
         raise PoseTargetError(f"Refusing to overwrite existing sidecar: {destination}")
-    ordered = sorted(records, key=lambda row: str(row["stem"]))
+    ordered = [dict(row) for row in records]
+    if not preserve_order:
+        ordered.sort(key=lambda row: str(row["stem"]))
+    stems = [row.get("stem") for row in ordered]
+    if len(stems) != len(set(stems)):
+        raise PoseTargetError("Sidecar records have duplicate stems")
     for record in ordered:
         _validate_record(record)
     content = "".join(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n" for row in ordered)
@@ -557,6 +576,37 @@ def write_sidecar(records: Iterable[Mapping[str, Any]], output_dir: str | Path, 
         temporary.rmdir()
         raise
     return metadata
+
+
+def pck_records_from_v3(records: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Adapt validated v3 source-space targets for the legacy PCK consumer.
+
+    This is deliberately a representation-only adapter: it copies the raw
+    authoritative source points, without detecting, rendering, or deriving
+    annotations.  It exists so final-val scoring can consume the canonical v3
+    sidecar while historical diagnostic sidecars retain their old format.
+    """
+    adapted: list[dict[str, Any]] = []
+    for record in records:
+        _validate_record(record)
+        stem, source = record["stem"], record["source"]
+        if source == "coco":
+            scorer_source, mode = "coco", "crowd" if stem.endswith("_crowd") else "single"
+        elif source in {"humanart_painting", "humanart_real_human", "humanart_sculpture"}:
+            scorer_source, mode = "humanart", "single"
+        else:
+            raise PoseTargetError(f"{stem}: unsupported v3 source for PCK: {source}")
+        if record["pose_reward_available"] is not True:
+            raise PoseTargetError(f"{stem}: final-val PCK requires an available authoritative target")
+        people = []
+        for person in record["people"]:
+            points = person.get("keypoints_source")
+            _keypoints(points)
+            people.append({"person_id": person.get("person_id"), "annotation_id": person.get("annotation_id"),
+                           "keypoints": [[float(value) for value in point] for point in points]})
+        adapted.append({"stem": stem, "source": scorer_source, "mode": mode, "status": "available",
+                        "target_provenance": "original_annotation", "people": people})
+    return adapted
 
 
 def load_sidecar(sidecar_dir: str | Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:

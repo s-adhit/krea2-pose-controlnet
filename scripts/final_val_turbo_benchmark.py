@@ -27,7 +27,7 @@ from pose_controlnet.evaluation import _sample_by_stem, make_contact_sheet, make
 from pose_controlnet.model import build_turbo_pose_model, load_trainable_state_dict
 from pose_controlnet.post1500_evaluation import score_authoritative_pck
 from pose_controlnet.post500_evaluation import KeypointRCNNEstimator, aggregate
-from pose_controlnet.pose_targets import load_sidecar
+from pose_controlnet.pose_targets import load_sidecar, pck_records_from_v3
 from pose_controlnet.turbo_evaluation import (
     controlled_branch_metadata, raw_to_turbo_control_compatibility,
     sample_turbo_pose_image, turbo_metadata, turbo_scoring_geometry,
@@ -254,7 +254,16 @@ def _load_final_sidecar(path: str | Path, stems: list[str]) -> tuple[dict[str, A
     if source.name == "diagnostic_reference_pose.json":
         raise ValueError("The historical diagnostic pose sidecar is not valid for final-val scoring")
     if source.is_dir():
-        metadata, records = load_sidecar(source); sidecar = {"records": records}
+        metadata, records = load_sidecar(source)
+        if metadata.get("sidecar_kind") != "final_val_benchmark_48_authoritative_pose_targets_v3":
+            raise ValueError("Final-val pose sidecar is not the canonical immutable v3 sidecar")
+        frozen = metadata.get("frozen_stems")
+        selection = metadata.get("frozen_selection")
+        spec = metadata.get("frozen_spec")
+        export = metadata.get("authoritative_source_pose_export")
+        if frozen != stems or not isinstance(selection, dict) or selection.get("sha256") != "23d448d573a2ffd20adfd73fa88f34ebc08df280a051cb0931d9ecdcc1231ceb" or not isinstance(spec, dict) or spec.get("sha256") != FINAL_SPEC_SHA256 or not isinstance(export, dict) or not isinstance(export.get("sha256"), str):
+            raise ValueError("Final-val pose sidecar provenance does not match the frozen benchmark")
+        sidecar = {"records": pck_records_from_v3(records)}
         digest = str(metadata.get("records_sha256", ""))
     else:
         sidecar = _read_json(source); digest = _sha256(source)

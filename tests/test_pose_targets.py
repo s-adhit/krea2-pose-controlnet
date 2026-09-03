@@ -8,7 +8,7 @@ import pose_controlnet.pose_targets as pose_targets
 from pose_controlnet.pose_targets import (
     PoseTargetError, build_authoritative_sidecar_records, build_sidecar_records,
     authoritative_source_oob_report, common_body_mapping, coverage_summary, diagnostic_coverage, load_authoritative_export, load_sidecar,
-    pose_reward_target_for_stem, transform_person, write_sidecar,
+    pck_records_from_v3, pose_reward_target_for_stem, transform_person, write_sidecar,
 )
 from pose_controlnet.control_reconstruction import BODY_COLORS, BODY_LIMBS, compare_control, render_record, select_reconstruction_records, summarize_reconstruction
 
@@ -57,6 +57,19 @@ class PoseTargetGeometryTest(unittest.TestCase):
         mapping = common_body_mapping("coco17")
         self.assertEqual(len(mapping["common_joints"]), 17)
         self.assertEqual(mapping["source_indices"], list(range(17)))
+
+    def test_v3_pck_adapter_only_relabels_validated_source_targets(self):
+        record = {
+            "stem": "painting_humanart_7", "source": "humanart_painting",
+            "pose_reward_available": True, "target_provenance": "original_annotation",
+            "annotation_source": "fixture", "joint_schema": "coco17",
+            "common_body_mapping": common_body_mapping("coco17"), "renderer": {"identifier": "fixture"},
+            "people": [transform_person(self.person(), source_size=(10, 10), resized_size=(10, 10), crop_box=(0, 0, 10, 10), bucket=(10, 10))],
+        }
+        adapted = pck_records_from_v3([record])
+        self.assertEqual(adapted[0]["source"], "humanart")
+        self.assertEqual(adapted[0]["status"], "available")
+        self.assertEqual(adapted[0]["people"][0]["keypoints"], record["people"][0]["keypoints_source"])
 
 
 class PoseTargetSidecarTest(unittest.TestCase):

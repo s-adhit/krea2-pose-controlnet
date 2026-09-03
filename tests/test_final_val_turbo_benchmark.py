@@ -73,6 +73,14 @@ class FinalValTurboBenchmarkTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "in order"):
                 evaluator._load_final_sidecar(path, self.stems)
 
+    def test_canonical_final_v3_sidecar_has_frozen_provenance_and_adapts_for_pck(self):
+        root = Path("docs/evaluation/final-val-benchmark-selection")
+        spec, _ = evaluator.load_final_spec(root / "final_val_benchmark_spec.json")
+        sidecar, digest = evaluator._load_final_sidecar(root / "final_val_benchmark_48_pose_targets_v3", spec["stems"])
+        self.assertEqual(digest, "3cc4defc282cb11e956ec06517eff4e8369622d4c0b3b567ab2247efb4a499a7")
+        self.assertEqual([record["stem"] for record in sidecar["records"]], spec["stems"])
+        self.assertEqual({record["source"] for record in sidecar["records"]}, {"coco", "humanart"})
+
     def test_generation_artifacts_require_complete_matching_final_contract(self):
         candidate = {"label": "parent-4000", "step": 4000}
         stems = ["first", "second"]
