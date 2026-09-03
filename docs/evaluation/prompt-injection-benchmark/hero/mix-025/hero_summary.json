@@ -1,0 +1,443 @@
+{
+  "candidate": "mix-025",
+  "candidate_kind": "trainable_tensor_interpolation",
+  "checkpoint_interpolation": {
+    "alpha": 0.25,
+    "candidate_id": "mix-025",
+    "compute_dtype": "float32",
+    "endpoints": [
+      {
+        "candidate": "parent-4000",
+        "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt",
+        "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+        "step": 4000
+      },
+      {
+        "candidate": "finish-control-a4300",
+        "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+        "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff",
+        "step": 4300
+      }
+    ],
+    "formula": "(1 - alpha) * parent-4000 + alpha * finish-control-a4300",
+    "tensor_scope": "state['model'] trainable control/LoRA tensors only"
+  },
+  "checkpoint_step": null,
+  "control_sha256": {
+    "real_human_humanart_15000000000930": "765c53830ad70eac9eb7d9d9e7375fe5e78c321e8b1fab92962860fb041ef9bd"
+  },
+  "geometry": "native_aspect_preserving_cached_latent_bucket",
+  "hero_stem": "real_human_humanart_15000000000930",
+  "kind": "hero_same_pose_6_turbo",
+  "per_prompt": [
+    {
+      "generated_image": "hero/fantasy_mage_stained_glass/mix-025.png",
+      "hero_id": "fantasy_mage_stained_glass",
+      "prompt": "An original fantasy mage wearing flowing midnight-blue and ivory ceremonial robes with restrained gold ornament, rendered as intricate stained glass, sapphire teal amber and ruby glass pieces, dark lead outlines, radiant cathedral backlighting",
+      "seed": 3928114485547585668
+    },
+    {
+      "generated_image": "hero/modern_sorcerer_street_mural/mix-025.png",
+      "hero_id": "modern_sorcerer_street_mural",
+      "prompt": "An original modern sorcerer in a tailored black coat, charcoal trousers and cobalt sneakers, subtle silver talismans, monumental abstract street murals across a contemporary city wall, cinematic editorial photography, blue-hour lighting",
+      "seed": 1718404220419010234
+    },
+    {
+      "generated_image": "hero/fashion_warrior_comic_ink/mix-025.png",
+      "hero_id": "fashion_warrior_comic_ink",
+      "prompt": "An original stoic fashion warrior wearing a long structured black coat with crimson lining, silver hardware and luxury boots, bold comic-ink illustration, sharp black contours, halftone shadows, cream red and charcoal palette",
+      "seed": 8088456753578828422
+    },
+    {
+      "generated_image": "hero/realistic_human_portrait/mix-025.png",
+      "hero_id": "realistic_human_portrait",
+      "prompt": "A realistic high-fashion portrait of a young man wearing a crisp ivory shirt, tailored navy trousers and cobalt sneakers against a minimalist warm-gray studio background, medium-format photography, soft directional light, natural skin texture",
+      "seed": 8342166384227063773
+    },
+    {
+      "generated_image": "hero/bronze_sculpture/mix-025.png",
+      "hero_id": "bronze_sculpture",
+      "prompt": "A museum-scale bronze sculpture of an elegant contemporary figure, dark brown patina with subtle verdigris oxidation, finely modeled fabric folds, black stone pedestal, quiet white gallery, focused museum lighting",
+      "seed": 5912367074214810436
+    },
+    {
+      "generated_image": "hero/painterly_interpretation/mix-025.png",
+      "hero_id": "painterly_interpretation",
+      "prompt": "A contemporary oil painting of an elegant traveler in deep blue and charcoal clothing, expressive visible brushwork, layered impasto, muted architectural background, rich ultramarine and warm ochre palette, museum-quality figurative painting",
+      "seed": 3165105433218062061
+    }
+  ],
+  "prompt_file": {
+    "path": "docs/evaluation/prompt-injection-benchmark/hero_same_pose_6.jsonl",
+    "record_count": 6,
+    "sha256": "1b28d8b9cc8754327727a317de03543aa71876ba0f878acd0ad8dc45897e9345"
+  },
+  "prompt_mapping": [
+    {
+      "hero_id": "fantasy_mage_stained_glass",
+      "prompt": "An original fantasy mage wearing flowing midnight-blue and ivory ceremonial robes with restrained gold ornament, rendered as intricate stained glass, sapphire teal amber and ruby glass pieces, dark lead outlines, radiant cathedral backlighting",
+      "stem": "real_human_humanart_15000000000930"
+    },
+    {
+      "hero_id": "modern_sorcerer_street_mural",
+      "prompt": "An original modern sorcerer in a tailored black coat, charcoal trousers and cobalt sneakers, subtle silver talismans, monumental abstract street murals across a contemporary city wall, cinematic editorial photography, blue-hour lighting",
+      "stem": "real_human_humanart_15000000000930"
+    },
+    {
+      "hero_id": "fashion_warrior_comic_ink",
+      "prompt": "An original stoic fashion warrior wearing a long structured black coat with crimson lining, silver hardware and luxury boots, bold comic-ink illustration, sharp black contours, halftone shadows, cream red and charcoal palette",
+      "stem": "real_human_humanart_15000000000930"
+    },
+    {
+      "hero_id": "realistic_human_portrait",
+      "prompt": "A realistic high-fashion portrait of a young man wearing a crisp ivory shirt, tailored navy trousers and cobalt sneakers against a minimalist warm-gray studio background, medium-format photography, soft directional light, natural skin texture",
+      "stem": "real_human_humanart_15000000000930"
+    },
+    {
+      "hero_id": "bronze_sculpture",
+      "prompt": "A museum-scale bronze sculpture of an elegant contemporary figure, dark brown patina with subtle verdigris oxidation, finely modeled fabric folds, black stone pedestal, quiet white gallery, focused museum lighting",
+      "stem": "real_human_humanart_15000000000930"
+    },
+    {
+      "hero_id": "painterly_interpretation",
+      "prompt": "A contemporary oil painting of an elegant traveler in deep blue and charcoal clothing, expressive visible brushwork, layered impasto, muted architectural background, rich ultramarine and warm ochre palette, museum-quality figurative painting",
+      "stem": "real_human_humanart_15000000000930"
+    }
+  ],
+  "qualitative_grid": "hero_contact_sheet.png",
+  "sampling_seeds": {
+    "bronze_sculpture": 5912367074214810436,
+    "fantasy_mage_stained_glass": 3928114485547585668,
+    "fashion_warrior_comic_ink": 8088456753578828422,
+    "modern_sorcerer_street_mural": 1718404220419010234,
+    "painterly_interpretation": 3165105433218062061,
+    "realistic_human_portrait": 8342166384227063773
+  },
+  "source_rgb_fallback_used": false,
+  "training_metadata": {
+    "candidate_kind": "trainable_tensor_interpolation",
+    "endpoint_training_metadata": {
+      "finish-control-a4300": {
+        "checkpoint_sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff",
+        "production_pose_control": {
+          "artifact_identity": {
+            "dataset_root": "/lambda/nfs/adhit/krea2-pose/posebridge_hf",
+            "latent_cache": {
+              "cache_contract_sha256": "4a4013cbe0d45e80722e7e8b68440a3c4c43a252e668b65c8ed5b5913b561107",
+              "metadata_sha256": "6effe24c26e955028ca122b219713af5d29b78070fca01aae535de83a5963943",
+              "path": "/lambda/nfs/adhit/krea2-pose/posebridge_latents_768"
+            },
+            "pose_sidecar": {
+              "metadata_sha256": "6c96afdf5ffafca209dc39be4b883b7446e4a4e7a06faebc93e856409d69f968",
+              "path": "/lambda/nfs/adhit/krea2-pose/pose_targets_v3_768",
+              "records_sha256": "2176dfcb6bd841dd83a6deeabb3d03f38b1abb47fe5afed2f4dc4555bccd897e"
+            },
+            "raw_checkpoint": {
+              "path": "/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors",
+              "sha256": "f99bb0ff8e362b77342bc4994e0c50906fe7ef7074864b181b7d48d2fa6d03d7"
+            },
+            "text_conditioning": {
+              "metadata_sha256": "d99420ddc4c7b4f04abcc9e0f873b537d0eb9a636d998310a870b548a94d0b45",
+              "path": "/lambda/nfs/adhit/krea2-pose/text_conditioning",
+              "unconditional_sha256": "de1d31f230dd209cfdd17108d5bfc29b245acedde2823862377c53f82b04279e"
+            },
+            "train_manifest": {
+              "ordered_stems_sha256": "c525304e1ce3d4ec83fb355655be60eea653156b4fdcc5e7bd3cdb6786c1f0e9",
+              "path": "/home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl",
+              "raw_sha256": "0de42b99e40dea0726a9368a92d91ba950349999f2b2c590df85ac91df147542",
+              "records_sha256": "15851dcdecaa9de7aaf52322ef5cffe596b3bd8aab92ce9cd4b9cf044d83ed03"
+            }
+          },
+          "code_git_revision": "c5771ef6235d33c96d79b4b4152a7874fcdaa95a",
+          "continuation": {
+            "branch_type": "finish-control",
+            "continuation_steps": 500,
+            "end_global_step": 4500,
+            "exact_resume": false,
+            "final_lr": 5e-06,
+            "kind": "scientific_continuation",
+            "lr_schedule": {
+              "final": 5e-06,
+              "name": "cosine",
+              "start": 2e-05
+            },
+            "parent_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt",
+            "parent_checkpoint_sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+            "parent_global_step": 4000,
+            "parent_run_name": "pose-control-production-cooldown-3000-to5000",
+            "pose_lambda_schedule": {
+              "final": 0.04,
+              "name": "constant",
+              "start": 0.04
+            },
+            "scheduler": "cosine",
+            "start_lr": 2e-05
+          },
+          "current_step": 4300,
+          "data_position": {
+            "batch_position": 5576,
+            "epoch": 8,
+            "sample_position": 5576
+          },
+          "format": 1,
+          "gradient_accumulation_position": 0,
+          "loader": {
+            "persistent_workers": true,
+            "pin_memory": true,
+            "prefetch_factor": 4,
+            "workers": 4
+          },
+          "max_steps": 4500,
+          "observability": {
+            "hf": {
+              "mirror_every_steps": 100,
+              "repo_id": "adhit-420/Krea-2-PoseControl-LoRA-checkpoints"
+            },
+            "wandb": {
+              "enabled": true,
+              "entity": "adhit-projects",
+              "name": "pose-control-finish-control-4000-to4500",
+              "project": "Krea-2-PoseControl-Lora",
+              "run_id": "lr55nmk8"
+            }
+          },
+          "optimizer": {
+            "betas": [
+              0.9,
+              0.99
+            ],
+            "lr": 0.0001,
+            "name": "AdamW",
+            "weight_decay": 0.0
+          },
+          "pose_cumulative_counters": {
+            "eligible_samples_seen": 119819,
+            "forced_samples": 0,
+            "naturally_active_samples": 1881,
+            "total_active_samples": 1881
+          },
+          "run_name": "pose-control-finish-control-4000-to4500",
+          "scheduler": {
+            "continuation_steps": 500,
+            "final_lr": 5e-06,
+            "name": "CosineContinuation",
+            "parent_step": 4000,
+            "pose_lambda_schedule": {
+              "final": 0.04,
+              "name": "constant",
+              "start": 0.04
+            },
+            "start_lr": 2e-05
+          },
+          "scientific_recipe": {
+            "alpha": 64,
+            "betas": [
+              0.9,
+              0.99
+            ],
+            "caption_dropout": 0.1,
+            "compile": false,
+            "control_dropout": 0.0,
+            "data_loader_workers": 4,
+            "effective_batch_size": 32,
+            "forced_pose_exposure_probability": 0.0,
+            "fused_adamw": false,
+            "gradient_accumulation_steps": 32,
+            "gradient_checkpointing_blocks": 0,
+            "lambda_pose": 0.04,
+            "learning_rate": 0.0001,
+            "max_grad_norm": 1.0,
+            "microbatch_size": 1,
+            "mu_x1": 256.0,
+            "mu_x2": 6400.0,
+            "mu_y1": 0.5,
+            "mu_y2": 1.15,
+            "persistent_workers": true,
+            "pin_memory": true,
+            "pose_loss": "normalized_coordinate_huber",
+            "pose_timestep_max": 0.2,
+            "pose_timestep_min": 0.1,
+            "prefetch_factor": 4,
+            "rank": 64,
+            "resolution_policy": "768",
+            "seed": 42,
+            "timestep_aux_max": 1.0,
+            "timestep_aux_min": 0.0,
+            "timestep_aux_prob": 0.0,
+            "warmup_steps": 200,
+            "weight_decay": 0.0
+          }
+        },
+        "validation": "pinned_final_val_legacy_production_metadata"
+      },
+      "parent-4000": {
+        "checkpoint_sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+        "production_pose_control": {
+          "artifact_identity": {
+            "dataset_root": "/lambda/nfs/adhit/krea2-pose/posebridge_hf",
+            "latent_cache": {
+              "cache_contract_sha256": "4a4013cbe0d45e80722e7e8b68440a3c4c43a252e668b65c8ed5b5913b561107",
+              "metadata_sha256": "6effe24c26e955028ca122b219713af5d29b78070fca01aae535de83a5963943",
+              "path": "/lambda/nfs/adhit/krea2-pose/posebridge_latents_768"
+            },
+            "pose_sidecar": {
+              "metadata_sha256": "6c96afdf5ffafca209dc39be4b883b7446e4a4e7a06faebc93e856409d69f968",
+              "path": "/lambda/nfs/adhit/krea2-pose/pose_targets_v3_768",
+              "records_sha256": "2176dfcb6bd841dd83a6deeabb3d03f38b1abb47fe5afed2f4dc4555bccd897e"
+            },
+            "raw_checkpoint": {
+              "path": "/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors",
+              "sha256": "f99bb0ff8e362b77342bc4994e0c50906fe7ef7074864b181b7d48d2fa6d03d7"
+            },
+            "text_conditioning": {
+              "metadata_sha256": "d99420ddc4c7b4f04abcc9e0f873b537d0eb9a636d998310a870b548a94d0b45",
+              "path": "/lambda/nfs/adhit/krea2-pose/text_conditioning",
+              "unconditional_sha256": "de1d31f230dd209cfdd17108d5bfc29b245acedde2823862377c53f82b04279e"
+            },
+            "train_manifest": {
+              "ordered_stems_sha256": "c525304e1ce3d4ec83fb355655be60eea653156b4fdcc5e7bd3cdb6786c1f0e9",
+              "path": "/home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl",
+              "raw_sha256": "0de42b99e40dea0726a9368a92d91ba950349999f2b2c590df85ac91df147542",
+              "records_sha256": "15851dcdecaa9de7aaf52322ef5cffe596b3bd8aab92ce9cd4b9cf044d83ed03"
+            }
+          },
+          "code_git_revision": "5fe29293065738459a1db04ebd04aa43f4615769",
+          "continuation": {
+            "continuation_steps": 2000,
+            "end_global_step": 5000,
+            "exact_resume": false,
+            "final_lr": 1e-05,
+            "kind": "scientific_continuation",
+            "parent_checkpoint": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-3000/step_003000.pt",
+            "parent_checkpoint_sha256": "78ee5355bee7558456c6ad4381d35fb368675c6ec5aac5b2b5fc4879529f4e4d",
+            "parent_global_step": 3000,
+            "parent_run_name": "pose-control-production-3000",
+            "scheduler": "cosine",
+            "start_lr": 0.0001
+          },
+          "current_step": 4000,
+          "data_position": {
+            "batch_position": 12479,
+            "epoch": 7,
+            "sample_position": 12479
+          },
+          "format": 1,
+          "gradient_accumulation_position": 0,
+          "loader": {
+            "persistent_workers": true,
+            "pin_memory": true,
+            "prefetch_factor": 4,
+            "workers": 4
+          },
+          "max_steps": 5000,
+          "observability": {
+            "hf": {
+              "mirror_every_steps": 250,
+              "repo_id": "adhit-420/Krea-2-PoseControl-LoRA-checkpoints"
+            },
+            "wandb": {
+              "enabled": true,
+              "entity": "adhit-projects",
+              "name": "pose-control-production-cooldown-3000-to5000",
+              "project": "Krea-2-PoseControl-Lora",
+              "run_id": "lnevot4t"
+            }
+          },
+          "optimizer": {
+            "betas": [
+              0.9,
+              0.99
+            ],
+            "lr": 0.0001,
+            "name": "AdamW",
+            "weight_decay": 0.0
+          },
+          "pose_cumulative_counters": {
+            "eligible_samples_seen": 111459,
+            "forced_samples": 0,
+            "naturally_active_samples": 1764,
+            "total_active_samples": 1764
+          },
+          "run_name": "pose-control-production-cooldown-3000-to5000",
+          "scheduler": {
+            "continuation_steps": 2000,
+            "final_lr": 1e-05,
+            "name": "CosineContinuation",
+            "parent_step": 3000,
+            "start_lr": 0.0001
+          },
+          "scientific_recipe": {
+            "alpha": 64,
+            "betas": [
+              0.9,
+              0.99
+            ],
+            "caption_dropout": 0.1,
+            "compile": false,
+            "control_dropout": 0.0,
+            "data_loader_workers": 4,
+            "effective_batch_size": 32,
+            "forced_pose_exposure_probability": 0.0,
+            "fused_adamw": false,
+            "gradient_accumulation_steps": 32,
+            "gradient_checkpointing_blocks": 0,
+            "lambda_pose": 0.04,
+            "learning_rate": 0.0001,
+            "max_grad_norm": 1.0,
+            "microbatch_size": 1,
+            "mu_x1": 256.0,
+            "mu_x2": 6400.0,
+            "mu_y1": 0.5,
+            "mu_y2": 1.15,
+            "persistent_workers": true,
+            "pin_memory": true,
+            "pose_loss": "normalized_coordinate_huber",
+            "pose_timestep_max": 0.2,
+            "pose_timestep_min": 0.1,
+            "prefetch_factor": 4,
+            "rank": 64,
+            "resolution_policy": "768",
+            "seed": 42,
+            "timestep_aux_max": 1.0,
+            "timestep_aux_min": 0.0,
+            "timestep_aux_prob": 0.0,
+            "warmup_steps": 200,
+            "weight_decay": 0.0
+          }
+        },
+        "validation": "pinned_final_val_legacy_production_metadata"
+      }
+    },
+    "interpolation": {
+      "alpha": 0.25,
+      "candidate_id": "mix-025",
+      "compute_dtype": "float32",
+      "endpoints": [
+        {
+          "candidate": "parent-4000",
+          "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt",
+          "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+          "step": 4000
+        },
+        {
+          "candidate": "finish-control-a4300",
+          "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+          "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff",
+          "step": 4300
+        }
+      ],
+      "formula": "(1 - alpha) * parent-4000 + alpha * finish-control-a4300",
+      "tensor_scope": "state['model'] trainable control/LoRA tensors only"
+    },
+    "validation": "interpolated_trainable_model_tensors_only"
+  },
+  "turbo": {
+    "cfg": 0.0,
+    "control_scale": 1.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  }
+}
