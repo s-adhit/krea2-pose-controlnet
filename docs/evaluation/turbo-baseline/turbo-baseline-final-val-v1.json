@@ -1,0 +1,27 @@
+{
+  "format_version": 1,
+  "kind": "turbo_baseline_final_val_pose_control_comparison_v1",
+  "candidate_order": ["turbo-base", "parent-4000", "mix-025", "finish-control-a4300"],
+  "generation_count": 192,
+  "benchmark": {
+    "name": "final_val_benchmark_48",
+    "count": 48,
+    "final_spec": {"path": "docs/evaluation/final-val-benchmark-selection/final_val_benchmark_spec.json", "sha256": "93a5254e57fa208263f6188573e0760ffedd954bf3b3b3425109ea0178957cd0"},
+    "prompt_source": {"path": "docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48.jsonl", "sha256": "23d448d573a2ffd20adfd73fa88f34ebc08df280a051cb0931d9ecdcc1231ceb"},
+    "pose_sidecar": {"path": "docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48_pose_targets_v3", "metadata_sha256": "57aac981a75231e3e0c4a6713bf9758db233c59e2b2cd71f7ea0a97a7ce7676e", "records_sha256": "3cc4defc282cb11e956ec06517eff4e8369622d4c0b3b567ab2247efb4a499a7"}
+  },
+  "geometry": "native_aspect_preserving_cached_latent_bucket",
+  "runtime": {"model": "Krea-2 Turbo", "steps": 8, "cfg": 0.0, "mu": 1.15, "mu_resolution_dependent": false, "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py"},
+  "clip_model_id": "openai/clip-vit-base-patch32",
+  "turbo_checkpoint": {"path": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors", "identity_policy": "sha256_pinned_by_preflight_and_required_unchanged_for_all_later_stages"},
+  "candidates": [
+    {"id": "turbo-base", "kind": "unmodified_krea2_turbo", "pose_lora_control_adapter_state": "absent", "control_scale": null},
+    {"id": "parent-4000", "kind": "pose_control_checkpoint", "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt", "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd", "step": 4000, "control_scale": 1.0},
+    {"id": "mix-025", "kind": "trainable_tensor_interpolation", "control_scale": 1.0, "alpha": 0.25, "compute_dtype": "float32", "formula": "(1 - alpha) * parent-4000 + alpha * finish-control-a4300", "tensor_scope": "state['model'] trainable control/LoRA tensors only", "endpoints": ["parent-4000", "finish-control-a4300"]},
+    {"id": "finish-control-a4300", "kind": "pose_control_checkpoint", "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt", "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff", "step": 4300, "control_scale": 1.0}
+  ],
+  "historical_artifact_sha256": {
+    "inference.py": "60992bba7f628dbbdadfd1cb59c3b4f385a016de3ac20898591ef7f1f8c47a5b",
+    "docs/evaluation/native-vs-dynamic768/mix-025-control1-turbo-v1.json": "fe2d109e1e08c05007e38f605306ce1f9092794d0b7e0017a553e1fd3d6906cf"
+  }
+}
