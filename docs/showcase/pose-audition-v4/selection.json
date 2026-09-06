@@ -1,0 +1,182 @@
+[
+  {
+    "stem": "coco_156320_crowd",
+    "source": "coco",
+    "orientation": "landscape",
+    "source_size": [
+      640,
+      400
+    ],
+    "native_bucket": [
+      1216,
+      832
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_08/coco_156320_crowd.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v4/coco_156320_crowd.png"
+  },
+  {
+    "stem": "coco_299468_426600",
+    "source": "coco",
+    "orientation": "near_square",
+    "source_size": [
+      640,
+      640
+    ],
+    "native_bucket": [
+      1024,
+      1024
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_07/coco_299468_426600.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v4/coco_299468_426600.png"
+  },
+  {
+    "stem": "danbooru_anime_11917323",
+    "source": "danbooru",
+    "orientation": "near_square",
+    "source_size": [
+      1400,
+      1637
+    ],
+    "native_bucket": [
+      896,
+      1152
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_06/danbooru_anime_11917323.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v4/danbooru_anime_11917323.png"
+  },
+  {
+    "stem": "painting_humanart_10000000000555",
+    "source": "painting",
+    "orientation": "landscape",
+    "source_size": [
+      648,
+      300
+    ],
+    "native_bucket": [
+      1472,
+      704
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_07/painting_humanart_10000000000555.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v4/painting_humanart_10000000000555.png"
+  },
+  {
+    "stem": "painting_humanart_1000000000218",
+    "source": "painting",
+    "orientation": "near_square",
+    "source_size": [
+      1024,
+      1024
+    ],
+    "native_bucket": [
+      1024,
+      1024
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_06/painting_humanart_1000000000218.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v4/painting_humanart_1000000000218.png"
+  },
+  {
+    "stem": "painting_humanart_10000000000838",
+    "source": "painting",
+    "orientation": "portrait",
+    "source_size": [
+      300,
+      607
+    ],
+    "native_bucket": [
+      704,
+      1472
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_07/painting_humanart_10000000000838.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v4/painting_humanart_10000000000838.png"
+  },
+  {
+    "stem": "real_human_humanart_15000000000201",
+    "source": "real_human",
+    "orientation": "landscape",
+    "source_size": [
+      612,
+      408
+    ],
+    "native_bucket": [
+      1216,
+      832
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/real_human_humanart_15000000000201.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v4/real_human_humanart_15000000000201.png"
+  },
+  {
+    "stem": "real_human_humanart_17000000000288",
+    "source": "real_human",
+    "orientation": "portrait",
+    "source_size": [
+      665,
+      1000
+    ],
+    "native_bucket": [
+      832,
+      1216
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_02/real_human_humanart_17000000000288.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v4/real_human_humanart_17000000000288.png"
+  },
+  {
+    "stem": "sculpture_humanart_14000000000243",
+    "source": "sculpture",
+    "orientation": "near_square",
+    "source_size": [
+      2098,
+      2254
+    ],
+    "native_bucket": [
+      1024,
+      1024
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/sculpture_humanart_14000000000243.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v4/sculpture_humanart_14000000000243.png"
+  },
+  {
+    "stem": "sculpture_humanart_14000000001143",
+    "source": "sculpture",
+    "orientation": "portrait",
+    "source_size": [
+      500,
+      683
+    ],
+    "native_bucket": [
+      896,
+      1152
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/sculpture_humanart_14000000001143.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v4/sculpture_humanart_14000000001143.png"
+  },
+  {
+    "stem": "coco_64240_crowd",
+    "source": "coco",
+    "orientation": "landscape",
+    "source_size": [
+      640,
+      384
+    ],
+    "native_bucket": [
+      1344,
+      768
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_05/coco_64240_crowd.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v4/coco_64240_crowd.png"
+  },
+  {
+    "stem": "coco_379542_449327",
+    "source": "coco",
+    "orientation": "near_square",
+    "source_size": [
+      638,
+      640
+    ],
+    "native_bucket": [
+      1024,
+      1024
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_02/coco_379542_449327.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v4/coco_379542_449327.png"
+  }
+]
