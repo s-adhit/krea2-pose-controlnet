@@ -1,0 +1,88 @@
+{
+  "format_version": 1,
+  "release_id": "krea2-pose-control-lora-v1",
+  "status": "frozen_release_decision",
+  "candidate": {
+    "id": "mix-025",
+    "kind": "trainable_tensor_interpolation",
+    "interpolation": {
+      "alpha": 0.25,
+      "formula": "(1 - alpha) * parent-4000 + alpha * finish-control-a4300",
+      "tensor_scope": "state['model'] trainable control/LoRA tensors only",
+      "compute_dtype": "float32",
+      "endpoints": [
+        {"id": "parent-4000", "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt", "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd"},
+        {"id": "finish-control-a4300", "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt", "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff"}
+      ]
+    }
+  },
+  "runtime_defaults": {
+    "model": "Krea-2 Turbo",
+    "steps": 8,
+    "cfg": 0.0,
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "geometry": {"default": "native_aspect_preserving_cached_latent_bucket", "optional_alternative": "dynamic_768_bucket"},
+    "control_scale": {"default": 1.0, "optional_stronger_control_range": [1.25, 1.5]}
+  },
+  "style_lora_release_scope": {
+    "maximum_active_adapters": 1,
+    "multi_style_lora_composition": false,
+    "pose_and_style_tensors_separate": true,
+    "permanent_merge": false,
+    "runtime_application": "reversible",
+    "style_strength_configurable": true,
+    "defaults": {
+      "darkbrush": {"default": 0.75, "useful_range": [0.5, 0.75]},
+      "rainywindow": {"default": 0.5, "useful_range": [0.25, 0.75]},
+      "retroanime": {"default": 0.5, "useful_range": [0.25, 0.5]},
+      "realism": {"default": 0.25, "useful_range": [0.25, 0.75]}
+    }
+  },
+  "decisions": {
+    "geometry": "Native aspect-preserving cached latent buckets are the release default; dynamic-768 remains supported only as an optional alternative.",
+    "control_scale": "Use 1.0 by default for stability and frozen-benchmark consistency. Aggregate best PCK was at 1.5, but behavior was non-monotonic across pose classes; 1.25-1.50 is an optional stronger-control range.",
+    "style_lora": "The canonical release supports exactly one independently applied Style-LoRA at a configurable strength. Multi-Style-LoRA composition is not release scope."
+  },
+  "evidence_summary": {
+    "frozen_final_val": {
+      "parent-4000": {"pck_005": 0.4301, "pck_010": 0.5725, "pck_020": 0.7105, "clip": 0.33649},
+      "mix-025": {"pck_005": 0.4521, "pck_010": 0.6043, "pck_020": 0.7241, "clip": 0.33694},
+      "finish-control-a4300": {"pck_005": 0.4404, "pck_010": 0.5939, "pck_020": 0.717, "clip": 0.33698}
+    },
+    "turbo_baseline": {
+      "turbo-base": {"pck_005": 0.0356, "pck_010": 0.1101, "pck_020": 0.3387, "clip": 0.34402},
+      "mix-025": {"pck_005": 0.4521, "pck_010": 0.6043, "pck_020": 0.7241, "clip": 0.33694}
+    },
+    "native_vs_dynamic_768": {
+      "native": {"pck_005": 0.292, "pck_010": 0.4027, "pck_020": 0.5885, "clip": 0.30746},
+      "dynamic_768": {"pck_005": 0.2478, "pck_010": 0.3584, "pck_020": 0.531, "clip": 0.30968}
+    },
+    "hard_pose_stress": {
+      "single_person": {"pck_005": 0.3727, "pck_010": 0.5182, "pck_020": 0.6818},
+      "multi_person": {"pck_005": 0.2917, "pck_010": 0.4097, "pck_020": 0.5625}
+    },
+    "hands": "No systematic Pose-Control-specific hand regression was observed. A4300 scored better on the small hand-heavy subset, but this does not outweigh mix-025 on the broader frozen benchmark.",
+    "style_lora": "Single-adapter composition is proven; style strength is non-monotonic, so defaults are adapter-specific."
+  },
+  "limitations": [
+    "Overlapping multi-person interactions remain a limitation.",
+    "Control-scale behavior is non-monotonic across pose classes; stronger control is optional rather than the default.",
+    "Style strength is non-monotonic and supports one active Style-LoRA only in the canonical release."
+  ],
+  "evidence_references": [
+    {"id": "final_val_spec", "path": "docs/evaluation/final-val-benchmark-selection/final_val_benchmark_spec.json", "sha256": "93a5254e57fa208263f6188573e0760ffedd954bf3b3b3425109ea0178957cd0"},
+    {"id": "final_val_results", "path": "docs/evaluation/final-val-turbo/results_summary.json", "sha256": "ac7b62e7eedecd0b9c122b3ca536cffdfb6e88ff9a3c414692001b1cb9f7fb37"},
+    {"id": "turbo_baseline_spec", "path": "docs/evaluation/turbo-baseline/turbo-baseline-final-val-v1.json", "sha256": "f0775c8aac404a1a4a3303ee8272d49d217d398c8379d7559d84c59288292bcc"},
+    {"id": "native_dynamic_spec", "path": "docs/evaluation/native-vs-dynamic768/mix-025-control1-turbo-v1.json", "sha256": "fe2d109e1e08c05007e38f605306ce1f9092794d0b7e0017a553e1fd3d6906cf"},
+    {"id": "native_dynamic_results", "path": "docs/evaluation/native-vs-dynamic768/results/mix-025-control1-turbo-v1/metrics_by_geometry.json", "sha256": "22cba642e9e6c09de34cc0ec645fff4ba4ab2e983d7e369db7440c82fdc7aeed"},
+    {"id": "control_scale_spec", "path": "docs/evaluation/control-scale-sweep/mix-025-native-v1.json", "sha256": "af82b4c0b0290a852cdd3d7b6b917603e3e9298aa51dfa2ace737d41a28d91a6"},
+    {"id": "control_scale_results", "path": "docs/evaluation/control-scale-sweep/results/mix-025-native-v1/compact_summary.json", "sha256": "597fa61c27f43c47bfbafa5e8de9f4831ae57f3fd7ee363ecf74f47a43a54354"},
+    {"id": "hard_pose_spec", "path": "docs/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1.json", "sha256": "ed2fe5021aadce7bb32a6c2cdbd13573f9631054377715498ca6c486b04572a7"},
+    {"id": "hard_pose_results", "path": "docs/evaluation/hard-pose-multiperson/results/hard-pose-multiperson-mix-025-v1/compact_summary.json", "sha256": "c606c00470261c079447c00377a3aa0a34ab3460471c4e0f3bad94c74c8340cc"},
+    {"id": "hands_spec", "path": "docs/evaluation/hands/hands-fingers-turbo-v1.json", "sha256": "d61bacf17c7390b1f8e625d2c986c0098ab74638449c3cea9b7b5d67d6ff6fce"},
+    {"id": "hands_results", "path": "docs/evaluation/hands/results/hands-fingers-turbo-v1/compact_summary.json", "sha256": "b6f144e404641292198d52af457b5a97b34ee4da1eb1d747392cb5f19a804845"},
+    {"id": "style_strength_spec", "path": "docs/evaluation/style-lora-composition/style_lora_strength_sweep_v1.jsonl", "sha256": "4dd68fb2773c31122f5289cc52f14d8f5334558d3a364e9d4b83e8721f2e5fdb"},
+    {"id": "style_strength_results", "path": "docs/evaluation/style-lora-composition/results/strength-sweep-v1/evaluation_summary.json", "sha256": "70dd0c0982621e680da7af462b8d4dc3b6b9c92ddcdf200fd84ced9d56f04cb6"}
+  ]
+}
