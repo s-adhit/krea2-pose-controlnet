@@ -1,0 +1,82 @@
+[
+  {
+    "stem": "painting_humanart_1000000002653",
+    "source": "painting",
+    "orientation": "landscape",
+    "authoritative_person_count": 1,
+    "source_size": [
+      1600,
+      1168
+    ],
+    "native_bucket": [
+      1152,
+      896
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_07/painting_humanart_1000000002653.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v5/painting_humanart_1000000002653.png"
+  },
+  {
+    "stem": "painting_humanart_1000000001225",
+    "source": "painting",
+    "orientation": "near_square",
+    "authoritative_person_count": 1,
+    "source_size": [
+      1052,
+      1262
+    ],
+    "native_bucket": [
+      896,
+      1152
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_05/painting_humanart_1000000001225.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v5/painting_humanart_1000000001225.png"
+  },
+  {
+    "stem": "painting_humanart_9000000002722",
+    "source": "painting",
+    "orientation": "portrait",
+    "authoritative_person_count": 1,
+    "source_size": [
+      1390,
+      3846
+    ],
+    "native_bucket": [
+      704,
+      1472
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/painting_humanart_9000000002722.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v5/painting_humanart_9000000002722.png"
+  },
+  {
+    "stem": "real_human_humanart_17000000001552",
+    "source": "real_human",
+    "orientation": "landscape",
+    "authoritative_person_count": 1,
+    "source_size": [
+      7360,
+      4912
+    ],
+    "native_bucket": [
+      1216,
+      832
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/real_human_humanart_17000000001552.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v5/real_human_humanart_17000000001552.png"
+  },
+  {
+    "stem": "painting_humanart_9000000000608",
+    "source": "painting",
+    "orientation": "portrait",
+    "authoritative_person_count": 1,
+    "source_size": [
+      208,
+      500
+    ],
+    "native_bucket": [
+      704,
+      1472
+    ],
+    "pose_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/painting_humanart_9000000000608.png",
+    "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/pose-audition-v5/painting_humanart_9000000000608.png"
+  }
+]
