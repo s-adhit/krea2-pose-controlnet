@@ -1,0 +1,372 @@
+{
+  "by_candidate": [
+    {
+      "candidate": "turbo-base",
+      "clip": {
+        "mean_cosine_similarity": 0.3482377681981116,
+        "median_cosine_similarity": 0.3496264635251223,
+        "sample_count": 18,
+        "std_cosine_similarity": 0.031148891725557654
+      },
+      "detection_coverage": 1.0,
+      "generation_count": 18,
+      "matched_people": 21,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 306,
+        "evaluable_sample_count": 18,
+        "evaluated_joint_count": 306,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 21,
+        "pck_005": 0.00980392156862745,
+        "pck_010": 0.06535947712418301,
+        "pck_020": 0.24836601307189543,
+        "predicted_people": 95,
+        "rendered_joint_count": 306,
+        "rendered_reference_people": 21,
+        "source_visible_joint_count": 312,
+        "unmatched_predicted_people": 74,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "predicted_people": 95,
+      "unmatched_predicted_people": 74,
+      "unmatched_reference_people": 0
+    },
+    {
+      "candidate": "parent-4000",
+      "clip": {
+        "mean_cosine_similarity": 0.3410484629616068,
+        "median_cosine_similarity": 0.3407946048335187,
+        "sample_count": 18,
+        "std_cosine_similarity": 0.029694407071590483
+      },
+      "detection_coverage": 1.0,
+      "generation_count": 18,
+      "matched_people": 21,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 306,
+        "evaluable_sample_count": 18,
+        "evaluated_joint_count": 306,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 21,
+        "pck_005": 0.25163398692810457,
+        "pck_010": 0.3660130718954248,
+        "pck_020": 0.5098039215686274,
+        "predicted_people": 58,
+        "rendered_joint_count": 306,
+        "rendered_reference_people": 21,
+        "source_visible_joint_count": 312,
+        "unmatched_predicted_people": 37,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "predicted_people": 58,
+      "unmatched_predicted_people": 37,
+      "unmatched_reference_people": 0
+    },
+    {
+      "candidate": "mix-025",
+      "clip": {
+        "mean_cosine_similarity": 0.3427999703803049,
+        "median_cosine_similarity": 0.3385156648988956,
+        "sample_count": 18,
+        "std_cosine_similarity": 0.03062258185202965
+      },
+      "detection_coverage": 1.0,
+      "generation_count": 18,
+      "matched_people": 21,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 306,
+        "evaluable_sample_count": 18,
+        "evaluated_joint_count": 306,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 21,
+        "pck_005": 0.2549019607843137,
+        "pck_010": 0.3758169934640523,
+        "pck_020": 0.5130718954248366,
+        "predicted_people": 61,
+        "rendered_joint_count": 306,
+        "rendered_reference_people": 21,
+        "source_visible_joint_count": 312,
+        "unmatched_predicted_people": 40,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "predicted_people": 61,
+      "unmatched_predicted_people": 40,
+      "unmatched_reference_people": 0
+    },
+    {
+      "candidate": "finish-control-a4300",
+      "clip": {
+        "mean_cosine_similarity": 0.34489571071493214,
+        "median_cosine_similarity": 0.33403611579249387,
+        "sample_count": 18,
+        "std_cosine_similarity": 0.031170153715411278
+      },
+      "detection_coverage": 1.0,
+      "generation_count": 18,
+      "matched_people": 21,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 306,
+        "evaluable_sample_count": 18,
+        "evaluated_joint_count": 306,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 21,
+        "pck_005": 0.3137254901960784,
+        "pck_010": 0.4411764705882353,
+        "pck_020": 0.5686274509803921,
+        "predicted_people": 52,
+        "rendered_joint_count": 306,
+        "rendered_reference_people": 21,
+        "source_visible_joint_count": 312,
+        "unmatched_predicted_people": 31,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "predicted_people": 52,
+      "unmatched_predicted_people": 31,
+      "unmatched_reference_people": 0
+    }
+  ],
+  "by_control_scale": [
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.3479596166871402,
+        "median_cosine_similarity": 0.34981315001498364,
+        "sample_count": 6,
+        "std_cosine_similarity": 0.03260738903277528
+      },
+      "control_scale": 0.75,
+      "detection_coverage": 1.0,
+      "generation_count": 6,
+      "matched_people": 7,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 102,
+        "evaluable_sample_count": 6,
+        "evaluated_joint_count": 102,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 7,
+        "pck_005": 0.20588235294117646,
+        "pck_010": 0.2647058823529412,
+        "pck_020": 0.4215686274509804,
+        "predicted_people": 17,
+        "rendered_joint_count": 102,
+        "rendered_reference_people": 7,
+        "source_visible_joint_count": 104,
+        "unmatched_predicted_people": 10,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "predicted_people": 17,
+      "unmatched_predicted_people": 10,
+      "unmatched_reference_people": 0
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.33970575189962315,
+        "median_cosine_similarity": 0.33700688111027477,
+        "sample_count": 6,
+        "std_cosine_similarity": 0.026519244077302547
+      },
+      "control_scale": 1.0,
+      "detection_coverage": 1.0,
+      "generation_count": 6,
+      "matched_people": 7,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 102,
+        "evaluable_sample_count": 6,
+        "evaluated_joint_count": 102,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 7,
+        "pck_005": 0.27450980392156865,
+        "pck_010": 0.4215686274509804,
+        "pck_020": 0.5588235294117647,
+        "predicted_people": 23,
+        "rendered_joint_count": 102,
+        "rendered_reference_people": 7,
+        "source_visible_joint_count": 104,
+        "unmatched_predicted_people": 16,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "predicted_people": 23,
+      "unmatched_predicted_people": 16,
+      "unmatched_reference_people": 0
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.3433582225744249,
+        "median_cosine_similarity": 0.3469692063086961,
+        "sample_count": 6,
+        "std_cosine_similarity": 0.03437156326826929
+      },
+      "control_scale": 1.5,
+      "detection_coverage": 1.0,
+      "generation_count": 6,
+      "matched_people": 7,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 102,
+        "evaluable_sample_count": 6,
+        "evaluated_joint_count": 102,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 7,
+        "pck_005": 0.3235294117647059,
+        "pck_010": 0.47058823529411764,
+        "pck_020": 0.5980392156862745,
+        "predicted_people": 20,
+        "rendered_joint_count": 102,
+        "rendered_reference_people": 7,
+        "source_visible_joint_count": 104,
+        "unmatched_predicted_people": 13,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "predicted_people": 20,
+      "unmatched_predicted_people": 13,
+      "unmatched_reference_people": 0
+    }
+  ],
+  "by_prompt_mode": [
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.34096819996504985,
+        "median_cosine_similarity": 0.33700688111027477,
+        "sample_count": 24,
+        "std_cosine_similarity": 0.029070607505964793
+      },
+      "detection_coverage": 1.0,
+      "generation_count": 24,
+      "matched_people": 28,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 408,
+        "evaluable_sample_count": 24,
+        "evaluated_joint_count": 408,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 28,
+        "pck_005": 0.2181372549019608,
+        "pck_010": 0.34068627450980393,
+        "pck_020": 0.5024509803921569,
+        "predicted_people": 100,
+        "rendered_joint_count": 408,
+        "rendered_reference_people": 28,
+        "source_visible_joint_count": 416,
+        "unmatched_predicted_people": 72,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "predicted_people": 100,
+      "prompt_mode": "hand_neutral",
+      "unmatched_predicted_people": 72,
+      "unmatched_reference_people": 0
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.34658877479986555,
+        "median_cosine_similarity": 0.3428206664124174,
+        "sample_count": 24,
+        "std_cosine_similarity": 0.0313134813983517
+      },
+      "detection_coverage": 1.0,
+      "generation_count": 24,
+      "matched_people": 28,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 408,
+        "evaluable_sample_count": 24,
+        "evaluated_joint_count": 408,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 28,
+        "pck_005": 0.20588235294117646,
+        "pck_010": 0.2965686274509804,
+        "pck_020": 0.4264705882352941,
+        "predicted_people": 74,
+        "rendered_joint_count": 408,
+        "rendered_reference_people": 28,
+        "source_visible_joint_count": 416,
+        "unmatched_predicted_people": 46,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "predicted_people": 74,
+      "prompt_mode": "hand_compatible",
+      "unmatched_predicted_people": 46,
+      "unmatched_reference_people": 0
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.3451794594263011,
+        "median_cosine_similarity": 0.3394249981304289,
+        "sample_count": 24,
+        "std_cosine_similarity": 0.03161905496626409
+      },
+      "detection_coverage": 1.0,
+      "generation_count": 24,
+      "matched_people": 28,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 408,
+        "evaluable_sample_count": 24,
+        "evaluated_joint_count": 408,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 28,
+        "pck_005": 0.19852941176470587,
+        "pck_010": 0.29901960784313725,
+        "pck_020": 0.45098039215686275,
+        "predicted_people": 92,
+        "rendered_joint_count": 408,
+        "rendered_reference_people": 28,
+        "source_visible_joint_count": 416,
+        "unmatched_predicted_people": 64,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "predicted_people": 92,
+      "prompt_mode": "hand_conflicting",
+      "unmatched_predicted_people": 64,
+      "unmatched_reference_people": 0
+    }
+  ],
+  "candidate_order": [
+    "turbo-base",
+    "parent-4000",
+    "mix-025",
+    "finish-control-a4300"
+  ],
+  "control_scale_generation_count": 18,
+  "frozen_spec_sha256": "d61bacf17c7390b1f8e625d2c986c0098ab74638449c3cea9b7b5d67d6ff6fce",
+  "generation_count": 90,
+  "geometry": "native_aspect_preserving_cached_latent_bucket",
+  "human_review_required": true,
+  "primary_generation_count": 72,
+  "prompt_mode_order": [
+    "hand_neutral",
+    "hand_compatible",
+    "hand_conflicting"
+  ],
+  "runtime": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "steps": 8
+  }
+}
