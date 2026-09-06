@@ -1,0 +1,32 @@
+{
+  "by_geometry": [
+    {
+      "clip_mean": 0.30746245616617224,
+      "detection_coverage": 1.0,
+      "generated_person_count": 22,
+      "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
+      "matched_people": 14,
+      "pck_005": 0.2920353982300885,
+      "pck_010": 0.4026548672566372,
+      "pck_020": 0.588495575221239
+    },
+    {
+      "clip_mean": 0.3096808381017991,
+      "detection_coverage": 1.0,
+      "generated_person_count": 15,
+      "geometry_mode": "dynamic_768_bucket",
+      "matched_people": 14,
+      "pck_005": 0.24778761061946902,
+      "pck_010": 0.3584070796460177,
+      "pck_020": 0.5309734513274337
+    }
+  ],
+  "candidate": "mix-025",
+  "control_scale": 1.0,
+  "frozen_spec_sha256": "fe2d109e1e08c05007e38f605306ce1f9092794d0b7e0017a553e1fd3d6906cf",
+  "generation_count": 10,
+  "geometry_modes": [
+    "native_aspect_preserving_cached_latent_bucket",
+    "dynamic_768_bucket"
+  ]
+}

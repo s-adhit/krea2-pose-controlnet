@@ -1,0 +1,1024 @@
+{
+  "candidate": "mix-025",
+  "candidate_kind": "trainable_tensor_interpolation",
+  "checkpoint_interpolation": {
+    "alpha": 0.25,
+    "candidate_id": "mix-025",
+    "compute_dtype": "float32",
+    "endpoints": [
+      {
+        "candidate": "parent-4000",
+        "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt",
+        "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+        "step": 4000
+      },
+      {
+        "candidate": "finish-control-a4300",
+        "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+        "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff",
+        "step": 4300
+      }
+    ],
+    "formula": "(1 - alpha) * parent-4000 + alpha * finish-control-a4300",
+    "tensor_scope": "state['model'] trainable control/LoRA tensors only"
+  },
+  "clip_model_id": "openai/clip-vit-base-patch32",
+  "conditions": [
+    {
+      "condition_class": "near_square",
+      "control_sha256": "80eb64d325b349ed0dc57b82916ecedbc8e350253bd05c14b87d1f333207206a",
+      "dynamic_768_bucket": [
+        768,
+        768
+      ],
+      "native_bucket": [
+        1024,
+        1024
+      ],
+      "orientation": "near_square",
+      "prompt": "A sculpture depicts a graceful woman draped in flowing fabric, leaning gently against a slender column on a rectangular base, holding a cluster of sculpted flowers near her chest. The statue features smooth, carved stone surfaces with soft folds in the cascading drapery and detailed waves in the hair, rendered in a warm cream and beige color palette. The sculpture is set against a plain, solid white background, creating an isolated presentation. The lighting is bright and even, casting subtle shadows that define the contours of the form without harsh contrasts, captured at eye-level with clean clarity, neoclassical art, carved stone, textured drapery",
+      "sampling_seed": 8675987726486463627,
+      "source_size": [
+        660,
+        660
+      ],
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "condition_class": "portrait",
+      "control_sha256": "d59c50ca283bd26aa6192f9b1eb5eb9c05fb2db6c91ee36b13353623d515ab1a",
+      "dynamic_768_bucket": [
+        640,
+        960
+      ],
+      "native_bucket": [
+        832,
+        1216
+      ],
+      "orientation": "portrait",
+      "prompt": "A photograph depicts a woman suspended upside down against a plain white wall, supported by lilac-colored aerial yoga silks hanging from above. She wears a white short-sleeved top and grey leggings. Her blonde hair is tied back in a low bun, pooling near the light wood floor. The background consists of a smooth, neutral wall with a soft shadow cast to the right, illuminated by bright, even lighting from the front that creates a clean and minimalist aesthetic, aerial yoga, fitness, inversion",
+      "sampling_seed": 1860641454841022556,
+      "source_size": [
+        408,
+        612
+      ],
+      "stem": "real_human_humanart_15000000000521"
+    },
+    {
+      "condition_class": "landscape",
+      "control_sha256": "4e87b281764962da7838ef76bbf5dfb889e76e03a5e75f5091a49d9d0a37db0f",
+      "dynamic_768_bucket": [
+        1024,
+        576
+      ],
+      "native_bucket": [
+        1472,
+        704
+      ],
+      "orientation": "landscape",
+      "prompt": "A photograph depicts a young girl on a bright green exercise mat, which is placed on a smooth indoor athletic court surface with painted white and blue lines running across it. The girl wears a two-tone athletic top in black and turquoise, paired with dark athletic shorts, and has light blonde hair tied back with clips. The lighting is bright and even, casting soft shadows across the matte texture of the rubberized floor and the woven fabric of the mat. The color palette features vibrant greens, muted teals, blacks, and neutral skin tones under the overhead illumination, captured from a slightly elevated angle using a wide-angle lens with natural depth of field, athletic training, fitness mat",
+      "sampling_seed": 5676061900249086193,
+      "source_size": [
+        612,
+        313
+      ],
+      "stem": "real_human_humanart_15000000000477"
+    },
+    {
+      "condition_class": "extreme_portrait",
+      "control_sha256": "58736ee8516d608819837c456e1b698fd8959577e66aa36af558a0c7319d50a1",
+      "dynamic_768_bucket": [
+        576,
+        1024
+      ],
+      "native_bucket": [
+        768,
+        1344
+      ],
+      "orientation": "portrait",
+      "prompt": "A sculpture depicts a central woman with children carved from smooth, pale white marble, set inside a curved alcove with plain plaster walls. The monochrome ivory and off-white color palette is illuminated by soft, diffused overhead lighting that creates subtle shadows across the drapery and forms. Below the sculpture, a rectangular bronze-toned plaque is mounted on a pedestal, bearing the inscription: \"WHOEVER SHALL GIVE TO DRINK UNTO ONE OF THESE LITTLE ONES A CUP OF COLD WATER ONLY IN THE NAME OF A DISCIPLE, VERILY I SAY UNTO YOU, HE SHALL IN NO WISE LOSE HIS REWARD\", neoclassicism, marble carving",
+      "sampling_seed": 1273367503444576156,
+      "source_size": [
+        606,
+        1000
+      ],
+      "stem": "sculpture_humanart_14000000000288"
+    },
+    {
+      "condition_class": "multi_person",
+      "control_sha256": "67f485b6870f19be1b33a69799d84ca9ce2a1a2d4c6bd50ebb256e633645e845",
+      "dynamic_768_bucket": [
+        960,
+        640
+      ],
+      "native_bucket": [
+        1216,
+        832
+      ],
+      "orientation": "landscape",
+      "prompt": "A photograph depicts a group of performers on a stage with a stark, black background and a bright white floor. The palette is dominated by dark clothing, neutral gray trousers, and warm skin tones, contrasted against the deep blackness of the surrounding space. High-contrast spotlights illuminate the dancers from above, creating sharp highlights on their shoulders, arms, and backs, while casting deep shadows on the floor. The camera uses a wide-angle lens from a low-angle perspective, capturing the dynamic energy of the scene, modern dance, stage lighting",
+      "sampling_seed": 9148705073365945888,
+      "source_size": [
+        1280,
+        853
+      ],
+      "stem": "real_human_humanart_17000000002207"
+    }
+  ],
+  "control_scale": 1.0,
+  "expected_geometry_by_stem": {
+    "real_human_humanart_15000000000477": {
+      "dynamic_768_bucket": {
+        "bucket": [
+          1024,
+          576
+        ],
+        "crop_box": [
+          51,
+          0,
+          1075,
+          576
+        ],
+        "resized_size": [
+          1126,
+          576
+        ],
+        "source_size": [
+          612,
+          313
+        ]
+      },
+      "native_aspect_preserving_cached_latent_bucket": {
+        "bucket": [
+          1472,
+          704
+        ],
+        "crop_box": [
+          0,
+          24,
+          1472,
+          728
+        ],
+        "resized_size": [
+          1472,
+          753
+        ],
+        "source_size": [
+          612,
+          313
+        ]
+      }
+    },
+    "real_human_humanart_15000000000521": {
+      "dynamic_768_bucket": {
+        "bucket": [
+          640,
+          960
+        ],
+        "crop_box": [
+          0,
+          0,
+          640,
+          960
+        ],
+        "resized_size": [
+          640,
+          960
+        ],
+        "source_size": [
+          408,
+          612
+        ]
+      },
+      "native_aspect_preserving_cached_latent_bucket": {
+        "bucket": [
+          832,
+          1216
+        ],
+        "crop_box": [
+          0,
+          16,
+          832,
+          1232
+        ],
+        "resized_size": [
+          832,
+          1248
+        ],
+        "source_size": [
+          408,
+          612
+        ]
+      }
+    },
+    "real_human_humanart_17000000002207": {
+      "dynamic_768_bucket": {
+        "bucket": [
+          960,
+          640
+        ],
+        "crop_box": [
+          0,
+          0,
+          960,
+          640
+        ],
+        "resized_size": [
+          960,
+          640
+        ],
+        "source_size": [
+          1280,
+          853
+        ]
+      },
+      "native_aspect_preserving_cached_latent_bucket": {
+        "bucket": [
+          1216,
+          832
+        ],
+        "crop_box": [
+          16,
+          0,
+          1232,
+          832
+        ],
+        "resized_size": [
+          1248,
+          832
+        ],
+        "source_size": [
+          1280,
+          853
+        ]
+      }
+    },
+    "sculpture_humanart_14000000000288": {
+      "dynamic_768_bucket": {
+        "bucket": [
+          576,
+          1024
+        ],
+        "crop_box": [
+          22,
+          0,
+          598,
+          1024
+        ],
+        "resized_size": [
+          621,
+          1024
+        ],
+        "source_size": [
+          606,
+          1000
+        ]
+      },
+      "native_aspect_preserving_cached_latent_bucket": {
+        "bucket": [
+          768,
+          1344
+        ],
+        "crop_box": [
+          23,
+          0,
+          791,
+          1344
+        ],
+        "resized_size": [
+          814,
+          1344
+        ],
+        "source_size": [
+          606,
+          1000
+        ]
+      }
+    },
+    "sculpture_humanart_14000000003803": {
+      "dynamic_768_bucket": {
+        "bucket": [
+          768,
+          768
+        ],
+        "crop_box": [
+          0,
+          0,
+          768,
+          768
+        ],
+        "resized_size": [
+          768,
+          768
+        ],
+        "source_size": [
+          660,
+          660
+        ]
+      },
+      "native_aspect_preserving_cached_latent_bucket": {
+        "bucket": [
+          1024,
+          1024
+        ],
+        "crop_box": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "resized_size": [
+          1024,
+          1024
+        ],
+        "source_size": [
+          660,
+          660
+        ]
+      }
+    }
+  },
+  "final_val_spec_sha256": "93a5254e57fa208263f6188573e0760ffedd954bf3b3b3425109ea0178957cd0",
+  "frozen_spec": "docs/evaluation/native-vs-dynamic768/mix-025-control1-turbo-v1.json",
+  "frozen_spec_sha256": "fe2d109e1e08c05007e38f605306ce1f9092794d0b7e0017a553e1fd3d6906cf",
+  "generation_count": 10,
+  "geometry_modes": [
+    "native_aspect_preserving_cached_latent_bucket",
+    "dynamic_768_bucket"
+  ],
+  "group_by": "condition_class",
+  "historical_artifact_sha256": {
+    "docs/evaluation/control-scale-sweep/mix-025-native-v1.json": "af82b4c0b0290a852cdd3d7b6b917603e3e9298aa51dfa2ace737d41a28d91a6",
+    "docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48.jsonl": "23d448d573a2ffd20adfd73fa88f34ebc08df280a051cb0931d9ecdcc1231ceb",
+    "docs/evaluation/final-val-benchmark-selection/final_val_benchmark_spec.json": "93a5254e57fa208263f6188573e0760ffedd954bf3b3b3425109ea0178957cd0",
+    "docs/evaluation/prompting-guide/prompting_study.jsonl": "4fae6d39ac7354d451ca13556d3a2a89e303691ceb30727b8561b13b494450df",
+    "inference.py": "60992bba7f628dbbdadfd1cb59c3b4f385a016de3ac20898591ef7f1f8c47a5b"
+  },
+  "kind": "native_vs_dynamic768_mix_025_control1_turbo_v1",
+  "prompt_source": {
+    "path": "docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48.jsonl",
+    "sha256": "23d448d573a2ffd20adfd73fa88f34ebc08df280a051cb0931d9ecdcc1231ceb"
+  },
+  "rows": [
+    {
+      "by_geometry": [
+        {
+          "clip": {
+            "mean_cosine_similarity": 0.29129760736290916,
+            "median_cosine_similarity": 0.29129760736290916,
+            "sample_count": 1,
+            "std_cosine_similarity": 0.0
+          },
+          "detection_coverage": 1.0,
+          "generated_person_count": 1,
+          "generation_count": 1,
+          "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
+          "matched_people": 1,
+          "output_dimensions": [
+            1024,
+            1024
+          ],
+          "pck": {
+            "detection_coverage": 1.0,
+            "eligible_reference_joint_count": 17,
+            "evaluable_sample_count": 1,
+            "evaluated_joint_count": 17,
+            "generated_person_detection_coverage": 1.0,
+            "joint_evaluation_coverage": 1.0,
+            "matched_people": 1,
+            "pck_005": 0.8235294117647058,
+            "pck_010": 1.0,
+            "pck_020": 1.0,
+            "predicted_people": 1,
+            "rendered_joint_count": 17,
+            "rendered_reference_people": 1,
+            "source_visible_joint_count": 17,
+            "unmatched_predicted_people": 0,
+            "unmatched_reference_people": 0
+          },
+          "pck_unavailable_count": 0
+        },
+        {
+          "clip": {
+            "mean_cosine_similarity": 0.2978506557470582,
+            "median_cosine_similarity": 0.2978506557470582,
+            "sample_count": 1,
+            "std_cosine_similarity": 0.0
+          },
+          "detection_coverage": 1.0,
+          "generated_person_count": 1,
+          "generation_count": 1,
+          "geometry_mode": "dynamic_768_bucket",
+          "matched_people": 1,
+          "output_dimensions": [
+            768,
+            768
+          ],
+          "pck": {
+            "detection_coverage": 1.0,
+            "eligible_reference_joint_count": 17,
+            "evaluable_sample_count": 1,
+            "evaluated_joint_count": 17,
+            "generated_person_detection_coverage": 1.0,
+            "joint_evaluation_coverage": 1.0,
+            "matched_people": 1,
+            "pck_005": 0.8235294117647058,
+            "pck_010": 1.0,
+            "pck_020": 1.0,
+            "predicted_people": 1,
+            "rendered_joint_count": 17,
+            "rendered_reference_people": 1,
+            "source_visible_joint_count": 17,
+            "unmatched_predicted_people": 0,
+            "unmatched_reference_people": 0
+          },
+          "pck_unavailable_count": 0
+        }
+      ],
+      "condition_class": "near_square",
+      "framing_geometry_comparison": {
+        "bucket_changed": true,
+        "dynamic_768_crop_fraction_of_resized": {
+          "horizontal": 0.0,
+          "vertical": 0.0
+        },
+        "dynamic_768_geometry": {
+          "bucket": [
+            768,
+            768
+          ],
+          "crop_box": [
+            0,
+            0,
+            768,
+            768
+          ],
+          "resized_size": [
+            768,
+            768
+          ],
+          "source_size": [
+            660,
+            660
+          ]
+        },
+        "native_crop_fraction_of_resized": {
+          "horizontal": 0.0,
+          "vertical": 0.0
+        },
+        "native_geometry": {
+          "bucket": [
+            1024,
+            1024
+          ],
+          "crop_box": [
+            0,
+            0,
+            1024,
+            1024
+          ],
+          "resized_size": [
+            1024,
+            1024
+          ],
+          "source_size": [
+            660,
+            660
+          ]
+        }
+      },
+      "orientation": "near_square",
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "by_geometry": [
+        {
+          "clip": {
+            "mean_cosine_similarity": 0.32458505014468253,
+            "median_cosine_similarity": 0.32458505014468253,
+            "sample_count": 1,
+            "std_cosine_similarity": 0.0
+          },
+          "detection_coverage": 1.0,
+          "generated_person_count": 1,
+          "generation_count": 1,
+          "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
+          "matched_people": 1,
+          "output_dimensions": [
+            832,
+            1216
+          ],
+          "pck": {
+            "detection_coverage": 1.0,
+            "eligible_reference_joint_count": 17,
+            "evaluable_sample_count": 1,
+            "evaluated_joint_count": 17,
+            "generated_person_detection_coverage": 1.0,
+            "joint_evaluation_coverage": 1.0,
+            "matched_people": 1,
+            "pck_005": 0.11764705882352941,
+            "pck_010": 0.35294117647058826,
+            "pck_020": 0.5294117647058824,
+            "predicted_people": 1,
+            "rendered_joint_count": 17,
+            "rendered_reference_people": 1,
+            "source_visible_joint_count": 17,
+            "unmatched_predicted_people": 0,
+            "unmatched_reference_people": 0
+          },
+          "pck_unavailable_count": 0
+        },
+        {
+          "clip": {
+            "mean_cosine_similarity": 0.32935999798151844,
+            "median_cosine_similarity": 0.32935999798151844,
+            "sample_count": 1,
+            "std_cosine_similarity": 0.0
+          },
+          "detection_coverage": 1.0,
+          "generated_person_count": 1,
+          "generation_count": 1,
+          "geometry_mode": "dynamic_768_bucket",
+          "matched_people": 1,
+          "output_dimensions": [
+            640,
+            960
+          ],
+          "pck": {
+            "detection_coverage": 1.0,
+            "eligible_reference_joint_count": 17,
+            "evaluable_sample_count": 1,
+            "evaluated_joint_count": 17,
+            "generated_person_detection_coverage": 1.0,
+            "joint_evaluation_coverage": 1.0,
+            "matched_people": 1,
+            "pck_005": 0.35294117647058826,
+            "pck_010": 0.4117647058823529,
+            "pck_020": 0.7058823529411765,
+            "predicted_people": 1,
+            "rendered_joint_count": 17,
+            "rendered_reference_people": 1,
+            "source_visible_joint_count": 17,
+            "unmatched_predicted_people": 0,
+            "unmatched_reference_people": 0
+          },
+          "pck_unavailable_count": 0
+        }
+      ],
+      "condition_class": "portrait",
+      "framing_geometry_comparison": {
+        "bucket_changed": true,
+        "dynamic_768_crop_fraction_of_resized": {
+          "horizontal": 0.0,
+          "vertical": 0.0
+        },
+        "dynamic_768_geometry": {
+          "bucket": [
+            640,
+            960
+          ],
+          "crop_box": [
+            0,
+            0,
+            640,
+            960
+          ],
+          "resized_size": [
+            640,
+            960
+          ],
+          "source_size": [
+            408,
+            612
+          ]
+        },
+        "native_crop_fraction_of_resized": {
+          "horizontal": 0.0,
+          "vertical": 0.02564102564102564
+        },
+        "native_geometry": {
+          "bucket": [
+            832,
+            1216
+          ],
+          "crop_box": [
+            0,
+            16,
+            832,
+            1232
+          ],
+          "resized_size": [
+            832,
+            1248
+          ],
+          "source_size": [
+            408,
+            612
+          ]
+        }
+      },
+      "orientation": "portrait",
+      "stem": "real_human_humanart_15000000000521"
+    },
+    {
+      "by_geometry": [
+        {
+          "clip": {
+            "mean_cosine_similarity": 0.29822491439252957,
+            "median_cosine_similarity": 0.29822491439252957,
+            "sample_count": 1,
+            "std_cosine_similarity": 0.0
+          },
+          "detection_coverage": 1.0,
+          "generated_person_count": 2,
+          "generation_count": 1,
+          "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
+          "matched_people": 1,
+          "output_dimensions": [
+            1472,
+            704
+          ],
+          "pck": {
+            "detection_coverage": 1.0,
+            "eligible_reference_joint_count": 17,
+            "evaluable_sample_count": 1,
+            "evaluated_joint_count": 17,
+            "generated_person_detection_coverage": 1.0,
+            "joint_evaluation_coverage": 1.0,
+            "matched_people": 1,
+            "pck_005": 0.0,
+            "pck_010": 0.11764705882352941,
+            "pck_020": 0.35294117647058826,
+            "predicted_people": 2,
+            "rendered_joint_count": 17,
+            "rendered_reference_people": 1,
+            "source_visible_joint_count": 17,
+            "unmatched_predicted_people": 1,
+            "unmatched_reference_people": 0
+          },
+          "pck_unavailable_count": 0
+        },
+        {
+          "clip": {
+            "mean_cosine_similarity": 0.3073628242013717,
+            "median_cosine_similarity": 0.3073628242013717,
+            "sample_count": 1,
+            "std_cosine_similarity": 0.0
+          },
+          "detection_coverage": 1.0,
+          "generated_person_count": 1,
+          "generation_count": 1,
+          "geometry_mode": "dynamic_768_bucket",
+          "matched_people": 1,
+          "output_dimensions": [
+            1024,
+            576
+          ],
+          "pck": {
+            "detection_coverage": 1.0,
+            "eligible_reference_joint_count": 17,
+            "evaluable_sample_count": 1,
+            "evaluated_joint_count": 17,
+            "generated_person_detection_coverage": 1.0,
+            "joint_evaluation_coverage": 1.0,
+            "matched_people": 1,
+            "pck_005": 0.17647058823529413,
+            "pck_010": 0.23529411764705882,
+            "pck_020": 0.5294117647058824,
+            "predicted_people": 1,
+            "rendered_joint_count": 17,
+            "rendered_reference_people": 1,
+            "source_visible_joint_count": 17,
+            "unmatched_predicted_people": 0,
+            "unmatched_reference_people": 0
+          },
+          "pck_unavailable_count": 0
+        }
+      ],
+      "condition_class": "landscape",
+      "framing_geometry_comparison": {
+        "bucket_changed": true,
+        "dynamic_768_crop_fraction_of_resized": {
+          "horizontal": 0.0905861456483126,
+          "vertical": 0.0
+        },
+        "dynamic_768_geometry": {
+          "bucket": [
+            1024,
+            576
+          ],
+          "crop_box": [
+            51,
+            0,
+            1075,
+            576
+          ],
+          "resized_size": [
+            1126,
+            576
+          ],
+          "source_size": [
+            612,
+            313
+          ]
+        },
+        "native_crop_fraction_of_resized": {
+          "horizontal": 0.0,
+          "vertical": 0.0650730411686587
+        },
+        "native_geometry": {
+          "bucket": [
+            1472,
+            704
+          ],
+          "crop_box": [
+            0,
+            24,
+            1472,
+            728
+          ],
+          "resized_size": [
+            1472,
+            753
+          ],
+          "source_size": [
+            612,
+            313
+          ]
+        }
+      },
+      "orientation": "landscape",
+      "stem": "real_human_humanart_15000000000477"
+    },
+    {
+      "by_geometry": [
+        {
+          "clip": {
+            "mean_cosine_similarity": 0.3476746590615565,
+            "median_cosine_similarity": 0.3476746590615565,
+            "sample_count": 1,
+            "std_cosine_similarity": 0.0
+          },
+          "detection_coverage": 1.0,
+          "generated_person_count": 5,
+          "generation_count": 1,
+          "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
+          "matched_people": 4,
+          "output_dimensions": [
+            768,
+            1344
+          ],
+          "pck": {
+            "detection_coverage": 1.0,
+            "eligible_reference_joint_count": 68,
+            "evaluable_sample_count": 1,
+            "evaluated_joint_count": 68,
+            "generated_person_detection_coverage": 1.0,
+            "joint_evaluation_coverage": 1.0,
+            "matched_people": 4,
+            "pck_005": 0.3382352941176471,
+            "pck_010": 0.47058823529411764,
+            "pck_020": 0.6911764705882353,
+            "predicted_people": 5,
+            "rendered_joint_count": 68,
+            "rendered_reference_people": 4,
+            "source_visible_joint_count": 68,
+            "unmatched_predicted_people": 1,
+            "unmatched_reference_people": 0
+          },
+          "pck_unavailable_count": 0
+        },
+        {
+          "clip": {
+            "mean_cosine_similarity": 0.34560362987583737,
+            "median_cosine_similarity": 0.34560362987583737,
+            "sample_count": 1,
+            "std_cosine_similarity": 0.0
+          },
+          "detection_coverage": 1.0,
+          "generated_person_count": 5,
+          "generation_count": 1,
+          "geometry_mode": "dynamic_768_bucket",
+          "matched_people": 4,
+          "output_dimensions": [
+            576,
+            1024
+          ],
+          "pck": {
+            "detection_coverage": 1.0,
+            "eligible_reference_joint_count": 68,
+            "evaluable_sample_count": 1,
+            "evaluated_joint_count": 68,
+            "generated_person_detection_coverage": 1.0,
+            "joint_evaluation_coverage": 1.0,
+            "matched_people": 4,
+            "pck_005": 0.22058823529411764,
+            "pck_010": 0.4117647058823529,
+            "pck_020": 0.6617647058823529,
+            "predicted_people": 5,
+            "rendered_joint_count": 68,
+            "rendered_reference_people": 4,
+            "source_visible_joint_count": 68,
+            "unmatched_predicted_people": 1,
+            "unmatched_reference_people": 0
+          },
+          "pck_unavailable_count": 0
+        }
+      ],
+      "condition_class": "extreme_portrait",
+      "framing_geometry_comparison": {
+        "bucket_changed": true,
+        "dynamic_768_crop_fraction_of_resized": {
+          "horizontal": 0.07246376811594203,
+          "vertical": 0.0
+        },
+        "dynamic_768_geometry": {
+          "bucket": [
+            576,
+            1024
+          ],
+          "crop_box": [
+            22,
+            0,
+            598,
+            1024
+          ],
+          "resized_size": [
+            621,
+            1024
+          ],
+          "source_size": [
+            606,
+            1000
+          ]
+        },
+        "native_crop_fraction_of_resized": {
+          "horizontal": 0.056511056511056514,
+          "vertical": 0.0
+        },
+        "native_geometry": {
+          "bucket": [
+            768,
+            1344
+          ],
+          "crop_box": [
+            23,
+            0,
+            791,
+            1344
+          ],
+          "resized_size": [
+            814,
+            1344
+          ],
+          "source_size": [
+            606,
+            1000
+          ]
+        }
+      },
+      "orientation": "portrait",
+      "stem": "sculpture_humanart_14000000000288"
+    },
+    {
+      "by_geometry": [
+        {
+          "clip": {
+            "mean_cosine_similarity": 0.27553004986918345,
+            "median_cosine_similarity": 0.27553004986918345,
+            "sample_count": 1,
+            "std_cosine_similarity": 0.0
+          },
+          "detection_coverage": 1.0,
+          "generated_person_count": 13,
+          "generation_count": 1,
+          "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
+          "matched_people": 7,
+          "output_dimensions": [
+            1216,
+            832
+          ],
+          "pck": {
+            "detection_coverage": 1.0,
+            "eligible_reference_joint_count": 107,
+            "evaluable_sample_count": 1,
+            "evaluated_joint_count": 107,
+            "generated_person_detection_coverage": 1.0,
+            "joint_evaluation_coverage": 1.0,
+            "matched_people": 7,
+            "pck_005": 0.2523364485981308,
+            "pck_010": 0.3177570093457944,
+            "pck_020": 0.5046728971962616,
+            "predicted_people": 13,
+            "rendered_joint_count": 107,
+            "rendered_reference_people": 7,
+            "source_visible_joint_count": 107,
+            "unmatched_predicted_people": 6,
+            "unmatched_reference_people": 0
+          },
+          "pck_unavailable_count": 0
+        },
+        {
+          "clip": {
+            "mean_cosine_similarity": 0.26822708270320955,
+            "median_cosine_similarity": 0.26822708270320955,
+            "sample_count": 1,
+            "std_cosine_similarity": 0.0
+          },
+          "detection_coverage": 1.0,
+          "generated_person_count": 7,
+          "generation_count": 1,
+          "geometry_mode": "dynamic_768_bucket",
+          "matched_people": 7,
+          "output_dimensions": [
+            960,
+            640
+          ],
+          "pck": {
+            "detection_coverage": 1.0,
+            "eligible_reference_joint_count": 107,
+            "evaluable_sample_count": 1,
+            "evaluated_joint_count": 107,
+            "generated_person_detection_coverage": 1.0,
+            "joint_evaluation_coverage": 1.0,
+            "matched_people": 7,
+            "pck_005": 0.16822429906542055,
+            "pck_010": 0.2336448598130841,
+            "pck_020": 0.34579439252336447,
+            "predicted_people": 7,
+            "rendered_joint_count": 107,
+            "rendered_reference_people": 7,
+            "source_visible_joint_count": 107,
+            "unmatched_predicted_people": 0,
+            "unmatched_reference_people": 0
+          },
+          "pck_unavailable_count": 0
+        }
+      ],
+      "condition_class": "multi_person",
+      "framing_geometry_comparison": {
+        "bucket_changed": true,
+        "dynamic_768_crop_fraction_of_resized": {
+          "horizontal": 0.0,
+          "vertical": 0.0
+        },
+        "dynamic_768_geometry": {
+          "bucket": [
+            960,
+            640
+          ],
+          "crop_box": [
+            0,
+            0,
+            960,
+            640
+          ],
+          "resized_size": [
+            960,
+            640
+          ],
+          "source_size": [
+            1280,
+            853
+          ]
+        },
+        "native_crop_fraction_of_resized": {
+          "horizontal": 0.02564102564102564,
+          "vertical": 0.0
+        },
+        "native_geometry": {
+          "bucket": [
+            1216,
+            832
+          ],
+          "crop_box": [
+            16,
+            0,
+            1232,
+            832
+          ],
+          "resized_size": [
+            1248,
+            832
+          ],
+          "source_size": [
+            1280,
+            853
+          ]
+        }
+      },
+      "orientation": "landscape",
+      "stem": "real_human_humanart_17000000002207"
+    }
+  ],
+  "runtime": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "source_rgb_fallback_permitted": false,
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors"
+}

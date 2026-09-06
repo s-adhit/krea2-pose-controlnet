@@ -1,0 +1,32 @@
+{
+  "format_version": 1,
+  "kind": "native_vs_dynamic768_mix_025_control1_turbo_v1",
+  "candidate": "mix-025",
+  "candidate_kind": "trainable_tensor_interpolation",
+  "checkpoint_interpolation": {
+    "alpha": 0.25,
+    "candidate_id": "mix-025",
+    "compute_dtype": "float32",
+    "endpoints": [
+      {"candidate": "parent-4000", "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt", "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd", "step": 4000},
+      {"candidate": "finish-control-a4300", "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt", "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff", "step": 4300}
+    ],
+    "formula": "(1 - alpha) * parent-4000 + alpha * finish-control-a4300",
+    "tensor_scope": "state['model'] trainable control/LoRA tensors only"
+  },
+  "runtime": {"model": "Krea-2 Turbo", "steps": 8, "cfg": 0.0, "mu": 1.15, "mu_resolution_dependent": false, "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py"},
+  "control_scale": 1.0,
+  "geometry_modes": ["native_aspect_preserving_cached_latent_bucket", "dynamic_768_bucket"],
+  "generation_count": 10,
+  "final_val_spec_sha256": "93a5254e57fa208263f6188573e0760ffedd954bf3b3b3425109ea0178957cd0",
+  "prompt_source": {"path": "docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48.jsonl", "sha256": "23d448d573a2ffd20adfd73fa88f34ebc08df280a051cb0931d9ecdcc1231ceb"},
+  "clip_model_id": "openai/clip-vit-base-patch32",
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "conditions": [
+    {"stem": "sculpture_humanart_14000000003803", "condition_class": "near_square", "orientation": "near_square", "source_size": [660, 660], "sampling_seed": 8675987726486463627, "control_sha256": "80eb64d325b349ed0dc57b82916ecedbc8e350253bd05c14b87d1f333207206a", "native_bucket": [1024, 1024], "dynamic_768_bucket": [768, 768], "prompt": "A sculpture depicts a graceful woman draped in flowing fabric, leaning gently against a slender column on a rectangular base, holding a cluster of sculpted flowers near her chest. The statue features smooth, carved stone surfaces with soft folds in the cascading drapery and detailed waves in the hair, rendered in a warm cream and beige color palette. The sculpture is set against a plain, solid white background, creating an isolated presentation. The lighting is bright and even, casting subtle shadows that define the contours of the form without harsh contrasts, captured at eye-level with clean clarity, neoclassical art, carved stone, textured drapery"},
+    {"stem": "real_human_humanart_15000000000521", "condition_class": "portrait", "orientation": "portrait", "source_size": [408, 612], "sampling_seed": 1860641454841022556, "control_sha256": "d59c50ca283bd26aa6192f9b1eb5eb9c05fb2db6c91ee36b13353623d515ab1a", "native_bucket": [832, 1216], "dynamic_768_bucket": [640, 960], "prompt": "A photograph depicts a woman suspended upside down against a plain white wall, supported by lilac-colored aerial yoga silks hanging from above. She wears a white short-sleeved top and grey leggings. Her blonde hair is tied back in a low bun, pooling near the light wood floor. The background consists of a smooth, neutral wall with a soft shadow cast to the right, illuminated by bright, even lighting from the front that creates a clean and minimalist aesthetic, aerial yoga, fitness, inversion"},
+    {"stem": "real_human_humanart_15000000000477", "condition_class": "landscape", "orientation": "landscape", "source_size": [612, 313], "sampling_seed": 5676061900249086193, "control_sha256": "4e87b281764962da7838ef76bbf5dfb889e76e03a5e75f5091a49d9d0a37db0f", "native_bucket": [1472, 704], "dynamic_768_bucket": [1024, 576], "prompt": "A photograph depicts a young girl on a bright green exercise mat, which is placed on a smooth indoor athletic court surface with painted white and blue lines running across it. The girl wears a two-tone athletic top in black and turquoise, paired with dark athletic shorts, and has light blonde hair tied back with clips. The lighting is bright and even, casting soft shadows across the matte texture of the rubberized floor and the woven fabric of the mat. The color palette features vibrant greens, muted teals, blacks, and neutral skin tones under the overhead illumination, captured from a slightly elevated angle using a wide-angle lens with natural depth of field, athletic training, fitness mat"},
+    {"stem": "sculpture_humanart_14000000000288", "condition_class": "extreme_portrait", "orientation": "portrait", "source_size": [606, 1000], "sampling_seed": 1273367503444576156, "control_sha256": "58736ee8516d608819837c456e1b698fd8959577e66aa36af558a0c7319d50a1", "native_bucket": [768, 1344], "dynamic_768_bucket": [576, 1024], "prompt": "A sculpture depicts a central woman with children carved from smooth, pale white marble, set inside a curved alcove with plain plaster walls. The monochrome ivory and off-white color palette is illuminated by soft, diffused overhead lighting that creates subtle shadows across the drapery and forms. Below the sculpture, a rectangular bronze-toned plaque is mounted on a pedestal, bearing the inscription: \"WHOEVER SHALL GIVE TO DRINK UNTO ONE OF THESE LITTLE ONES A CUP OF COLD WATER ONLY IN THE NAME OF A DISCIPLE, VERILY I SAY UNTO YOU, HE SHALL IN NO WISE LOSE HIS REWARD\", neoclassicism, marble carving"},
+    {"stem": "real_human_humanart_17000000002207", "condition_class": "multi_person", "orientation": "landscape", "source_size": [1280, 853], "sampling_seed": 9148705073365945888, "control_sha256": "67f485b6870f19be1b33a69799d84ca9ce2a1a2d4c6bd50ebb256e633645e845", "native_bucket": [1216, 832], "dynamic_768_bucket": [960, 640], "prompt": "A photograph depicts a group of performers on a stage with a stark, black background and a bright white floor. The palette is dominated by dark clothing, neutral gray trousers, and warm skin tones, contrasted against the deep blackness of the surrounding space. High-contrast spotlights illuminate the dancers from above, creating sharp highlights on their shoulders, arms, and backs, while casting deep shadows on the floor. The camera uses a wide-angle lens from a low-angle perspective, capturing the dynamic energy of the scene, modern dance, stage lighting"}
+  ]
+}
