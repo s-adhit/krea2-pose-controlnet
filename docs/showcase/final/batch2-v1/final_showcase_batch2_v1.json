@@ -1,0 +1,133 @@
+{
+  "id": "final-showcase-batch2-v1",
+  "generation_count": 10,
+  "candidate": "mix-025",
+  "geometry": "native",
+  "control_scale": 1.0,
+  "steps": 8,
+  "cfg": 0.0,
+  "mu": 1.15,
+  "style_lora": null,
+  "rows": [
+    {
+      "row_id": "01_fantasy_mage_s1",
+      "concept": "fantasy_mage",
+      "control_stem": "sculpture_humanart_14000000001143",
+      "native_bucket": [
+        896,
+        1152
+      ],
+      "seed": 7194308211,
+      "prompt": "An elderly fantasy mage in richly embroidered robes with gold detailing, a flowing cloak, and an ornate arcane staff, glowing runes, drifting magical particles, candlelit stone architecture, cinematic fantasy lighting, highly detailed, dramatic atmosphere.",
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/controls/sculpture_humanart_14000000001143.png"
+    },
+    {
+      "row_id": "01_fantasy_mage_s2",
+      "concept": "fantasy_mage",
+      "control_stem": "sculpture_humanart_14000000001143",
+      "native_bucket": [
+        896,
+        1152
+      ],
+      "seed": 7194308212,
+      "prompt": "An elderly fantasy mage in richly embroidered robes with gold detailing, a flowing cloak, and an ornate arcane staff, glowing runes, drifting magical particles, candlelit stone architecture, cinematic fantasy lighting, highly detailed, dramatic atmosphere.",
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/controls/sculpture_humanart_14000000001143.png"
+    },
+    {
+      "row_id": "02_female_swordswoman_psychedelic_s1",
+      "concept": "female_swordswoman_psychedelic",
+      "control_stem": "danbooru_anime_11917323",
+      "native_bucket": [
+        896,
+        1152
+      ],
+      "seed": 7194308221,
+      "prompt": "A female swordswoman in ornate fantasy clothing wielding a long glowing sword, stylized digital painting with bold expressive brushstrokes and a vibrant psychedelic color palette, iridescent marbled fabrics, surreal fantasy mood, deep shadows, dramatic theatrical lighting, highly detailed concept art.",
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/controls/danbooru_anime_11917323.png"
+    },
+    {
+      "row_id": "02_female_swordswoman_psychedelic_s2",
+      "concept": "female_swordswoman_psychedelic",
+      "control_stem": "danbooru_anime_11917323",
+      "native_bucket": [
+        896,
+        1152
+      ],
+      "seed": 7194308222,
+      "prompt": "A female swordswoman in ornate fantasy clothing wielding a long glowing sword, stylized digital painting with bold expressive brushstrokes and a vibrant psychedelic color palette, iridescent marbled fabrics, surreal fantasy mood, deep shadows, dramatic theatrical lighting, highly detailed concept art.",
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/controls/danbooru_anime_11917323.png"
+    },
+    {
+      "row_id": "03_dark_jester_s1",
+      "concept": "dark_jester",
+      "control_stem": "painting_humanart_1000000001225",
+      "native_bucket": [
+        896,
+        1152
+      ],
+      "seed": 7194308231,
+      "prompt": "A menacing dark-fantasy jester in elaborate harlequin clothing with a multi-pointed hat and bells, ornate ruffled collar, textured flowing cape, deep theatrical shadows, dramatic moody lighting, painterly texture, surreal dark-fantasy concept art, highly detailed.",
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/controls/painting_humanart_1000000001225.png"
+    },
+    {
+      "row_id": "03_dark_jester_s2",
+      "concept": "dark_jester",
+      "control_stem": "painting_humanart_1000000001225",
+      "native_bucket": [
+        896,
+        1152
+      ],
+      "seed": 7194308232,
+      "prompt": "A menacing dark-fantasy jester in elaborate harlequin clothing with a multi-pointed hat and bells, ornate ruffled collar, textured flowing cape, deep theatrical shadows, dramatic moody lighting, painterly texture, surreal dark-fantasy concept art, highly detailed.",
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/controls/painting_humanart_1000000001225.png"
+    },
+    {
+      "row_id": "04_female_warrior_s1",
+      "concept": "female_warrior",
+      "control_stem": "painting_humanart_9000000002722",
+      "native_bucket": [
+        704,
+        1472
+      ],
+      "seed": 7194308241,
+      "prompt": "A powerful female warrior in battle-worn fantasy armor with layered cloth, engraved metal details, and a heroic presence, windswept silhouette, moody cinematic lighting, rich texture, dramatic fantasy atmosphere, highly detailed.",
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/controls/painting_humanart_9000000002722.png"
+    },
+    {
+      "row_id": "04_female_warrior_s2",
+      "concept": "female_warrior",
+      "control_stem": "painting_humanart_9000000002722",
+      "native_bucket": [
+        704,
+        1472
+      ],
+      "seed": 7194308242,
+      "prompt": "A powerful female warrior in battle-worn fantasy armor with layered cloth, engraved metal details, and a heroic presence, windswept silhouette, moody cinematic lighting, rich texture, dramatic fantasy atmosphere, highly detailed.",
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/controls/painting_humanart_9000000002722.png"
+    },
+    {
+      "row_id": "05_starry_night_painterly_s1",
+      "concept": "starry_night_painterly",
+      "control_stem": "painting_humanart_9000000000608",
+      "native_bucket": [
+        704,
+        1472
+      ],
+      "seed": 7194308251,
+      "prompt": "A solitary figure in flowing clothing beneath a swirling star-filled night sky, painterly dreamlike scene with expressive brushwork, luminous blues and warm gold highlights, poetic atmosphere, richly textured, highly detailed, fantasy-inspired nightscape.",
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/controls/painting_humanart_9000000000608.png"
+    },
+    {
+      "row_id": "05_starry_night_painterly_s2",
+      "concept": "starry_night_painterly",
+      "control_stem": "painting_humanart_9000000000608",
+      "native_bucket": [
+        704,
+        1472
+      ],
+      "seed": 7194308252,
+      "prompt": "A solitary figure in flowing clothing beneath a swirling star-filled night sky, painterly dreamlike scene with expressive brushwork, luminous blues and warm gold highlights, poetic atmosphere, richly textured, highly detailed, fantasy-inspired nightscape.",
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/controls/painting_humanart_9000000000608.png"
+    }
+  ]
+}
