@@ -1,0 +1,94 @@
+{
+  "candidate": {
+    "candidate_id": "mix-025",
+    "candidate_kind": "trainable_tensor_interpolation",
+    "interpolation": {
+      "alpha": 0.25,
+      "candidate_id": "mix-025",
+      "compute_dtype": "float32",
+      "endpoints": [
+        {
+          "id": "parent-4000",
+          "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt",
+          "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+          "step": 4000
+        },
+        {
+          "id": "finish-control-a4300",
+          "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+          "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff",
+          "step": 4300
+        }
+      ],
+      "formula": "(1 - alpha) * parent-4000 + alpha * finish-control-a4300",
+      "tensor_scope": "state['model'] trainable control/LoRA tensors only"
+    },
+    "release_contract": {
+      "id": "krea2-pose-control-lora-v1",
+      "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
+      "sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+    }
+  },
+  "cfg": 0.0,
+  "checkpoint_step": null,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      832,
+      1216
+    ],
+    "crop_box": [
+      0,
+      0,
+      832,
+      1216
+    ],
+    "resized_size": [
+      832,
+      1216
+    ],
+    "source_size": [
+      832,
+      1216
+    ]
+  },
+  "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
+  "height": 1216,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_dimensions": [
+    832,
+    1216
+  ],
+  "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/generations/11_masked_swordsman_unique.png",
+  "pose_image": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/coco_125590_434183.png",
+  "pose_image_sha256": "da615269a6e73646e7848e70dbe4991b8f300e8ea667e1dbe8f8dbacaa74e88c",
+  "pose_lora_checkpoint": null,
+  "prompt": "stylized digital painting of a menacing dark-fantasy masked swordsman rendered with bold expressive brushstrokes and a vibrant psychedelic color palette against a nearly black environment, elaborate layered ceremonial armor and flowing cloth in muted gold and dark brown, striped purple, blue and chartreuse fabrics, richly textured cape covered with saturated marbled patterns resembling iridescent oil slicks, smooth faceless pale mauve mask with a single glowing white point of light, massive ornate fantasy sword with a broad ethereal glowing blade and intricately sculpted crossguard, dramatic theatrical illumination, deep shadows, painterly texture, surreal dark-fantasy concept art",
+  "release": {
+    "id": "krea2-pose-control-lora-v1",
+    "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
+    "sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+  },
+  "seed": 7361052948,
+  "steps": 8,
+  "style_lora": {
+    "effective_prompt": "stylized digital painting of a menacing dark-fantasy masked swordsman rendered with bold expressive brushstrokes and a vibrant psychedelic color palette against a nearly black environment, elaborate layered ceremonial armor and flowing cloth in muted gold and dark brown, striped purple, blue and chartreuse fabrics, richly textured cape covered with saturated marbled patterns resembling iridescent oil slicks, smooth faceless pale mauve mask with a single glowing white point of light, massive ornate fantasy sword with a broad ethereal glowing blade and intricately sculpted crossguard, dramatic theatrical illumination, deep shadows, painterly texture, surreal dark-fantasy concept art",
+    "name": null,
+    "path": null,
+    "sha256": null,
+    "strength": 0.0,
+    "trigger_phrase": null
+  },
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 832
+}
