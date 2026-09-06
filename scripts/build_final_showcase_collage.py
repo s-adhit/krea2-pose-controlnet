@@ -26,22 +26,31 @@ WINNERS = HERO_DIR / "final_winners.json"
 PUBLIC_COLLAGE = HERO_DIR / "final_showcase_collage.png"
 LABELED_COLLAGE = HERO_DIR / "final_showcase_collage_labeled.png"
 
-# The public collage is deliberately a dense, equal-weight composition.  Each
-# condition tile has this exact displayed bounding box; source-specific empty
-# space remains black through containment instead of cropping a keypoint.
-CONDITION_TILE_SIZE = (200, 600)
-COLLAGE_SIZE = (2449, 1368)
+# The public collage is a dense, equal-pair composition.  A pair is always
+# ``[condition | generation]`` with exactly equal panel dimensions.  Native
+# aspect-ratio differences are represented with black containment padding;
+# neither half is cropped, stretched, or treated as a thumbnail.
+TOP_SIDE_SIZE = (700, 1000)
+BOTTOM_SIDE_SIZE = (1054, 800)
 GUTTER = 8
-# concept, x, y, generation height. The swordswoman is deliberately first.
+# The two slightly wider lower pairs complete the rectangular 3-over-2 grid
+# without elevating either concept into a dominant hero panel.  Their area is
+# about 20% above an upper pair, and their shorter height gives the wide jester
+# and the tall painterly image equal visual treatment.
+COLLAGE_SIZE = (
+    3 * (2 * TOP_SIDE_SIZE[0] + GUTTER) + 2 * GUTTER,
+    TOP_SIDE_SIZE[1] + BOTTOM_SIDE_SIZE[1] + GUTTER,
+)
+# concept, x, y, side width, side height. The swordswoman is first.
 PAIR_ROWS = (
     (
-        ("female_swordswoman_psychedelic", 0, 0, 600),
-        ("fantasy_mage", 682, 0, 600),
-        ("comic_fashion", 1364, 0, 600),
+        ("female_swordswoman_psychedelic", 0, 0, *TOP_SIDE_SIZE),
+        ("fantasy_mage", 2 * TOP_SIDE_SIZE[0] + 2 * GUTTER, 0, *TOP_SIDE_SIZE),
+        ("comic_fashion", 2 * (2 * TOP_SIDE_SIZE[0] + 2 * GUTTER), 0, *TOP_SIDE_SIZE),
     ),
     (
-        ("dark_fantasy_jester", 0, 608, 760),
-        ("starry_night_painterly", 1805, 608, 760),
+        ("starry_night_painterly", 0, TOP_SIDE_SIZE[1] + GUTTER, *BOTTOM_SIDE_SIZE),
+        ("dark_fantasy_jester", 2 * BOTTOM_SIDE_SIZE[0] + 2 * GUTTER, TOP_SIDE_SIZE[1] + GUTTER, *BOTTOM_SIDE_SIZE),
     ),
 )
 
@@ -242,14 +251,17 @@ def font(size: int) -> ImageFont.ImageFont:
     return ImageFont.load_default()
 
 
-def build_collage(contract: Mapping[str, Any], labeled: bool) -> Image.Image:
-    """Build five attached, native-aspect-preserving condition/generation pairs.
+def pair_boxes(pair: tuple[str, int, int, int, int]) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int]]:
+    """Return the equal displayed panels for one ``[condition | generation]`` pair."""
+    _concept, x, y, side_width, side_height = pair
+    return (
+        (x, y, side_width, side_height),
+        (x + side_width + GUTTER, y, side_width, side_height),
+    )
 
-    The upper row establishes the swordswoman's display scale; the lower row
-    is only modestly taller to pack the jester and tall painterly winner
-    densely.  Every generation is fully contained, and every condition uses
-    the same 200 x 600 tile so no pose becomes a detached thumbnail.
-    """
+
+def build_collage(contract: Mapping[str, Any], labeled: bool) -> Image.Image:
+    """Build five native-aspect-preserving, equal-side condition/generation pairs."""
     canvas = Image.new("RGB", COLLAGE_SIZE, "#000000")
     draw = ImageDraw.Draw(canvas)
     entries = {entry["concept"]: entry for entry in contract["winners"]}
@@ -260,16 +272,11 @@ def build_collage(contract: Mapping[str, Any], labeled: bool) -> Image.Image:
         "female_swordswoman_psychedelic": "Psychedelic swordswoman",
         "starry_night_painterly": "Starry-night painterly",
     }
-    condition_width, condition_height = CONDITION_TILE_SIZE
     for row in PAIR_ROWS:
-        for concept, x, y, generation_height in row:
+        for pair in row:
+            concept, x, y, _side_width, _side_height = pair
             entry = entries[concept]
-            generation = Image.open(ROOT / entry["generation_path"])
-            generation_aspect = generation.width / generation.height
-            generation_width = round(generation_height * generation_aspect)
-            condition_y = y + (generation_height - condition_height) // 2
-            condition_box = (x, condition_y, condition_width, condition_height)
-            generation_box = (x + condition_width + GUTTER, y, generation_width, generation_height)
+            condition_box, generation_box = pair_boxes(pair)
             paste_contain(canvas, ROOT / entry["condition_path"], condition_box)
             paste_contain(canvas, ROOT / entry["generation_path"], generation_box)
             if labeled:
@@ -277,8 +284,8 @@ def build_collage(contract: Mapping[str, Any], labeled: bool) -> Image.Image:
                 padding = 8
                 text_box = draw.textbbox((0, 0), text, font=font(18))
                 text_width = text_box[2] - text_box[0]
-                draw.rectangle((x, condition_y, x + text_width + 2 * padding, condition_y + 30), fill="#17171a")
-                draw.text((x + padding, condition_y + 6), text, fill="#f4f0e8", font=font(18))
+                draw.rectangle((x, y, x + text_width + 2 * padding, y + 30), fill="#17171a")
+                draw.text((x + padding, y + 6), text, fill="#f4f0e8", font=font(18))
     return canvas
 
 
