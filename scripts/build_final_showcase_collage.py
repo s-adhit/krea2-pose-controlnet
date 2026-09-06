@@ -26,6 +26,25 @@ WINNERS = HERO_DIR / "final_winners.json"
 PUBLIC_COLLAGE = HERO_DIR / "final_showcase_collage.png"
 LABELED_COLLAGE = HERO_DIR / "final_showcase_collage_labeled.png"
 
+# The public collage is deliberately a dense, equal-weight composition.  Each
+# condition tile has this exact displayed bounding box; source-specific empty
+# space remains black through containment instead of cropping a keypoint.
+CONDITION_TILE_SIZE = (200, 600)
+COLLAGE_SIZE = (2449, 1368)
+GUTTER = 8
+# concept, x, y, generation height. The swordswoman is deliberately first.
+PAIR_ROWS = (
+    (
+        ("female_swordswoman_psychedelic", 0, 0, 600),
+        ("fantasy_mage", 682, 0, 600),
+        ("comic_fashion", 1364, 0, 600),
+    ),
+    (
+        ("dark_fantasy_jester", 0, 608, 760),
+        ("starry_night_painterly", 1805, 608, 760),
+    ),
+)
+
 # This is the user-approved public selection, expressed against frozen IDs.
 SELECTIONS = {
     "fantasy_mage": ("hero_variant", "fantasy_mage_hero_b"),
@@ -224,28 +243,16 @@ def font(size: int) -> ImageFont.ImageFont:
 
 
 def build_collage(contract: Mapping[str, Any], labeled: bool) -> Image.Image:
-    """Build a dense editorial canvas from five inseparable pose/image pairs.
+    """Build five attached, native-aspect-preserving condition/generation pairs.
 
-    Each block is a left condition and right generation.  Panels contain their
-    sources instead of cropping them: preserving a pose, silhouette, and the
-    generated composition takes priority over filling a mismatched rectangle.
-    The varying block sizes create hierarchy without leaving a separate control
-    tile or a presentation-artboard region.
+    The upper row establishes the swordswoman's display scale; the lower row
+    is only modestly taller to pack the jester and tall painterly winner
+    densely.  Every generation is fully contained, and every condition uses
+    the same 200 x 600 tile so no pose becomes a detached thumbnail.
     """
-    canvas = Image.new("RGB", (2560, 1440), "#17171a")
+    canvas = Image.new("RGB", COLLAGE_SIZE, "#000000")
     draw = ImageDraw.Draw(canvas)
     entries = {entry["concept"]: entry for entry in contract["winners"]}
-    # x, y, width, height. The 8 px gaps are the only exposed canvas.
-    # Reading order deliberately begins with the upper-left swordswoman pair.
-    # Source-aspect-friendly blocks make the largest artwork read first, while
-    # containment protects full figures, props, sky, cathedral, and shadows.
-    pair_blocks = {
-        "female_swordswoman_psychedelic": (0, 0, 1220, 800),
-        "fantasy_mage": (1228, 0, 850, 800),
-        "starry_night_painterly": (2086, 0, 474, 800),
-        "comic_fashion": (0, 808, 1570, 632),
-        "dark_fantasy_jester": (1578, 808, 982, 632),
-    }
     labels = {
         "fantasy_mage": "Fantasy mage",
         "dark_fantasy_jester": "Dark-fantasy jester",
@@ -253,33 +260,25 @@ def build_collage(contract: Mapping[str, Any], labeled: bool) -> Image.Image:
         "female_swordswoman_psychedelic": "Psychedelic swordswoman",
         "starry_night_painterly": "Starry-night painterly",
     }
-    pair_gap = 8
-    for concept, (x, y, width, height) in pair_blocks.items():
-        entry = entries[concept]
-        # Allocate the generation panel first.  Unlike the sparse black pose
-        # render, its aspect carries the actual artwork; giving it its native
-        # width wherever the pair permits minimizes letterboxing without ever
-        # cropping.  The condition remains a visibly attached left panel.
-        generation = Image.open(ROOT / entry["generation_path"])
-        generation_aspect = generation.width / generation.height
-        available_width = width - pair_gap
-        minimum_condition_width = min(180, available_width // 2)
-        generation_width = min(
-            round(height * generation_aspect),
-            available_width - minimum_condition_width,
-        )
-        condition_width = available_width - generation_width
-        condition_box = (x, y, condition_width, height)
-        generation_box = (x + condition_width + pair_gap, y, generation_width, height)
-        paste_contain(canvas, ROOT / entry["condition_path"], condition_box)
-        paste_contain(canvas, ROOT / entry["generation_path"], generation_box)
-        if labeled:
-            text = labels[concept]
-            padding = 8
-            text_box = draw.textbbox((0, 0), text, font=font(18))
-            text_width = text_box[2] - text_box[0]
-            draw.rectangle((x, y, x + text_width + 2 * padding, y + 30), fill="#17171a")
-            draw.text((x + padding, y + 6), text, fill="#f4f0e8", font=font(18))
+    condition_width, condition_height = CONDITION_TILE_SIZE
+    for row in PAIR_ROWS:
+        for concept, x, y, generation_height in row:
+            entry = entries[concept]
+            generation = Image.open(ROOT / entry["generation_path"])
+            generation_aspect = generation.width / generation.height
+            generation_width = round(generation_height * generation_aspect)
+            condition_y = y + (generation_height - condition_height) // 2
+            condition_box = (x, condition_y, condition_width, condition_height)
+            generation_box = (x + condition_width + GUTTER, y, generation_width, generation_height)
+            paste_contain(canvas, ROOT / entry["condition_path"], condition_box)
+            paste_contain(canvas, ROOT / entry["generation_path"], generation_box)
+            if labeled:
+                text = labels[concept]
+                padding = 8
+                text_box = draw.textbbox((0, 0), text, font=font(18))
+                text_width = text_box[2] - text_box[0]
+                draw.rectangle((x, condition_y, x + text_width + 2 * padding, condition_y + 30), fill="#17171a")
+                draw.text((x + padding, condition_y + 6), text, fill="#f4f0e8", font=font(18))
     return canvas
 
 

@@ -14,6 +14,23 @@ SPEC.loader.exec_module(MODULE)
 
 
 class FinalShowcaseContractTest(unittest.TestCase):
+    def test_equal_weight_pair_geometry(self) -> None:
+        pairs = [pair for row in MODULE.PAIR_ROWS for pair in row]
+        self.assertEqual(
+            [concept for concept, *_ in pairs],
+            [
+                "female_swordswoman_psychedelic",
+                "fantasy_mage",
+                "comic_fashion",
+                "dark_fantasy_jester",
+                "starry_night_painterly",
+            ],
+        )
+        self.assertEqual(len(pairs), 5)
+        self.assertEqual(len({concept for concept, *_ in pairs}), 5)
+        self.assertEqual(MODULE.CONDITION_TILE_SIZE, (200, 600))
+        self.assertGreater(MODULE.COLLAGE_SIZE[0], MODULE.COLLAGE_SIZE[1])
+
     def test_frozen_winner_selection_and_assets(self) -> None:
         contract = MODULE.build_contract()
         MODULE.verify_contract(contract)

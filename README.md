@@ -4,21 +4,15 @@ Skeleton-conditioned pose control for Krea-2. The pose image controls **body geo
 
 Training uses **Krea-2 Raw**. Inference and evaluation use **Krea-2 Turbo**.
 
-## Status
+## Showcase
 
-The Pose Control-LoRA has been trained for Krea-2 Raw and evaluated/deployed on Krea-2 Turbo. The current quantitative release candidate is **mix-025**, pending the remaining release experiments; it is not final.
+The pose condition controls broad body geometry while the prompt controls compatible identity, clothing, environment, lighting, and rendering style.
 
-### Curated generations
+<p align="center">
+  <img src="docs/showcase/final/hero-v1/final_showcase_collage.png" alt="Krea-2 Pose Control final showcase" width="100%">
+</p>
 
-| Condition | Generation |
-|---|---|
-| ![Fantasy Mage condition](docs/assets/showcase/final/fantasy-mage/condition.png) | ![Fantasy Mage generation](docs/assets/showcase/final/fantasy-mage/generation.png) |
-| ![Gojo-inspired Mural condition](docs/assets/showcase/final/gojo-mural/condition.png) | ![Gojo-inspired Mural generation](docs/assets/showcase/final/gojo-mural/generation.png) |
-| ![Dark-fantasy Jester condition](docs/assets/showcase/final/jester/condition.png) | ![Dark-fantasy Jester generation](docs/assets/showcase/final/jester/generation.png) |
-
-These are curated qualitative demonstrations. Franchise-inspired examples are fan-art-style demonstrations only.
-
-The definitive public package is the [final hero collage](docs/showcase/final/hero-v1/final_showcase_collage.png), with a [labeled review version](docs/showcase/final/hero-v1/final_showcase_collage_labeled.png), [frozen winner contract](docs/showcase/final/hero-v1/final_winners.json), and [prompting guide](prompting.md).
+See [prompting.md](prompting.md) for prompt structure, control-strength guidance, examples, and common failure modes.
 
 ## Current evaluation candidate
 
