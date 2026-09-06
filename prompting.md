@@ -1,6 +1,8 @@
 # Prompting Krea-2 Pose Control
 
-The core rule is simple: **the pose control determines geometry; the prompt determines compatible appearance and rendering.** The skeleton establishes the body’s broad structure and placement. Use text for who the subject is, what they wear, where they are, and how the image looks.
+## Core rule
+
+**The pose control determines geometry; the prompt determines compatible appearance and rendering.** The skeleton establishes the body’s broad structure and placement. Use text for who the subject is, what they wear, where they are, and how the image looks.
 
 The control has body keypoints only. It does **not** provide finger-level control or facial keypoints.
 

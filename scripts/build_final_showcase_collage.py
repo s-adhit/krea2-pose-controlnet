@@ -215,31 +215,46 @@ def font(size: int) -> ImageFont.ImageFont:
 
 
 def build_collage(contract: Mapping[str, Any], labeled: bool) -> Image.Image:
-    # Editorial, asymmetric layout: the swordswoman is the visual anchor;
-    # controls are deliberately smaller but paired with every generation.
-    canvas = Image.new("RGB", (2800, 1900), "#efeae1")
+    """Build a dense editorial canvas from five inseparable pose/image pairs.
+
+    Each block is a left condition and right generation with identical framing.
+    The varying block sizes create hierarchy without leaving a separate control
+    tile or a presentation-artboard region.
+    """
+    canvas = Image.new("RGB", (2560, 1440), "#17171a")
     draw = ImageDraw.Draw(canvas)
     entries = {entry["concept"]: entry for entry in contract["winners"]}
-    tiles = {
-        "starry_night_painterly": ((70, 75, 360, 690), (385, 75, 490, 200)),
-        "comic_fashion": ((70, 850, 900, 570), (70, 680, 250, 145)),
-        "dark_fantasy_jester": ((70, 1490, 780, 350), (875, 1580, 180, 86)),
-        "female_swordswoman_psychedelic": ((1080, 80, 970, 1325), (2090, 1050, 350, 450)),
-        "fantasy_mage": ((2140, 75, 590, 755), (1950, 75, 160, 205)),
+    # x, y, width, height. The 10 px gaps are the only exposed canvas.
+    # Areas: swordswoman 33%, mage 24%, comic 16%, starry night 14%, jester 10%.
+    pair_blocks = {
+        "fantasy_mage": (0, 0, 1270, 710),
+        "comic_fashion": (1280, 0, 1280, 470),
+        "female_swordswoman_psychedelic": (1280, 480, 1280, 960),
+        "dark_fantasy_jester": (0, 720, 1270, 300),
+        "starry_night_painterly": (0, 1030, 1270, 410),
     }
-    for concept, (generation_box, condition_box) in tiles.items():
+    labels = {
+        "fantasy_mage": "Fantasy mage",
+        "dark_fantasy_jester": "Dark-fantasy jester",
+        "comic_fashion": "Comic fashion",
+        "female_swordswoman_psychedelic": "Psychedelic swordswoman",
+        "starry_night_painterly": "Starry-night painterly",
+    }
+    pair_gap = 8
+    for concept, (x, y, width, height) in pair_blocks.items():
         entry = entries[concept]
-        paste_fit(canvas, ROOT / entry["generation_path"], generation_box)
+        panel_width = (width - pair_gap) // 2
+        condition_box = (x, y, panel_width, height)
+        generation_box = (x + panel_width + pair_gap, y, width - panel_width - pair_gap, height)
         paste_fit(canvas, ROOT / entry["condition_path"], condition_box)
+        paste_fit(canvas, ROOT / entry["generation_path"], generation_box)
         if labeled:
-            title = concept.replace("_", " ").upper()
-            for box, caption in ((generation_box, title), (condition_box, "POSE CONDITION")):
-                x, y, width, _ = box
-                draw.rectangle((x, y - 34, x + width, y), fill="#17171a")
-                draw.text((x + 10, y - 27), caption, fill="#f4f0e8", font=font(20))
-    if labeled:
-        draw.text((1080, 1460), "KREA-2 POSE CONTROL", fill="#17171a", font=font(38))
-        draw.text((1080, 1510), "FINAL HERO SHOWCASE · V1", fill="#595651", font=font(24))
+            text = labels[concept]
+            padding = 8
+            text_box = draw.textbbox((0, 0), text, font=font(18))
+            text_width = text_box[2] - text_box[0]
+            draw.rectangle((x, y, x + text_width + 2 * padding, y + 30), fill="#17171a")
+            draw.text((x + padding, y + 6), text, fill="#f4f0e8", font=font(18))
     return canvas
 
 
