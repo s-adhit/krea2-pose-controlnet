@@ -1,0 +1,177 @@
+{
+  "concepts": [
+    {
+      "control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/painting_humanart_10000000004967.png",
+      "control_sha256": "4917a0b8043a25dd4094e396515b3ef97afd2c3b16f72e60d00f1d88e5d18a0c",
+      "control_stem": "painting_humanart_10000000004967",
+      "hero_variants": [
+        {
+          "id": "fantasy_mage_hero_a",
+          "output": "generations/fantasy_mage_hero_a.png",
+          "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/hero-v1/generations/fantasy_mage_hero_a.png",
+          "seed": 7194308301
+        },
+        {
+          "id": "fantasy_mage_hero_b",
+          "output": "generations/fantasy_mage_hero_b.png",
+          "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/hero-v1/generations/fantasy_mage_hero_b.png",
+          "seed": 7194308302
+        }
+      ],
+      "id": "fantasy_mage",
+      "native_bucket": [
+        896,
+        1152
+      ],
+      "original_generation_sidecar": "/home/ubuntu/krea2-pose-controlnet/docs/showcase/final/batch1-v1/generations/02_fantasy_mage_m1.json",
+      "original_output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/generations/02_fantasy_mage_m1.png",
+      "original_seed": 1847302951,
+      "prompt": "an ancient fantasy mage in layered sapphire, burgundy and ivory ceremonial robes, intricate gold embroidery, arcane jewelry and weathered magical textiles, inside a vast ruined cathedral filled with drifting dust and fragments of glowing runes, cold blue window light mixed with warm candlelight, richly detailed cinematic fantasy painting, dramatic atmosphere, tactile fabrics and ornate fantasy craftsmanship"
+    },
+    {
+      "control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/danbooru_anime_11903560.png",
+      "control_sha256": "e43ab4ee5d717fe2de6eafc3cfd2861a229c30a9d9482bfd5bf5ad270b893169",
+      "control_stem": "danbooru_anime_11903560",
+      "hero_variants": [
+        {
+          "id": "dark_fantasy_jester_hero_a",
+          "output": "generations/dark_fantasy_jester_hero_a.png",
+          "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/hero-v1/generations/dark_fantasy_jester_hero_a.png",
+          "seed": 7194308311
+        },
+        {
+          "id": "dark_fantasy_jester_hero_b",
+          "output": "generations/dark_fantasy_jester_hero_b.png",
+          "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/hero-v1/generations/dark_fantasy_jester_hero_b.png",
+          "seed": 7194308312
+        }
+      ],
+      "id": "dark_fantasy_jester",
+      "native_bucket": [
+        1472,
+        704
+      ],
+      "original_generation_sidecar": "/home/ubuntu/krea2-pose-controlnet/docs/showcase/final/batch1-v1/generations/03_dark_fantasy_jester_unique.json",
+      "original_output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/generations/03_dark_fantasy_jester_unique.png",
+      "original_seed": 3028147759,
+      "prompt": "a sinister dark-fantasy court jester in elaborate black, crimson and antique-gold ceremonial clothing, asymmetric silk panels, embroidered bells, dramatic ruffled collar, intricate harlequin details and a mysterious theatrical mask, inside a decaying gothic palace hall with faded murals and candlelit stone arches, deep shadows with saturated jewel-tone highlights, painterly dark-fantasy concept art, elegant, strange and unsettling"
+    },
+    {
+      "control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/real_human_humanart_15000000000930.png",
+      "control_sha256": "1c405fc440641934017a14fafbb80e8490a70b0639c20c4b46fe7f96419a2dca",
+      "control_stem": "real_human_humanart_15000000000930",
+      "hero_variants": [
+        {
+          "id": "comic_fashion_hero_a",
+          "output": "generations/comic_fashion_hero_a.png",
+          "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/hero-v1/generations/comic_fashion_hero_a.png",
+          "seed": 7194308321
+        },
+        {
+          "id": "comic_fashion_hero_b",
+          "output": "generations/comic_fashion_hero_b.png",
+          "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/hero-v1/generations/comic_fashion_hero_b.png",
+          "seed": 7194308322
+        }
+      ],
+      "id": "comic_fashion",
+      "native_bucket": [
+        1216,
+        832
+      ],
+      "original_generation_sidecar": "/home/ubuntu/krea2-pose-controlnet/docs/showcase/final/batch1-v1/generations/09_comic_fashion_unique.json",
+      "original_output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/generations/09_comic_fashion_unique.png",
+      "original_seed": 2519074836,
+      "prompt": "a severe dark-haired comic-fashion antihero wearing a long structured charcoal coat, sharp tailored layers, metallic accessories and bold geometric details, photographed like an avant-garde fashion editorial against graphic architectural shapes, dramatic hard shadows, deep indigo and black palette with selective gold accents, expressive manga-inspired linework blended with high-fashion photography, powerful cinematic composition"
+    },
+    {
+      "control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/controls/danbooru_anime_11917323.png",
+      "control_sha256": "c6f87ed4cba13a1e2ae95bc6b95ddc9e44a7cad69266dc60176aa9e55b091915",
+      "control_stem": "danbooru_anime_11917323",
+      "hero_variants": [
+        {
+          "id": "female_swordswoman_psychedelic_hero_a",
+          "output": "generations/female_swordswoman_psychedelic_hero_a.png",
+          "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/hero-v1/generations/female_swordswoman_psychedelic_hero_a.png",
+          "seed": 7194308331
+        },
+        {
+          "id": "female_swordswoman_psychedelic_hero_b",
+          "output": "generations/female_swordswoman_psychedelic_hero_b.png",
+          "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/hero-v1/generations/female_swordswoman_psychedelic_hero_b.png",
+          "seed": 7194308332
+        }
+      ],
+      "id": "female_swordswoman_psychedelic",
+      "native_bucket": [
+        896,
+        1152
+      ],
+      "original_generation_sidecar": "/home/ubuntu/krea2-pose-controlnet/docs/showcase/final/batch2-v1/generations/04_02_female_swordswoman_psychedelic_s2.json",
+      "original_output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/generations/04_02_female_swordswoman_psychedelic_s2.png",
+      "original_seed": 7194308222,
+      "prompt": "A female swordswoman in ornate fantasy clothing wielding a long glowing sword, stylized digital painting with bold expressive brushstrokes and a vibrant psychedelic color palette, iridescent marbled fabrics, surreal fantasy mood, deep shadows, dramatic theatrical lighting, highly detailed concept art."
+    },
+    {
+      "control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/controls/painting_humanart_9000000000608.png",
+      "control_sha256": "cff02adf69f638208e42958918ae1a8bc7724a95f96ba9b31a652479b8ecb6d3",
+      "control_stem": "painting_humanart_9000000000608",
+      "hero_variants": [
+        {
+          "id": "starry_night_painterly_hero_a",
+          "output": "generations/starry_night_painterly_hero_a.png",
+          "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/hero-v1/generations/starry_night_painterly_hero_a.png",
+          "seed": 7194308341
+        },
+        {
+          "id": "starry_night_painterly_hero_b",
+          "output": "generations/starry_night_painterly_hero_b.png",
+          "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/hero-v1/generations/starry_night_painterly_hero_b.png",
+          "seed": 7194308342
+        }
+      ],
+      "id": "starry_night_painterly",
+      "native_bucket": [
+        704,
+        1472
+      ],
+      "original_generation_sidecar": "/home/ubuntu/krea2-pose-controlnet/docs/showcase/final/batch2-v1/generations/09_05_starry_night_painterly_s1.json",
+      "original_output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/generations/09_05_starry_night_painterly_s1.png",
+      "original_seed": 7194308251,
+      "prompt": "A solitary figure in flowing clothing beneath a swirling star-filled night sky, painterly dreamlike scene with expressive brushwork, luminous blues and warm gold highlights, poetic atmosphere, richly textured, highly detailed, fantasy-inspired nightscape."
+    }
+  ],
+  "format_version": 1,
+  "hero_manifest": {
+    "path": "/home/ubuntu/krea2-pose-controlnet/docs/showcase/final_hero_showcase_v1.json",
+    "sha256": "98257de3edae550164bd4a8ecc00934ba8b8885a03d2be8a1f13a6b064c46246"
+  },
+  "kind": "final_hero_showcase_provenance_v1",
+  "release_contract": {
+    "path": "docs/evaluation/release/final_release_v1.json",
+    "sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+  },
+  "runtime": {
+    "candidate": "mix-025",
+    "control_scale": 1.0,
+    "geometry": "native_aspect_preserving_cached_latent_bucket",
+    "style_lora": null,
+    "turbo": {
+      "cfg": 0.0,
+      "model": "Krea-2 Turbo",
+      "mu": 1.15,
+      "mu_resolution_dependent": false,
+      "steps": 8
+    }
+  },
+  "source_manifests": {
+    "batch1-v1": {
+      "path": "docs/showcase/final/batch1-v1/final_showcase_batch1_v1.json",
+      "sha256": "629f3b87873b4a5a0bd0306ff6ffd1b9ac04e584976bb856226ab9311417c91b"
+    },
+    "batch2-v1": {
+      "path": "docs/showcase/final/batch2-v1/final_showcase_batch2_v1.json",
+      "sha256": "b152c97e29a9094260e860df1accdf66814db4898518313ba64300e1715250ae"
+    }
+  }
+}

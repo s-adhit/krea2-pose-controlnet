@@ -2,90 +2,105 @@
 
 ## Current objective
 
-Canonical public inference is implemented against frozen v1. The next action
-is one manual GH200 smoke generation only; do not train, make a hero/showcase,
-or change the frozen release artifact in that smoke task.
+Close the GPU/showcase phase by generating the frozen final native hero-v1
+package on the GH200, reviewing it, and copying the package into the docs tree.
+Do not train, modify the frozen release contract, change benchmarks, add a
+Style-LoRA, commit, or push from Codex.
 
-## Frozen release contract
+## Frozen release and winner sources
 
-- Contract: `docs/evaluation/release/final_release_v1.json`
-- SHA-256: `9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b`
-- Candidate: `mix-025`, FP32 blend of trainable `state['model']` tensors only:
-  `(1 - 0.25) * parent-4000 + 0.25 * finish-control-a4300`.
-- Pinned endpoints: parent step 4000
-  `0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd`;
-  finish-control step 4300
-  `17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff`.
-- Runtime: Krea-2 Turbo, 8 steps, CFG 0, `mu=1.15`, control scale 1.0.
-  Native/aspect-preserving is default; dynamic-768 is explicit opt-in.
+- Release: `docs/evaluation/release/final_release_v1.json`
+  SHA-256 `9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b`.
+  Canonical runtime is mix-025, Krea-2 Turbo 8, CFG 0, mu 1.15 with
+  resolution-dependent mu disabled, control scale 1.0, native geometry, and
+  no Style-LoRA.
+- Batch 1 source manifest:
+  `docs/showcase/final/batch1-v1/final_showcase_batch1_v1.json`
+  SHA-256 `629f3b87873b4a5a0bd0306ff6ffd1b9ac04e584976bb856226ab9311417c91b`.
+  Accepted winners: `fantasy_mage_m1` (generation
+  `02_fantasy_mage_m1.json`, seed 1847302951),
+  `dark_fantasy_jester_unique` (`03_dark_fantasy_jester_unique.json`,
+  3028147759), and `comic_fashion_unique`
+  (`09_comic_fashion_unique.json`, 2519074836).
+- Batch 2 source manifest:
+  `docs/showcase/final/batch2-v1/final_showcase_batch2_v1.json`
+  SHA-256 `b152c97e29a9094260e860df1accdf66814db4898518313ba64300e1715250ae`.
+  Accepted winners: `02_female_swordswoman_psychedelic_s2`
+  (`04_02_female_swordswoman_psychedelic_s2.json`, 7194308222) and
+  `05_starry_night_painterly_s1`
+  (`09_05_starry_night_painterly_s1.json`, 7194308251).
 
-## Implemented canonical inference behavior
+## Hero-v1 implementation
 
-- `inference.py` defaults to `mix-025`; it verifies the frozen JSON hash,
-  canonical endpoint paths/hashes, embedded steps, compatible Raw provenance,
-  matching trainable tensor keys/shapes, and FP32 interpolation before loading
-  the Turbo model. `--parent-ckpt` and `--finish-ckpt` must be supplied as a
-  pair and still must match the frozen endpoint hashes.
-- Historical direct checkpoint use remains available through
-  `--pose-lora-ckpt PATH` (and cannot be combined with canonical endpoints).
-- Native input geometry retains the supplied pose canvas exactly and rejects
-  non-16-aligned dimensions; it never silently selects dynamic-768. Use
-  `--dynamic-768-bucket` for the alternate policy or `--width W --height H`
-  for an explicit output canvas. Every sidecar records the mode and exact
-  output bucket/dimensions.
-- Style scope is zero or one adapter: `--style-name` selects only frozen-known
-  defaults, `--style-lora PATH` requires a known name for a custom path, and
-  `--style-strength` is non-negative/configurable. Audits fail closed;
-  strength zero does not load an adapter or install hooks. No trigger phrase
-  is injected; sidecars explicitly record the unchanged effective prompt.
-- Sidecars include release ID/path/hash, candidate/interpolation/endpoints,
-  pose hash, Turbo settings, control scale, geometry, and Style-LoRA data.
+- Frozen hero manifest: `docs/showcase/final_hero_showcase_v1.json`,
+  SHA-256 `98257de3edae550164bd4a8ecc00934ba8b8885a03d2be8a1f13a6b064c46246`.
+  It references the frozen source rows/sidecars instead of restating prompts,
+  controls, prepared geometry, or release settings.
+- Runner: `scripts/final_hero_showcase.py`. It validates the release and both
+  source manifest hashes, resolves the exact winner prompt/control/native
+  bucket from them, validates original inference provenance, calls only
+  `inference.py`, resumes only when an existing output and sidecar are both
+  valid, and fails closed otherwise.
+- Output root: `/lambda/nfs/adhit/krea2-pose/showcase/final/hero-v1`.
+  New images are `generations/*.png`, their normal inference sidecars remain
+  adjacent, compact provenance is `hero_provenance.json`, and the 5x4 review
+  sheet is `review_contact_sheet.png`.
+- Docs package destination: `docs/showcase/final/hero-v1/`. The copy mode
+  copies the manifest, review sheet, summary, five conditions, five original
+  winners plus their canonical sidecars, and ten hero variants plus inference
+  sidecars. It refuses conflicting destination files.
 
-## CLI
+## Exact new rows/seeds
 
-```bash
-python inference.py --turbo-ckpt PATH --prompt TEXT --pose-image POSE.png --output OUT.png
+```text
+fantasy_mage_hero_a                    7194308301
+fantasy_mage_hero_b                    7194308302
+dark_fantasy_jester_hero_a             7194308311
+dark_fantasy_jester_hero_b             7194308312
+comic_fashion_hero_a                   7194308321
+comic_fashion_hero_b                   7194308322
+female_swordswoman_psychedelic_hero_a  7194308331
+female_swordswoman_psychedelic_hero_b  7194308332
+starry_night_painterly_hero_a          7194308341
+starry_night_painterly_hero_b          7194308342
 ```
 
-Optional release controls: `--candidate mix-025`, `--parent-ckpt PATH`,
-`--finish-ckpt PATH`, `--control-scale FLOAT`, `--dynamic-768-bucket`,
-`--width W --height H`, `--style-name {darkbrush,rainywindow,retroanime,realism}`,
-`--style-lora PATH`, and `--style-strength FLOAT`.
+All ten are deterministic and the runner rejects a collision with any frozen
+Batch 1/2 seed.
 
-## Files changed this session
+## GH200 commands
 
-- `inference.py`
-- `pose_controlnet/trainable_interpolation.py`
-- `scripts/final_val_turbo_benchmark.py` (now reuses the shared interpolation)
-- `tests/test_inference.py`
-- `README.md` (inference section only)
-- `docs/CODEX_HANDOFF.md`
+Run from the actual GH200 host with the NFS controls, original winners,
+checkpoint endpoints, and Turbo checkpoint mounted:
 
-The pre-existing untracked frozen release files and release-decision test were
-preserved; `final_release_v1.json` was not edited.
+```bash
+cd /home/ubuntu/krea2-pose-controlnet && PYTHONPATH=. UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python scripts/final_hero_showcase.py preflight
+cd /home/ubuntu/krea2-pose-controlnet && PYTHONPATH=. UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python scripts/final_hero_showcase.py generate --turbo-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors
+cd /home/ubuntu/krea2-pose-controlnet && PYTHONPATH=. UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python scripts/final_hero_showcase.py review-sheet
+cd /home/ubuntu/krea2-pose-controlnet && PYTHONPATH=. UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python scripts/final_hero_showcase.py copy-to-docs
+```
 
-## Verification
+`generate` produces only the ten new hero images; a valid existing image plus
+its matching inference sidecar is skipped. `review-sheet` also writes the
+compact summary. `copy-to-docs` regenerates/validates the review package
+before copying it.
+
+## Verification this session
 
 PASS:
 
 ```bash
-UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python -m py_compile inference.py pose_controlnet/trainable_interpolation.py scripts/final_val_turbo_benchmark.py tests/test_inference.py
-UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python -m unittest tests.test_inference tests.test_final_release_decision tests.test_style_lora_composition tests.test_final_val_turbo_benchmark -v
-# 43 tests passed
-UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python inference.py --help
-sha256sum docs/evaluation/release/final_release_v1.json
-# 9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b
+UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python -m py_compile scripts/final_hero_showcase.py tests/test_final_hero_showcase.py
+UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python -m unittest tests.test_final_hero_showcase tests.test_inference tests.test_final_release_decision -v
+# 22 tests passed
+UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python scripts/final_hero_showcase.py --help
+sha256sum docs/showcase/final_hero_showcase_v1.json docs/evaluation/release/final_release_v1.json
+git diff --check
 ```
 
-No network access, training, full image generation, commit, or push occurred.
+No images were generated, and no frozen release, training, or benchmark files
+were changed. The actual `preflight` requires the mounted GH200/NFS artifacts
+and was deliberately not run in the Codex sandbox.
 
-## Exact GH200 smoke command
-
-Run manually from the GH200 host shell (this is a single generation, using the
-known 300x387 repository control with the explicit dynamic-768 mode):
-
-```bash
-cd /home/ubuntu/krea2-pose-controlnet && PYTHONPATH=. UV_CACHE_DIR=/tmp/krea2-uv-cache uv run python inference.py --turbo-ckpt /lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors --prompt "fantasy mage, ornate robes, cinematic lighting" --pose-image docs/assets/showcase/final/fantasy-mage/condition.png --output /tmp/krea2-pose-v1-smoke.png --seed 42 --dynamic-768-bucket
-```
-
-If that smoke passes, the exact next action is final hero/showcase generation.
+After hero-v1 is generated and pushed, no remaining pre-blog task requires
+the GH200 GPU.

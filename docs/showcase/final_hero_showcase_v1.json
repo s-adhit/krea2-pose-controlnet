@@ -1,0 +1,79 @@
+{
+  "format_version": 1,
+  "id": "final-hero-showcase-v1",
+  "kind": "final_native_hero_showcase_v1",
+  "output_root": "/lambda/nfs/adhit/krea2-pose/showcase/final/hero-v1",
+  "release_contract": {
+    "path": "docs/evaluation/release/final_release_v1.json",
+    "sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+  },
+  "source_manifests": [
+    {
+      "id": "batch1-v1",
+      "path": "docs/showcase/final/batch1-v1/final_showcase_batch1_v1.json",
+      "sha256": "629f3b87873b4a5a0bd0306ff6ffd1b9ac04e584976bb856226ab9311417c91b"
+    },
+    {
+      "id": "batch2-v1",
+      "path": "docs/showcase/final/batch2-v1/final_showcase_batch2_v1.json",
+      "sha256": "b152c97e29a9094260e860df1accdf66814db4898518313ba64300e1715250ae"
+    }
+  ],
+  "rows": [
+    {
+      "id": "fantasy_mage",
+      "source_manifest": "batch1-v1",
+      "source_row_id": "fantasy_mage_m1",
+      "original_generation_sidecar": "docs/showcase/final/batch1-v1/generations/02_fantasy_mage_m1.json",
+      "original_seed": 1847302951,
+      "hero_variants": [
+        {"id": "fantasy_mage_hero_a", "seed": 7194308301, "output": "generations/fantasy_mage_hero_a.png"},
+        {"id": "fantasy_mage_hero_b", "seed": 7194308302, "output": "generations/fantasy_mage_hero_b.png"}
+      ]
+    },
+    {
+      "id": "dark_fantasy_jester",
+      "source_manifest": "batch1-v1",
+      "source_row_id": "dark_fantasy_jester_unique",
+      "original_generation_sidecar": "docs/showcase/final/batch1-v1/generations/03_dark_fantasy_jester_unique.json",
+      "original_seed": 3028147759,
+      "hero_variants": [
+        {"id": "dark_fantasy_jester_hero_a", "seed": 7194308311, "output": "generations/dark_fantasy_jester_hero_a.png"},
+        {"id": "dark_fantasy_jester_hero_b", "seed": 7194308312, "output": "generations/dark_fantasy_jester_hero_b.png"}
+      ]
+    },
+    {
+      "id": "comic_fashion",
+      "source_manifest": "batch1-v1",
+      "source_row_id": "comic_fashion_unique",
+      "original_generation_sidecar": "docs/showcase/final/batch1-v1/generations/09_comic_fashion_unique.json",
+      "original_seed": 2519074836,
+      "hero_variants": [
+        {"id": "comic_fashion_hero_a", "seed": 7194308321, "output": "generations/comic_fashion_hero_a.png"},
+        {"id": "comic_fashion_hero_b", "seed": 7194308322, "output": "generations/comic_fashion_hero_b.png"}
+      ]
+    },
+    {
+      "id": "female_swordswoman_psychedelic",
+      "source_manifest": "batch2-v1",
+      "source_row_id": "02_female_swordswoman_psychedelic_s2",
+      "original_generation_sidecar": "docs/showcase/final/batch2-v1/generations/04_02_female_swordswoman_psychedelic_s2.json",
+      "original_seed": 7194308222,
+      "hero_variants": [
+        {"id": "female_swordswoman_psychedelic_hero_a", "seed": 7194308331, "output": "generations/female_swordswoman_psychedelic_hero_a.png"},
+        {"id": "female_swordswoman_psychedelic_hero_b", "seed": 7194308332, "output": "generations/female_swordswoman_psychedelic_hero_b.png"}
+      ]
+    },
+    {
+      "id": "starry_night_painterly",
+      "source_manifest": "batch2-v1",
+      "source_row_id": "05_starry_night_painterly_s1",
+      "original_generation_sidecar": "docs/showcase/final/batch2-v1/generations/09_05_starry_night_painterly_s1.json",
+      "original_seed": 7194308251,
+      "hero_variants": [
+        {"id": "starry_night_painterly_hero_a", "seed": 7194308341, "output": "generations/starry_night_painterly_hero_a.png"},
+        {"id": "starry_night_painterly_hero_b", "seed": 7194308342, "output": "generations/starry_night_painterly_hero_b.png"}
+      ]
+    }
+  ]
+}

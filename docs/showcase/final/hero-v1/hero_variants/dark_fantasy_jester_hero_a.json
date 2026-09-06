@@ -1,0 +1,94 @@
+{
+  "candidate": {
+    "candidate_id": "mix-025",
+    "candidate_kind": "trainable_tensor_interpolation",
+    "interpolation": {
+      "alpha": 0.25,
+      "candidate_id": "mix-025",
+      "compute_dtype": "float32",
+      "endpoints": [
+        {
+          "id": "parent-4000",
+          "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt",
+          "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+          "step": 4000
+        },
+        {
+          "id": "finish-control-a4300",
+          "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+          "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff",
+          "step": 4300
+        }
+      ],
+      "formula": "(1 - alpha) * parent-4000 + alpha * finish-control-a4300",
+      "tensor_scope": "state['model'] trainable control/LoRA tensors only"
+    },
+    "release_contract": {
+      "id": "krea2-pose-control-lora-v1",
+      "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
+      "sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+    }
+  },
+  "cfg": 0.0,
+  "checkpoint_step": null,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      1472,
+      704
+    ],
+    "crop_box": [
+      0,
+      0,
+      1472,
+      704
+    ],
+    "resized_size": [
+      1472,
+      704
+    ],
+    "source_size": [
+      1472,
+      704
+    ]
+  },
+  "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
+  "height": 704,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_dimensions": [
+    1472,
+    704
+  ],
+  "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/hero-v1/generations/dark_fantasy_jester_hero_a.png",
+  "pose_image": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/danbooru_anime_11903560.png",
+  "pose_image_sha256": "e43ab4ee5d717fe2de6eafc3cfd2861a229c30a9d9482bfd5bf5ad270b893169",
+  "pose_lora_checkpoint": null,
+  "prompt": "a sinister dark-fantasy court jester in elaborate black, crimson and antique-gold ceremonial clothing, asymmetric silk panels, embroidered bells, dramatic ruffled collar, intricate harlequin details and a mysterious theatrical mask, inside a decaying gothic palace hall with faded murals and candlelit stone arches, deep shadows with saturated jewel-tone highlights, painterly dark-fantasy concept art, elegant, strange and unsettling",
+  "release": {
+    "id": "krea2-pose-control-lora-v1",
+    "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
+    "sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+  },
+  "seed": 7194308311,
+  "steps": 8,
+  "style_lora": {
+    "effective_prompt": "a sinister dark-fantasy court jester in elaborate black, crimson and antique-gold ceremonial clothing, asymmetric silk panels, embroidered bells, dramatic ruffled collar, intricate harlequin details and a mysterious theatrical mask, inside a decaying gothic palace hall with faded murals and candlelit stone arches, deep shadows with saturated jewel-tone highlights, painterly dark-fantasy concept art, elegant, strange and unsettling",
+    "name": null,
+    "path": null,
+    "sha256": null,
+    "strength": 0.0,
+    "trigger_phrase": null
+  },
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 1472
+}

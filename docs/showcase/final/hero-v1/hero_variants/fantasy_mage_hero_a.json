@@ -1,0 +1,94 @@
+{
+  "candidate": {
+    "candidate_id": "mix-025",
+    "candidate_kind": "trainable_tensor_interpolation",
+    "interpolation": {
+      "alpha": 0.25,
+      "candidate_id": "mix-025",
+      "compute_dtype": "float32",
+      "endpoints": [
+        {
+          "id": "parent-4000",
+          "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt",
+          "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+          "step": 4000
+        },
+        {
+          "id": "finish-control-a4300",
+          "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+          "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff",
+          "step": 4300
+        }
+      ],
+      "formula": "(1 - alpha) * parent-4000 + alpha * finish-control-a4300",
+      "tensor_scope": "state['model'] trainable control/LoRA tensors only"
+    },
+    "release_contract": {
+      "id": "krea2-pose-control-lora-v1",
+      "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
+      "sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+    }
+  },
+  "cfg": 0.0,
+  "checkpoint_step": null,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      896,
+      1152
+    ],
+    "crop_box": [
+      0,
+      0,
+      896,
+      1152
+    ],
+    "resized_size": [
+      896,
+      1152
+    ],
+    "source_size": [
+      896,
+      1152
+    ]
+  },
+  "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
+  "height": 1152,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_dimensions": [
+    896,
+    1152
+  ],
+  "output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/hero-v1/generations/fantasy_mage_hero_a.png",
+  "pose_image": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/painting_humanart_10000000004967.png",
+  "pose_image_sha256": "4917a0b8043a25dd4094e396515b3ef97afd2c3b16f72e60d00f1d88e5d18a0c",
+  "pose_lora_checkpoint": null,
+  "prompt": "an ancient fantasy mage in layered sapphire, burgundy and ivory ceremonial robes, intricate gold embroidery, arcane jewelry and weathered magical textiles, inside a vast ruined cathedral filled with drifting dust and fragments of glowing runes, cold blue window light mixed with warm candlelight, richly detailed cinematic fantasy painting, dramatic atmosphere, tactile fabrics and ornate fantasy craftsmanship",
+  "release": {
+    "id": "krea2-pose-control-lora-v1",
+    "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
+    "sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+  },
+  "seed": 7194308301,
+  "steps": 8,
+  "style_lora": {
+    "effective_prompt": "an ancient fantasy mage in layered sapphire, burgundy and ivory ceremonial robes, intricate gold embroidery, arcane jewelry and weathered magical textiles, inside a vast ruined cathedral filled with drifting dust and fragments of glowing runes, cold blue window light mixed with warm candlelight, richly detailed cinematic fantasy painting, dramatic atmosphere, tactile fabrics and ornate fantasy craftsmanship",
+    "name": null,
+    "path": null,
+    "sha256": null,
+    "strength": 0.0,
+    "trigger_phrase": null
+  },
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 896
+}
