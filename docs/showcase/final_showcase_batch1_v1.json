@@ -1,0 +1,523 @@
+{
+  "format_version": 1,
+  "id": "final-showcase-batch1-v1",
+  "release_contract": {
+    "path": "docs/evaluation/release/final_release_v1.json",
+    "sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+  },
+  "generation_count": 12,
+  "candidate": "mix-025",
+  "native_only": true,
+  "style_lora": false,
+  "control_scale": 1.0,
+  "matched_pose_families": {
+    "M1": "painting_humanart_10000000004967",
+    "M2": "coco_104715_474045"
+  },
+  "rows": [
+    {
+      "id": "fantasy_mage_unique",
+      "concept": "fantasy_mage",
+      "track": "unique",
+      "matched_pose_family": null,
+      "control_stem": "sculpture_humanart_14000000003803",
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_01/sculpture_humanart_14000000003803.png",
+      "source_control_sha256": "80eb64d325b349ed0dc57b82916ecedbc8e350253bd05c14b87d1f333207206a",
+      "source_size": [
+        660,
+        660
+      ],
+      "native_bucket": [
+        1024,
+        1024
+      ],
+      "resized_size": [
+        1024,
+        1024
+      ],
+      "crop_box": [
+        0,
+        0,
+        1024,
+        1024
+      ],
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/sculpture_humanart_14000000003803.png",
+      "prepared_control_sha256": "4cccb9fe851997114aeeae51da31413d1871f104403ee92b2071b05fd6376021",
+      "prompt": "an ancient fantasy mage in layered sapphire, burgundy and ivory ceremonial robes, intricate gold embroidery, arcane jewelry and weathered magical textiles, inside a vast ruined cathedral filled with drifting dust and fragments of glowing runes, cold blue window light mixed with warm candlelight, richly detailed cinematic fantasy painting, dramatic atmosphere, tactile fabrics and ornate fantasy craftsmanship",
+      "seed": 7194308211,
+      "candidate": "mix-025",
+      "geometry": "native_aspect_preserving",
+      "control_scale": 1.0,
+      "style_lora": null,
+      "runtime": {
+        "model": "Krea-2 Turbo",
+        "steps": 8,
+        "cfg": 0.0,
+        "mu": 1.15,
+        "mu_resolution_dependent": false
+      }
+    },
+    {
+      "id": "fantasy_mage_m1",
+      "concept": "fantasy_mage",
+      "track": "matched",
+      "matched_pose_family": "M1",
+      "control_stem": "painting_humanart_10000000004967",
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_00/painting_humanart_10000000004967.png",
+      "source_control_sha256": "6cd38b3acd360dd7072a2eb1107bf797389e137af330d25d8dead9dcb88edffc",
+      "source_size": [
+        300,
+        391
+      ],
+      "native_bucket": [
+        896,
+        1152
+      ],
+      "resized_size": [
+        896,
+        1168
+      ],
+      "crop_box": [
+        0,
+        8,
+        896,
+        1160
+      ],
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/painting_humanart_10000000004967.png",
+      "prepared_control_sha256": "4917a0b8043a25dd4094e396515b3ef97afd2c3b16f72e60d00f1d88e5d18a0c",
+      "prompt": "an ancient fantasy mage in layered sapphire, burgundy and ivory ceremonial robes, intricate gold embroidery, arcane jewelry and weathered magical textiles, inside a vast ruined cathedral filled with drifting dust and fragments of glowing runes, cold blue window light mixed with warm candlelight, richly detailed cinematic fantasy painting, dramatic atmosphere, tactile fabrics and ornate fantasy craftsmanship",
+      "seed": 1847302951,
+      "candidate": "mix-025",
+      "geometry": "native_aspect_preserving",
+      "control_scale": 1.0,
+      "style_lora": null,
+      "runtime": {
+        "model": "Krea-2 Turbo",
+        "steps": 8,
+        "cfg": 0.0,
+        "mu": 1.15,
+        "mu_resolution_dependent": false
+      }
+    },
+    {
+      "id": "dark_fantasy_jester_unique",
+      "concept": "dark_fantasy_jester",
+      "track": "unique",
+      "matched_pose_family": null,
+      "control_stem": "real_human_humanart_15000000000477",
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_03/real_human_humanart_15000000000477.png",
+      "source_control_sha256": "4e87b281764962da7838ef76bbf5dfb889e76e03a5e75f5091a49d9d0a37db0f",
+      "source_size": [
+        612,
+        313
+      ],
+      "native_bucket": [
+        1472,
+        704
+      ],
+      "resized_size": [
+        1472,
+        753
+      ],
+      "crop_box": [
+        0,
+        24,
+        1472,
+        728
+      ],
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/real_human_humanart_15000000000477.png",
+      "prepared_control_sha256": "7637ce5415b01beea59a1267d8d55256a670a2c10c975900cb78e0e884930358",
+      "prompt": "a sinister dark-fantasy court jester in elaborate black, crimson and antique-gold ceremonial clothing, asymmetric silk panels, embroidered bells, dramatic ruffled collar, intricate harlequin details and a mysterious theatrical mask, inside a decaying gothic palace hall with faded murals and candlelit stone arches, deep shadows with saturated jewel-tone highlights, painterly dark-fantasy concept art, elegant, strange and unsettling",
+      "seed": 3028147759,
+      "candidate": "mix-025",
+      "geometry": "native_aspect_preserving",
+      "control_scale": 1.0,
+      "style_lora": null,
+      "runtime": {
+        "model": "Krea-2 Turbo",
+        "steps": 8,
+        "cfg": 0.0,
+        "mu": 1.15,
+        "mu_resolution_dependent": false
+      }
+    },
+    {
+      "id": "dark_fantasy_jester_m2",
+      "concept": "dark_fantasy_jester",
+      "track": "matched",
+      "matched_pose_family": "M2",
+      "control_stem": "coco_104715_474045",
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_05/coco_104715_474045.png",
+      "source_control_sha256": "70b533c7feaf5897ecebe5db4ffb26af0dc45f2c06332ac66a3aa15d3eb7a5ed",
+      "source_size": [
+        426,
+        640
+      ],
+      "native_bucket": [
+        832,
+        1216
+      ],
+      "resized_size": [
+        832,
+        1250
+      ],
+      "crop_box": [
+        0,
+        17,
+        832,
+        1233
+      ],
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/coco_104715_474045.png",
+      "prepared_control_sha256": "ea91cd75a2d3f43c0f7e1480cc186c33cd0026b02e2beb8b7370d4ea99be873a",
+      "prompt": "a sinister dark-fantasy court jester in elaborate black, crimson and antique-gold ceremonial clothing, asymmetric silk panels, embroidered bells, dramatic ruffled collar, intricate harlequin details and a mysterious theatrical mask, inside a decaying gothic palace hall with faded murals and candlelit stone arches, deep shadows with saturated jewel-tone highlights, painterly dark-fantasy concept art, elegant, strange and unsettling",
+      "seed": 5741920836,
+      "candidate": "mix-025",
+      "geometry": "native_aspect_preserving",
+      "control_scale": 1.0,
+      "style_lora": null,
+      "runtime": {
+        "model": "Krea-2 Turbo",
+        "steps": 8,
+        "cfg": 0.0,
+        "mu": 1.15,
+        "mu_resolution_dependent": false
+      }
+    },
+    {
+      "id": "modern_sorcerer_mural_unique",
+      "concept": "modern_sorcerer_mural",
+      "track": "unique",
+      "matched_pose_family": null,
+      "control_stem": "coco_49731_461706",
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_07/coco_49731_461706.png",
+      "source_control_sha256": "e49a88c758f5f8889c5dd498f02a4c5de2eced6dbec71745aa428159fd29f1bb",
+      "source_size": [
+        640,
+        480
+      ],
+      "native_bucket": [
+        1152,
+        896
+      ],
+      "resized_size": [
+        1195,
+        896
+      ],
+      "crop_box": [
+        21,
+        0,
+        1173,
+        896
+      ],
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/coco_49731_461706.png",
+      "prepared_control_sha256": "a8290950c36aedf307789a99cf764826d77f1c7ff8b107c77440cac685c45a85",
+      "prompt": "a charismatic white-haired modern sorcerer wearing sleek black streetwear and a high-collared jacket, surrounded by a monumental hand-painted urban mural filled with abstract blue symbols, energetic brush marks and supernatural motifs, weathered concrete walls, layered graffiti textures, dramatic city light and electric blue accents, cinematic contemporary fantasy photography mixed with large-scale street art",
+      "seed": 6419203857,
+      "candidate": "mix-025",
+      "geometry": "native_aspect_preserving",
+      "control_scale": 1.0,
+      "style_lora": null,
+      "runtime": {
+        "model": "Krea-2 Turbo",
+        "steps": 8,
+        "cfg": 0.0,
+        "mu": 1.15,
+        "mu_resolution_dependent": false
+      }
+    },
+    {
+      "id": "modern_sorcerer_mural_m2",
+      "concept": "modern_sorcerer_mural",
+      "track": "matched",
+      "matched_pose_family": "M2",
+      "control_stem": "coco_104715_474045",
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_05/coco_104715_474045.png",
+      "source_control_sha256": "70b533c7feaf5897ecebe5db4ffb26af0dc45f2c06332ac66a3aa15d3eb7a5ed",
+      "source_size": [
+        426,
+        640
+      ],
+      "native_bucket": [
+        832,
+        1216
+      ],
+      "resized_size": [
+        832,
+        1250
+      ],
+      "crop_box": [
+        0,
+        17,
+        832,
+        1233
+      ],
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/coco_104715_474045.png",
+      "prepared_control_sha256": "ea91cd75a2d3f43c0f7e1480cc186c33cd0026b02e2beb8b7370d4ea99be873a",
+      "prompt": "a charismatic white-haired modern sorcerer wearing sleek black streetwear and a high-collared jacket, surrounded by a monumental hand-painted urban mural filled with abstract blue symbols, energetic brush marks and supernatural motifs, weathered concrete walls, layered graffiti textures, dramatic city light and electric blue accents, cinematic contemporary fantasy photography mixed with large-scale street art",
+      "seed": 5741920836,
+      "candidate": "mix-025",
+      "geometry": "native_aspect_preserving",
+      "control_scale": 1.0,
+      "style_lora": null,
+      "runtime": {
+        "model": "Krea-2 Turbo",
+        "steps": 8,
+        "cfg": 0.0,
+        "mu": 1.15,
+        "mu_resolution_dependent": false
+      }
+    },
+    {
+      "id": "stained_glass_mage_unique",
+      "concept": "stained_glass_mage",
+      "track": "unique",
+      "matched_pose_family": null,
+      "control_stem": "real_human_humanart_15000000000521",
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_00/real_human_humanart_15000000000521.png",
+      "source_control_sha256": "d59c50ca283bd26aa6192f9b1eb5eb9c05fb2db6c91ee36b13353623d515ab1a",
+      "source_size": [
+        408,
+        612
+      ],
+      "native_bucket": [
+        832,
+        1216
+      ],
+      "resized_size": [
+        832,
+        1248
+      ],
+      "crop_box": [
+        0,
+        16,
+        832,
+        1232
+      ],
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/real_human_humanart_15000000000521.png",
+      "prepared_control_sha256": "bd15bcc6dfd8de728a062bcc1624529a96401e295d5483d30502cf9203235c34",
+      "prompt": "an elegant silver-haired elven mage in pale embroidered robes with delicate gold and blue ornamentation, surrounded by monumental stained-glass panels depicting stars, flowers and ancient magical symbols, luminous jewel tones of sapphire, emerald, ruby and amber, cathedral light scattering through colored glass, ethereal painterly fantasy illustration, intricate decorative detail, serene and dreamlike atmosphere",
+      "seed": 8803146251,
+      "candidate": "mix-025",
+      "geometry": "native_aspect_preserving",
+      "control_scale": 1.0,
+      "style_lora": null,
+      "runtime": {
+        "model": "Krea-2 Turbo",
+        "steps": 8,
+        "cfg": 0.0,
+        "mu": 1.15,
+        "mu_resolution_dependent": false
+      }
+    },
+    {
+      "id": "stained_glass_mage_m1",
+      "concept": "stained_glass_mage",
+      "track": "matched",
+      "matched_pose_family": "M1",
+      "control_stem": "painting_humanart_10000000004967",
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_00/painting_humanart_10000000004967.png",
+      "source_control_sha256": "6cd38b3acd360dd7072a2eb1107bf797389e137af330d25d8dead9dcb88edffc",
+      "source_size": [
+        300,
+        391
+      ],
+      "native_bucket": [
+        896,
+        1152
+      ],
+      "resized_size": [
+        896,
+        1168
+      ],
+      "crop_box": [
+        0,
+        8,
+        896,
+        1160
+      ],
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/painting_humanart_10000000004967.png",
+      "prepared_control_sha256": "4917a0b8043a25dd4094e396515b3ef97afd2c3b16f72e60d00f1d88e5d18a0c",
+      "prompt": "an elegant silver-haired elven mage in pale embroidered robes with delicate gold and blue ornamentation, surrounded by monumental stained-glass panels depicting stars, flowers and ancient magical symbols, luminous jewel tones of sapphire, emerald, ruby and amber, cathedral light scattering through colored glass, ethereal painterly fantasy illustration, intricate decorative detail, serene and dreamlike atmosphere",
+      "seed": 1847302951,
+      "candidate": "mix-025",
+      "geometry": "native_aspect_preserving",
+      "control_scale": 1.0,
+      "style_lora": null,
+      "runtime": {
+        "model": "Krea-2 Turbo",
+        "steps": 8,
+        "cfg": 0.0,
+        "mu": 1.15,
+        "mu_resolution_dependent": false
+      }
+    },
+    {
+      "id": "comic_fashion_unique",
+      "concept": "comic_fashion",
+      "track": "unique",
+      "matched_pose_family": null,
+      "control_stem": "coco_125590_434183",
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_05/coco_125590_434183.png",
+      "source_control_sha256": "08ecdc885c8afd77b0ed26cdfb72472f1a3db75498f6d6e0087b0632666c2ea1",
+      "source_size": [
+        427,
+        640
+      ],
+      "native_bucket": [
+        832,
+        1216
+      ],
+      "resized_size": [
+        832,
+        1247
+      ],
+      "crop_box": [
+        0,
+        15,
+        832,
+        1231
+      ],
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/coco_125590_434183.png",
+      "prepared_control_sha256": "da615269a6e73646e7848e70dbe4991b8f300e8ea667e1dbe8f8dbacaa74e88c",
+      "prompt": "a severe dark-haired comic-fashion antihero wearing a long structured charcoal coat, sharp tailored layers, metallic accessories and bold geometric details, photographed like an avant-garde fashion editorial against graphic architectural shapes, dramatic hard shadows, deep indigo and black palette with selective gold accents, expressive manga-inspired linework blended with high-fashion photography, powerful cinematic composition",
+      "seed": 2519074836,
+      "candidate": "mix-025",
+      "geometry": "native_aspect_preserving",
+      "control_scale": 1.0,
+      "style_lora": null,
+      "runtime": {
+        "model": "Krea-2 Turbo",
+        "steps": 8,
+        "cfg": 0.0,
+        "mu": 1.15,
+        "mu_resolution_dependent": false
+      }
+    },
+    {
+      "id": "comic_fashion_m2",
+      "concept": "comic_fashion",
+      "track": "matched",
+      "matched_pose_family": "M2",
+      "control_stem": "coco_104715_474045",
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_05/coco_104715_474045.png",
+      "source_control_sha256": "70b533c7feaf5897ecebe5db4ffb26af0dc45f2c06332ac66a3aa15d3eb7a5ed",
+      "source_size": [
+        426,
+        640
+      ],
+      "native_bucket": [
+        832,
+        1216
+      ],
+      "resized_size": [
+        832,
+        1250
+      ],
+      "crop_box": [
+        0,
+        17,
+        832,
+        1233
+      ],
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/coco_104715_474045.png",
+      "prepared_control_sha256": "ea91cd75a2d3f43c0f7e1480cc186c33cd0026b02e2beb8b7370d4ea99be873a",
+      "prompt": "a severe dark-haired comic-fashion antihero wearing a long structured charcoal coat, sharp tailored layers, metallic accessories and bold geometric details, photographed like an avant-garde fashion editorial against graphic architectural shapes, dramatic hard shadows, deep indigo and black palette with selective gold accents, expressive manga-inspired linework blended with high-fashion photography, powerful cinematic composition",
+      "seed": 5741920836,
+      "candidate": "mix-025",
+      "geometry": "native_aspect_preserving",
+      "control_scale": 1.0,
+      "style_lora": null,
+      "runtime": {
+        "model": "Krea-2 Turbo",
+        "steps": 8,
+        "cfg": 0.0,
+        "mu": 1.15,
+        "mu_resolution_dependent": false
+      }
+    },
+    {
+      "id": "masked_swordsman_unique",
+      "concept": "masked_swordsman",
+      "track": "unique",
+      "matched_pose_family": null,
+      "control_stem": "real_human_humanart_15000000001893",
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_02/real_human_humanart_15000000001893.png",
+      "source_control_sha256": "db15cf74488fcd6115adc98001121cb1fd5bf124f50df1d10b9ae823b6a21609",
+      "source_size": [
+        3456,
+        5184
+      ],
+      "native_bucket": [
+        832,
+        1216
+      ],
+      "resized_size": [
+        832,
+        1248
+      ],
+      "crop_box": [
+        0,
+        16,
+        832,
+        1232
+      ],
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/real_human_humanart_15000000001893.png",
+      "prepared_control_sha256": "063786f7be6ed3edcc8ff2b5232d0ca3c8fdcf3ee67f7a1bf8245efcc9dd692d",
+      "prompt": "stylized digital painting of a menacing dark-fantasy masked swordsman rendered with bold expressive brushstrokes and a vibrant psychedelic color palette against a nearly black environment, elaborate layered ceremonial armor and flowing cloth in muted gold and dark brown, striped purple, blue and chartreuse fabrics, richly textured cape covered with saturated marbled patterns resembling iridescent oil slicks, smooth faceless pale mauve mask with a single glowing white point of light, massive ornate fantasy sword with a broad ethereal glowing blade and intricately sculpted crossguard, dramatic theatrical illumination, deep shadows, painterly texture, surreal dark-fantasy concept art",
+      "seed": 7361052948,
+      "candidate": "mix-025",
+      "geometry": "native_aspect_preserving",
+      "control_scale": 1.0,
+      "style_lora": null,
+      "runtime": {
+        "model": "Krea-2 Turbo",
+        "steps": 8,
+        "cfg": 0.0,
+        "mu": 1.15,
+        "mu_resolution_dependent": false
+      }
+    },
+    {
+      "id": "masked_swordsman_m2",
+      "concept": "masked_swordsman",
+      "track": "matched",
+      "matched_pose_family": "M2",
+      "control_stem": "coco_104715_474045",
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_05/coco_104715_474045.png",
+      "source_control_sha256": "70b533c7feaf5897ecebe5db4ffb26af0dc45f2c06332ac66a3aa15d3eb7a5ed",
+      "source_size": [
+        426,
+        640
+      ],
+      "native_bucket": [
+        832,
+        1216
+      ],
+      "resized_size": [
+        832,
+        1250
+      ],
+      "crop_box": [
+        0,
+        17,
+        832,
+        1233
+      ],
+      "prepared_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/coco_104715_474045.png",
+      "prepared_control_sha256": "ea91cd75a2d3f43c0f7e1480cc186c33cd0026b02e2beb8b7370d4ea99be873a",
+      "prompt": "stylized digital painting of a menacing dark-fantasy masked swordsman rendered with bold expressive brushstrokes and a vibrant psychedelic color palette against a nearly black environment, elaborate layered ceremonial armor and flowing cloth in muted gold and dark brown, striped purple, blue and chartreuse fabrics, richly textured cape covered with saturated marbled patterns resembling iridescent oil slicks, smooth faceless pale mauve mask with a single glowing white point of light, massive ornate fantasy sword with a broad ethereal glowing blade and intricately sculpted crossguard, dramatic theatrical illumination, deep shadows, painterly texture, surreal dark-fantasy concept art",
+      "seed": 5741920836,
+      "candidate": "mix-025",
+      "geometry": "native_aspect_preserving",
+      "control_scale": 1.0,
+      "style_lora": null,
+      "runtime": {
+        "model": "Krea-2 Turbo",
+        "steps": 8,
+        "cfg": 0.0,
+        "mu": 1.15,
+        "mu_resolution_dependent": false
+      }
+    }
+  ]
+}
