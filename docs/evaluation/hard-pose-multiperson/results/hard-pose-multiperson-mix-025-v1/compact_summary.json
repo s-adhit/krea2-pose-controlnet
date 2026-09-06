@@ -1,0 +1,496 @@
+{
+  "by_hard_pose_category": [
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.328174102533915,
+        "median_cosine_similarity": 0.3296145187956725,
+        "sample_count": 8,
+        "std_cosine_similarity": 0.02695932676079835
+      },
+      "generation_count": 8,
+      "hard_pose_category": "single_person_hard_pose",
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 110,
+        "evaluable_sample_count": 8,
+        "evaluated_joint_count": 110,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 8,
+        "pck_005": 0.37272727272727274,
+        "pck_010": 0.5181818181818182,
+        "pck_020": 0.6818181818181818,
+        "predicted_people": 53,
+        "rendered_joint_count": 110,
+        "rendered_reference_people": 8,
+        "source_visible_joint_count": 113,
+        "unmatched_predicted_people": 45,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.31741415284204494,
+        "median_cosine_similarity": 0.32685024972958365,
+        "sample_count": 4,
+        "std_cosine_similarity": 0.02475056034440176
+      },
+      "generation_count": 4,
+      "hard_pose_category": "multi_person_stress",
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 144,
+        "evaluable_sample_count": 4,
+        "evaluated_joint_count": 144,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 12,
+        "pck_005": 0.2916666666666667,
+        "pck_010": 0.4097222222222222,
+        "pck_020": 0.5625,
+        "predicted_people": 31,
+        "rendered_joint_count": 144,
+        "rendered_reference_people": 12,
+        "source_visible_joint_count": 145,
+        "unmatched_predicted_people": 19,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0
+    }
+  ],
+  "by_person_group": [
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.328174102533915,
+        "median_cosine_similarity": 0.3296145187956725,
+        "sample_count": 8,
+        "std_cosine_similarity": 0.02695932676079835
+      },
+      "generation_count": 8,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 110,
+        "evaluable_sample_count": 8,
+        "evaluated_joint_count": 110,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 8,
+        "pck_005": 0.37272727272727274,
+        "pck_010": 0.5181818181818182,
+        "pck_020": 0.6818181818181818,
+        "predicted_people": 53,
+        "rendered_joint_count": 110,
+        "rendered_reference_people": 8,
+        "source_visible_joint_count": 113,
+        "unmatched_predicted_people": 45,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "person_group": "single-person"
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.31741415284204494,
+        "median_cosine_similarity": 0.32685024972958365,
+        "sample_count": 4,
+        "std_cosine_similarity": 0.02475056034440176
+      },
+      "generation_count": 4,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 144,
+        "evaluable_sample_count": 4,
+        "evaluated_joint_count": 144,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 12,
+        "pck_005": 0.2916666666666667,
+        "pck_010": 0.4097222222222222,
+        "pck_020": 0.5625,
+        "predicted_people": 31,
+        "rendered_joint_count": 144,
+        "rendered_reference_people": 12,
+        "source_visible_joint_count": 145,
+        "unmatched_predicted_people": 19,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "person_group": "multi-person"
+    }
+  ],
+  "by_pose_class": [
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.3005122286523086,
+        "median_cosine_similarity": 0.3005122286523086,
+        "sample_count": 2,
+        "std_cosine_similarity": 0.0022873142597790164
+      },
+      "generation_count": 2,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 30,
+        "evaluable_sample_count": 2,
+        "evaluated_joint_count": 30,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 2,
+        "pck_005": 0.23333333333333334,
+        "pck_010": 0.4666666666666667,
+        "pck_020": 0.6333333333333333,
+        "predicted_people": 3,
+        "rendered_joint_count": 30,
+        "rendered_reference_people": 2,
+        "source_visible_joint_count": 30,
+        "unmatched_predicted_people": 1,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "pose_class": "floor_seated_crouched"
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.29116344220804913,
+        "median_cosine_similarity": 0.29116344220804913,
+        "sample_count": 1,
+        "std_cosine_similarity": 0.0
+      },
+      "generation_count": 1,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 17,
+        "evaluable_sample_count": 1,
+        "evaluated_joint_count": 17,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 1,
+        "pck_005": 1.0,
+        "pck_010": 1.0,
+        "pck_020": 1.0,
+        "predicted_people": 1,
+        "rendered_joint_count": 17,
+        "rendered_reference_people": 1,
+        "source_visible_joint_count": 17,
+        "unmatched_predicted_people": 0,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "pose_class": "floor_pose"
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.33464398744666246,
+        "median_cosine_similarity": 0.33464398744666246,
+        "sample_count": 1,
+        "std_cosine_similarity": 0.0
+      },
+      "generation_count": 1,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 7,
+        "evaluable_sample_count": 1,
+        "evaluated_joint_count": 7,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 1,
+        "pck_005": 0.42857142857142855,
+        "pck_010": 0.8571428571428571,
+        "pck_020": 1.0,
+        "predicted_people": 1,
+        "rendered_joint_count": 7,
+        "rendered_reference_people": 1,
+        "source_visible_joint_count": 9,
+        "unmatched_predicted_people": 0,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "pose_class": "overhead_arms"
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.34845227530415196,
+        "median_cosine_similarity": 0.34845227530415196,
+        "sample_count": 1,
+        "std_cosine_similarity": 0.0
+      },
+      "generation_count": 1,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 12,
+        "evaluable_sample_count": 1,
+        "evaluated_joint_count": 12,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 1,
+        "pck_005": 0.08333333333333333,
+        "pck_010": 0.08333333333333333,
+        "pck_020": 0.4166666666666667,
+        "predicted_people": 1,
+        "rendered_joint_count": 12,
+        "rendered_reference_people": 1,
+        "source_visible_joint_count": 13,
+        "unmatched_predicted_people": 0,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "pose_class": "strong_torso_rotation"
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.3580042785037257,
+        "median_cosine_similarity": 0.3580042785037257,
+        "sample_count": 1,
+        "std_cosine_similarity": 0.0
+      },
+      "generation_count": 1,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 16,
+        "evaluable_sample_count": 1,
+        "evaluated_joint_count": 16,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 1,
+        "pck_005": 0.5625,
+        "pck_010": 0.625,
+        "pck_020": 0.8125,
+        "predicted_people": 5,
+        "rendered_joint_count": 16,
+        "rendered_reference_people": 1,
+        "source_visible_joint_count": 16,
+        "unmatched_predicted_people": 4,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "pose_class": "strong_foreshortening"
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.32458505014468253,
+        "median_cosine_similarity": 0.32458505014468253,
+        "sample_count": 1,
+        "std_cosine_similarity": 0.0
+      },
+      "generation_count": 1,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 17,
+        "evaluable_sample_count": 1,
+        "evaluated_joint_count": 17,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 1,
+        "pck_005": 0.11764705882352941,
+        "pck_010": 0.35294117647058826,
+        "pck_020": 0.5294117647058824,
+        "predicted_people": 1,
+        "rendered_joint_count": 17,
+        "rendered_reference_people": 1,
+        "source_visible_joint_count": 17,
+        "unmatched_predicted_people": 0,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "pose_class": "inversion"
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.36751932935943077,
+        "median_cosine_similarity": 0.36751932935943077,
+        "sample_count": 1,
+        "std_cosine_similarity": 0.0
+      },
+      "generation_count": 1,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 11,
+        "evaluable_sample_count": 1,
+        "evaluated_joint_count": 11,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 1,
+        "pck_005": 0.18181818181818182,
+        "pck_010": 0.2727272727272727,
+        "pck_020": 0.45454545454545453,
+        "predicted_people": 41,
+        "rendered_joint_count": 11,
+        "rendered_reference_people": 1,
+        "source_visible_joint_count": 11,
+        "unmatched_predicted_people": 40,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "pose_class": "dynamic_airborne"
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.27658633713512537,
+        "median_cosine_similarity": 0.27658633713512537,
+        "sample_count": 1,
+        "std_cosine_similarity": 0.0
+      },
+      "generation_count": 1,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 30,
+        "evaluable_sample_count": 1,
+        "evaluated_joint_count": 30,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 2,
+        "pck_005": 0.2,
+        "pck_010": 0.3333333333333333,
+        "pck_020": 0.4666666666666667,
+        "predicted_people": 4,
+        "rendered_joint_count": 30,
+        "rendered_reference_people": 2,
+        "source_visible_joint_count": 30,
+        "unmatched_predicted_people": 2,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "pose_class": "two_person_interaction"
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.33936977477388713,
+        "median_cosine_similarity": 0.33936977477388713,
+        "sample_count": 1,
+        "std_cosine_similarity": 0.0
+      },
+      "generation_count": 1,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 28,
+        "evaluable_sample_count": 1,
+        "evaluated_joint_count": 28,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 2,
+        "pck_005": 0.03571428571428571,
+        "pck_010": 0.10714285714285714,
+        "pck_020": 0.17857142857142858,
+        "predicted_people": 13,
+        "rendered_joint_count": 28,
+        "rendered_reference_people": 2,
+        "source_visible_joint_count": 28,
+        "unmatched_predicted_people": 11,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "pose_class": "overlapping_two_person_pose"
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.33470267708337936,
+        "median_cosine_similarity": 0.33470267708337936,
+        "sample_count": 1,
+        "std_cosine_similarity": 0.0
+      },
+      "generation_count": 1,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 32,
+        "evaluable_sample_count": 1,
+        "evaluated_joint_count": 32,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 3,
+        "pck_005": 0.34375,
+        "pck_010": 0.53125,
+        "pck_020": 0.6875,
+        "predicted_people": 8,
+        "rendered_joint_count": 32,
+        "rendered_reference_people": 3,
+        "source_visible_joint_count": 33,
+        "unmatched_predicted_people": 5,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "pose_class": "three_to_four_person_interaction"
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.3189978223757879,
+        "median_cosine_similarity": 0.3189978223757879,
+        "sample_count": 1,
+        "std_cosine_similarity": 0.0
+      },
+      "generation_count": 1,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 54,
+        "evaluable_sample_count": 1,
+        "evaluated_joint_count": 54,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 5,
+        "pck_005": 0.4444444444444444,
+        "pck_010": 0.5370370370370371,
+        "pck_020": 0.7407407407407407,
+        "predicted_people": 6,
+        "rendered_joint_count": 54,
+        "rendered_reference_people": 5,
+        "source_visible_joint_count": 54,
+        "unmatched_predicted_people": 1,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "pose_class": "crowd_dense_group"
+    }
+  ],
+  "candidate": "mix-025",
+  "control_scale": 1.0,
+  "failure_taxonomy": {
+    "conditions": {
+      "extra_predicted_people": [
+        "02_crouched",
+        "06_strong_foreshortening",
+        "08_airborne",
+        "09_two_person_interaction",
+        "10_overlapping_two_person_pose",
+        "11_three_to_four_person_interaction",
+        "12_crowd_dense_group"
+      ],
+      "low_coarse_pck": [
+        "02_crouched",
+        "05_strong_torso_rotation",
+        "08_airborne",
+        "09_two_person_interaction",
+        "10_overlapping_two_person_pose"
+      ],
+      "low_strict_pck": [
+        "02_crouched",
+        "05_strong_torso_rotation",
+        "07_inversion",
+        "08_airborne",
+        "09_two_person_interaction",
+        "10_overlapping_two_person_pose"
+      ],
+      "missed_reference_person": []
+    },
+    "counts": {
+      "extra_predicted_people": 7,
+      "low_coarse_pck": 5,
+      "low_strict_pck": 6,
+      "missed_reference_person": 0
+    },
+    "kind": "measured_observable_failure_taxonomy",
+    "note": "Only detector/PCK-derived observable fields are labeled; no subjective failure labels are inferred.",
+    "thresholds": {
+      "low_coarse_pck_below": 0.5,
+      "low_strict_pck_below": 0.3
+    }
+  },
+  "frozen_spec_sha256": "ed2fe5021aadce7bb32a6c2cdbd13573f9631054377715498ca6c486b04572a7",
+  "generation_count": 12,
+  "geometry": "native_aspect_preserving_cached_latent_bucket",
+  "runtime": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "steps": 8
+  }
+}

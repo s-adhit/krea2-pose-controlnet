@@ -1,0 +1,623 @@
+{
+  "aggregate_by_hard_pose_category": {
+    "group_by": "hard_pose_category",
+    "rows": [
+      {
+        "clip": {
+          "mean_cosine_similarity": 0.328174102533915,
+          "median_cosine_similarity": 0.3296145187956725,
+          "sample_count": 8,
+          "std_cosine_similarity": 0.02695932676079835
+        },
+        "generation_count": 8,
+        "hard_pose_category": "single_person_hard_pose",
+        "pck": {
+          "detection_coverage": 1.0,
+          "eligible_reference_joint_count": 110,
+          "evaluable_sample_count": 8,
+          "evaluated_joint_count": 110,
+          "generated_person_detection_coverage": 1.0,
+          "joint_evaluation_coverage": 1.0,
+          "matched_people": 8,
+          "pck_005": 0.37272727272727274,
+          "pck_010": 0.5181818181818182,
+          "pck_020": 0.6818181818181818,
+          "predicted_people": 53,
+          "rendered_joint_count": 110,
+          "rendered_reference_people": 8,
+          "source_visible_joint_count": 113,
+          "unmatched_predicted_people": 45,
+          "unmatched_reference_people": 0
+        },
+        "pck_unavailable_count": 0
+      },
+      {
+        "clip": {
+          "mean_cosine_similarity": 0.31741415284204494,
+          "median_cosine_similarity": 0.32685024972958365,
+          "sample_count": 4,
+          "std_cosine_similarity": 0.02475056034440176
+        },
+        "generation_count": 4,
+        "hard_pose_category": "multi_person_stress",
+        "pck": {
+          "detection_coverage": 1.0,
+          "eligible_reference_joint_count": 144,
+          "evaluable_sample_count": 4,
+          "evaluated_joint_count": 144,
+          "generated_person_detection_coverage": 1.0,
+          "joint_evaluation_coverage": 1.0,
+          "matched_people": 12,
+          "pck_005": 0.2916666666666667,
+          "pck_010": 0.4097222222222222,
+          "pck_020": 0.5625,
+          "predicted_people": 31,
+          "rendered_joint_count": 144,
+          "rendered_reference_people": 12,
+          "source_visible_joint_count": 145,
+          "unmatched_predicted_people": 19,
+          "unmatched_reference_people": 0
+        },
+        "pck_unavailable_count": 0
+      }
+    ]
+  },
+  "authoritative_pose_records_sha256": "3cc4defc282cb11e956ec06517eff4e8369622d4c0b3b567ab2247efb4a499a7",
+  "authoritative_pose_sidecar": {
+    "metadata_sha256": "57aac981a75231e3e0c4a6713bf9758db233c59e2b2cd71f7ea0a97a7ce7676e",
+    "path": "docs/evaluation/final-val-benchmark-selection/final_val_benchmark_48_pose_targets_v3",
+    "records_sha256": "3cc4defc282cb11e956ec06517eff4e8369622d4c0b3b567ab2247efb4a499a7"
+  },
+  "candidate": "mix-025",
+  "candidate_kind": "trainable_tensor_interpolation",
+  "checkpoint_interpolation": {
+    "alpha": 0.25,
+    "candidate_id": "mix-025",
+    "compute_dtype": "float32",
+    "endpoints": [
+      {
+        "candidate": "parent-4000",
+        "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt",
+        "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+        "step": 4000
+      },
+      {
+        "candidate": "finish-control-a4300",
+        "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+        "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff",
+        "step": 4300
+      }
+    ],
+    "formula": "(1 - alpha) * parent-4000 + alpha * finish-control-a4300",
+    "tensor_scope": "state['model'] trainable control/LoRA tensors only"
+  },
+  "conditions": [
+    {
+      "condition_id": "01_seated",
+      "expected_reference_people": 1,
+      "hard_pose_category": "single_person_hard_pose",
+      "native_bucket": [
+        1024,
+        1024
+      ],
+      "order": 1,
+      "person_group": "single-person",
+      "pose_class": "floor_seated_crouched",
+      "prompt": "A photograph of a person wearing a helmet and dark clothing on a black motorcycle, with a brown bag slung across their shoulder, positioned on a city street next to a red sedan in front of a brick building with large vertical windows, featuring a sign reading \"FORTY-EIGHT\" on the motorcycle's fuel tank and a \"P\" parking symbol sign on a pole in the background, under bright daylight with natural illumination, captured with a telephoto lens on an eye-level angle, pan blur technique, motion blur, shutter drag",
+      "seed": 2476282915888078364,
+      "source_domain": "coco",
+      "stem": "coco_268556_2203816"
+    },
+    {
+      "condition_id": "02_crouched",
+      "expected_reference_people": 1,
+      "hard_pose_category": "single_person_hard_pose",
+      "native_bucket": [
+        1472,
+        704
+      ],
+      "order": 2,
+      "person_group": "single-person",
+      "pose_class": "floor_seated_crouched",
+      "prompt": "A photograph depicts a young girl on a bright green exercise mat, which is placed on a smooth indoor athletic court surface with painted white and blue lines running across it. The girl wears a two-tone athletic top in black and turquoise, paired with dark athletic shorts, and has light blonde hair tied back with clips. The lighting is bright and even, casting soft shadows across the matte texture of the rubberized floor and the woven fabric of the mat. The color palette features vibrant greens, muted teals, blacks, and neutral skin tones under the overhead illumination, captured from a slightly elevated angle using a wide-angle lens with natural depth of field, athletic training, fitness mat",
+      "seed": 5676061900249086193,
+      "source_domain": "real_human",
+      "stem": "real_human_humanart_15000000000477"
+    },
+    {
+      "condition_id": "03_lying_floor",
+      "expected_reference_people": 1,
+      "hard_pose_category": "single_person_hard_pose",
+      "native_bucket": [
+        1216,
+        832
+      ],
+      "order": 3,
+      "person_group": "single-person",
+      "pose_class": "floor_pose",
+      "prompt": "A photograph depicts a man against a plain, neutral light gray backdrop with smooth, matte texture. The lighting is soft and even, casting subtle shadows beneath the subject and creating a clean, studio-lit aesthetic. The man wears a crisp white long-sleeved button-down shirt with the sleeves rolled up slightly, dark blue trousers, and vibrant blue sneakers with white soles and dark laces. A thin black watch is visible on his wrist. The color palette consists of cool grays, bright white, deep navy blue, and saturated royal blue, with high contrast between the clothing and the background. The camera is positioned at eye-level using a standard lens setup, capturing sharp details in the fabric textures and skin tones without distortion, dance, freeze-motion photography",
+      "seed": 8975511906419922437,
+      "source_domain": "real_human",
+      "stem": "real_human_humanart_15000000000930"
+    },
+    {
+      "condition_id": "04_overhead_arms",
+      "expected_reference_people": 1,
+      "hard_pose_category": "single_person_hard_pose",
+      "native_bucket": [
+        832,
+        1216
+      ],
+      "order": 4,
+      "person_group": "single-person",
+      "pose_class": "overhead_arms",
+      "prompt": "A photograph depicts a person holding an elaborate, colorful dragon kite against a solid, clear blue sky under bright, direct daylight captured with a low-angle perspective, the person wearing a black t-shirt printed with white and blue text that includes 'SERVING THE STATE OF CALIFORNIA', 'BUILDING MATERIALS SINCE 1954', and 'FRONTIER', along with a blue baseball cap featuring the text 'QuickBuild', the kite featuring detailed red, white, turquoise, and pink scales and flowing feathered streamers extending outward, illuminated by strong sunlight casting minimal shadows, film grain",
+      "seed": 2395696123777290437,
+      "source_domain": "coco",
+      "stem": "coco_104715_474045"
+    },
+    {
+      "condition_id": "05_strong_torso_rotation",
+      "expected_reference_people": 1,
+      "hard_pose_category": "single_person_hard_pose",
+      "native_bucket": [
+        1024,
+        1024
+      ],
+      "order": 5,
+      "person_group": "single-person",
+      "pose_class": "strong_torso_rotation",
+      "prompt": "A photograph of a man on a skateboard in mid-air against a background of scattered trees, a white building, and an overcast sky under a warm sepia tone color palette and bright daylight, captured from a low-angle perspective, film grain, vintage aesthetic",
+      "seed": 597860677606858948,
+      "source_domain": "coco",
+      "stem": "coco_540614_498912"
+    },
+    {
+      "condition_id": "06_strong_foreshortening",
+      "expected_reference_people": 1,
+      "hard_pose_category": "single_person_hard_pose",
+      "native_bucket": [
+        832,
+        1216
+      ],
+      "order": 6,
+      "person_group": "single-person",
+      "pose_class": "strong_foreshortening",
+      "prompt": "A photograph depicts a man with a helmet, knee pads, elbow pads, olive green shirt, and patterned shorts near a skate bowl with a skateboard above him against a twilight sky with a crescent moon, illuminated by flash photography from a low-angle perspective, with text reading \"austino\" in the lower right corner, fish-eye lens effect",
+      "seed": 2474376788711197263,
+      "source_domain": "coco",
+      "stem": "coco_125590_434183"
+    },
+    {
+      "condition_id": "07_inversion",
+      "expected_reference_people": 1,
+      "hard_pose_category": "single_person_hard_pose",
+      "native_bucket": [
+        832,
+        1216
+      ],
+      "order": 7,
+      "person_group": "single-person",
+      "pose_class": "inversion",
+      "prompt": "A photograph depicts a woman suspended upside down against a plain white wall, supported by lilac-colored aerial yoga silks hanging from above. She wears a white short-sleeved top and grey leggings. Her blonde hair is tied back in a low bun, pooling near the light wood floor. The background consists of a smooth, neutral wall with a soft shadow cast to the right, illuminated by bright, even lighting from the front that creates a clean and minimalist aesthetic, aerial yoga, fitness, inversion",
+      "seed": 1860641454841022556,
+      "source_domain": "real_human",
+      "stem": "real_human_humanart_15000000000521"
+    },
+    {
+      "condition_id": "08_airborne",
+      "expected_reference_people": 1,
+      "hard_pose_category": "single_person_hard_pose",
+      "native_bucket": [
+        1152,
+        896
+      ],
+      "order": 8,
+      "person_group": "single-person",
+      "pose_class": "dynamic_airborne",
+      "prompt": "A photograph depicts a person on a snowboard in midair over a snowy terrain at night, featuring a black jacket with white text on the back that includes \"edge\" and \"554\". Below the jump, a crowd gathers along a fenced viewing area near ski lifts and lighting structures under a dark, nighttime sky. The color palette consists of deep blacks, bright whites, and icy blues illuminated by overhead night lights under a telephoto lens perspective, telephoto lens, sports photography",
+      "seed": 1075931659224113629,
+      "source_domain": "coco",
+      "stem": "coco_49731_461706"
+    },
+    {
+      "condition_id": "09_two_person_interaction",
+      "expected_reference_people": 2,
+      "hard_pose_category": "multi_person_stress",
+      "native_bucket": [
+        1216,
+        832
+      ],
+      "order": 9,
+      "person_group": "multi-person",
+      "pose_class": "two_person_interaction",
+      "prompt": "A photograph depicts a man and a woman in brown clothing on a concrete floor with a concrete pillar in the background. The color palette consists of neutral gray tones and earthy browns. The lighting is bright and directional, casting distinct shadows on the ground. A web address \"www.itphoto.co.za\" is visible in the lower right corner, contemporary photography, dance photography",
+      "seed": 5918792317685775507,
+      "source_domain": "real_human",
+      "stem": "real_human_humanart_17000000001263"
+    },
+    {
+      "condition_id": "10_overlapping_two_person_pose",
+      "expected_reference_people": 2,
+      "hard_pose_category": "multi_person_stress",
+      "native_bucket": [
+        832,
+        1216
+      ],
+      "order": 10,
+      "person_group": "multi-person",
+      "pose_class": "overlapping_two_person_pose",
+      "prompt": "A photograph depicts a female gymnast wearing a white leotard adorned with purple and pink star-patterned decorations and a male base partner in a white top with purple trim and a small Belgian flag emblem on the sleeve, holding the gymnast's hands overhead in a brightly lit indoor sports arena with a blurred background showing spectators, a yellow railing, and a banner featuring the blue text \"VTB\", captured from a low angle with a telephoto lens, telephoto, sports photography",
+      "seed": 5745961191448260577,
+      "source_domain": "real_human",
+      "stem": "real_human_humanart_15000000001893"
+    },
+    {
+      "condition_id": "11_three_to_four_person_interaction",
+      "expected_reference_people": 3,
+      "hard_pose_category": "multi_person_stress",
+      "native_bucket": [
+        896,
+        1152
+      ],
+      "order": 11,
+      "person_group": "multi-person",
+      "pose_class": "three_to_four_person_interaction",
+      "prompt": "A photograph depicts a man in the foreground wearing a black helmet, blue ski goggles, and a dark blue jacket, alongside a child in a pink snowsuit next to a sign featuring graphical ski symbols and text that is partially visible, set against a snow-covered mountain ski resort under a clear blue sky illuminated by bright daylight, with a dark green building, wooden fence barriers, and distant pine trees dotting the snowy slopes where other skiers appear in the background, featuring a cool color palette dominated by blues, whites, and blacks, captured from a low-angle perspective, wide-angle lens",
+      "seed": 3851309865616413105,
+      "source_domain": "coco",
+      "stem": "coco_338108_crowd"
+    },
+    {
+      "condition_id": "12_crowd_dense_group",
+      "expected_reference_people": 7,
+      "hard_pose_category": "multi_person_stress",
+      "native_bucket": [
+        1216,
+        832
+      ],
+      "order": 12,
+      "person_group": "multi-person",
+      "pose_class": "crowd_dense_group",
+      "prompt": "A photograph depicts a man with light brown hair in black shorts and dark sneakers featuring white logos and white laces, holding a skateboard with black grip tape and white wheels in mid-air above a concrete surface. In the background are several men near a metal railing overlooking the ocean under bright daylight with natural shadows, featuring a color palette of tan sand, blue water, and neutral concrete, captured with an eye-level telephoto lens, telephoto compression",
+      "seed": 6938648628736860836,
+      "source_domain": "coco",
+      "stem": "coco_374270_crowd"
+    }
+  ],
+  "control_scale": 1.0,
+  "control_sha256": {
+    "coco_104715_474045": "70b533c7feaf5897ecebe5db4ffb26af0dc45f2c06332ac66a3aa15d3eb7a5ed",
+    "coco_125590_434183": "08ecdc885c8afd77b0ed26cdfb72472f1a3db75498f6d6e0087b0632666c2ea1",
+    "coco_268556_2203816": "f6ad369e84110750736324004bb62b9ebf0615a76d0fc7dc2f3a83d9113052dd",
+    "coco_338108_crowd": "e48283f91f5190b7ef1e3462d429f950bf47227b57fe43fabbe71c5258370bf3",
+    "coco_374270_crowd": "e487e747fd868117073d9e3c907f085fb6a2dfaea4e0d6456fcebe0503e23f19",
+    "coco_49731_461706": "e49a88c758f5f8889c5dd498f02a4c5de2eced6dbec71745aa428159fd29f1bb",
+    "coco_540614_498912": "7f98db3170be442354527b3e4fca87d6e293c62c14af9871fa506d2cdfb90e71",
+    "real_human_humanart_15000000000477": "4e87b281764962da7838ef76bbf5dfb889e76e03a5e75f5091a49d9d0a37db0f",
+    "real_human_humanart_15000000000521": "d59c50ca283bd26aa6192f9b1eb5eb9c05fb2db6c91ee36b13353623d515ab1a",
+    "real_human_humanart_15000000000930": "765c53830ad70eac9eb7d9d9e7375fe5e78c321e8b1fab92962860fb041ef9bd",
+    "real_human_humanart_15000000001893": "db15cf74488fcd6115adc98001121cb1fd5bf124f50df1d10b9ae823b6a21609",
+    "real_human_humanart_17000000001263": "353d6c34e8b8e0bcaba9502df74f0853aed4d691dc0c6f19aba32cecb09201c1"
+  },
+  "final_val_spec_sha256": "93a5254e57fa208263f6188573e0760ffedd954bf3b3b3425109ea0178957cd0",
+  "frozen_spec": "docs/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1.json",
+  "frozen_spec_sha256": "ed2fe5021aadce7bb32a6c2cdbd13573f9631054377715498ca6c486b04572a7",
+  "geometry": "native_aspect_preserving_cached_latent_bucket",
+  "geometry_by_stem": {
+    "coco_104715_474045": {
+      "bucket": [
+        832,
+        1216
+      ],
+      "crop_box": [
+        0,
+        17,
+        832,
+        1233
+      ],
+      "resized_size": [
+        832,
+        1250
+      ],
+      "source_size": [
+        426,
+        640
+      ]
+    },
+    "coco_125590_434183": {
+      "bucket": [
+        832,
+        1216
+      ],
+      "crop_box": [
+        0,
+        15,
+        832,
+        1231
+      ],
+      "resized_size": [
+        832,
+        1247
+      ],
+      "source_size": [
+        427,
+        640
+      ]
+    },
+    "coco_268556_2203816": {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "crop_box": [
+        0,
+        0,
+        1024,
+        1024
+      ],
+      "resized_size": [
+        1024,
+        1024
+      ],
+      "source_size": [
+        640,
+        640
+      ]
+    },
+    "coco_338108_crowd": {
+      "bucket": [
+        896,
+        1152
+      ],
+      "crop_box": [
+        0,
+        21,
+        896,
+        1173
+      ],
+      "resized_size": [
+        896,
+        1195
+      ],
+      "source_size": [
+        480,
+        640
+      ]
+    },
+    "coco_374270_crowd": {
+      "bucket": [
+        1216,
+        832
+      ],
+      "crop_box": [
+        15,
+        0,
+        1231,
+        832
+      ],
+      "resized_size": [
+        1247,
+        832
+      ],
+      "source_size": [
+        640,
+        427
+      ]
+    },
+    "coco_49731_461706": {
+      "bucket": [
+        1152,
+        896
+      ],
+      "crop_box": [
+        21,
+        0,
+        1173,
+        896
+      ],
+      "resized_size": [
+        1195,
+        896
+      ],
+      "source_size": [
+        640,
+        480
+      ]
+    },
+    "coco_540614_498912": {
+      "bucket": [
+        1024,
+        1024
+      ],
+      "crop_box": [
+        0,
+        6,
+        1024,
+        1030
+      ],
+      "resized_size": [
+        1024,
+        1036
+      ],
+      "source_size": [
+        494,
+        500
+      ]
+    },
+    "real_human_humanart_15000000000477": {
+      "bucket": [
+        1472,
+        704
+      ],
+      "crop_box": [
+        0,
+        24,
+        1472,
+        728
+      ],
+      "resized_size": [
+        1472,
+        753
+      ],
+      "source_size": [
+        612,
+        313
+      ]
+    },
+    "real_human_humanart_15000000000521": {
+      "bucket": [
+        832,
+        1216
+      ],
+      "crop_box": [
+        0,
+        16,
+        832,
+        1232
+      ],
+      "resized_size": [
+        832,
+        1248
+      ],
+      "source_size": [
+        408,
+        612
+      ]
+    },
+    "real_human_humanart_15000000000930": {
+      "bucket": [
+        1216,
+        832
+      ],
+      "crop_box": [
+        16,
+        0,
+        1232,
+        832
+      ],
+      "resized_size": [
+        1248,
+        832
+      ],
+      "source_size": [
+        612,
+        408
+      ]
+    },
+    "real_human_humanart_15000000001893": {
+      "bucket": [
+        832,
+        1216
+      ],
+      "crop_box": [
+        0,
+        16,
+        832,
+        1232
+      ],
+      "resized_size": [
+        832,
+        1248
+      ],
+      "source_size": [
+        3456,
+        5184
+      ]
+    },
+    "real_human_humanart_17000000001263": {
+      "bucket": [
+        1216,
+        832
+      ],
+      "crop_box": [
+        17,
+        0,
+        1233,
+        832
+      ],
+      "resized_size": [
+        1250,
+        832
+      ],
+      "source_size": [
+        1803,
+        1200
+      ]
+    }
+  },
+  "group_by": "person_group",
+  "historical_artifact_sha256": {
+    "docs/evaluation/prompting-guide/prompting_study.jsonl": "4fae6d39ac7354d451ca13556d3a2a89e303691ceb30727b8561b13b494450df",
+    "docs/evaluation/turbo-baseline/turbo-baseline-final-val-v1.json": "f0775c8aac404a1a4a3303ee8272d49d217d398c8379d7559d84c59288292bcc",
+    "inference.py": "60992bba7f628dbbdadfd1cb59c3b4f385a016de3ac20898591ef7f1f8c47a5b"
+  },
+  "kind": "hard_pose_multiperson_stress_mix_025_turbo_v1",
+  "rows": [
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.328174102533915,
+        "median_cosine_similarity": 0.3296145187956725,
+        "sample_count": 8,
+        "std_cosine_similarity": 0.02695932676079835
+      },
+      "generation_count": 8,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 110,
+        "evaluable_sample_count": 8,
+        "evaluated_joint_count": 110,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 8,
+        "pck_005": 0.37272727272727274,
+        "pck_010": 0.5181818181818182,
+        "pck_020": 0.6818181818181818,
+        "predicted_people": 53,
+        "rendered_joint_count": 110,
+        "rendered_reference_people": 8,
+        "source_visible_joint_count": 113,
+        "unmatched_predicted_people": 45,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "person_group": "single-person"
+    },
+    {
+      "clip": {
+        "mean_cosine_similarity": 0.31741415284204494,
+        "median_cosine_similarity": 0.32685024972958365,
+        "sample_count": 4,
+        "std_cosine_similarity": 0.02475056034440176
+      },
+      "generation_count": 4,
+      "pck": {
+        "detection_coverage": 1.0,
+        "eligible_reference_joint_count": 144,
+        "evaluable_sample_count": 4,
+        "evaluated_joint_count": 144,
+        "generated_person_detection_coverage": 1.0,
+        "joint_evaluation_coverage": 1.0,
+        "matched_people": 12,
+        "pck_005": 0.2916666666666667,
+        "pck_010": 0.4097222222222222,
+        "pck_020": 0.5625,
+        "predicted_people": 31,
+        "rendered_joint_count": 144,
+        "rendered_reference_people": 12,
+        "source_visible_joint_count": 145,
+        "unmatched_predicted_people": 19,
+        "unmatched_reference_people": 0
+      },
+      "pck_unavailable_count": 0,
+      "person_group": "multi-person"
+    }
+  ],
+  "runtime": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "steps": 8
+  }
+}
