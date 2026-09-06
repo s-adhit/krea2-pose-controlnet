@@ -4,7 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import torch
@@ -34,17 +34,20 @@ class InferenceTest(unittest.TestCase):
             args = inference.parser().parse_args(self._cli(Path(temporary)))
         request = inference.request_from_args(args)
         self.assertEqual((request.steps, request.cfg, request.mu), (8, 0.0, 1.15))
-        self.assertEqual((request.width, request.height), (768, 768))
+        self.assertEqual((request.width, request.height), (None, None))
+        self.assertEqual(request.geometry_mode, inference.NATIVE_GEOMETRY)
+        self.assertEqual(request.candidate, "mix-025")
         self.assertEqual(request.control_scale, 1.0)
 
-    def test_cli_requires_an_explicit_pose_checkpoint(self):
+    def test_cli_defaults_to_frozen_candidate_without_an_explicit_pose_checkpoint(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             command = self._cli(root)
             index = command.index("--pose-lora-ckpt")
             del command[index:index + 2]
-            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-                inference.parser().parse_args(command)
+            request = inference.request_from_args(inference.parser().parse_args(command))
+            self.assertIsNone(request.pose_lora_checkpoint)
+            self.assertEqual(request.candidate, "mix-025")
 
     def test_dynamic_768_geometry_uses_the_shared_policy(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -55,7 +58,7 @@ class InferenceTest(unittest.TestCase):
                 width=None, height=None, dynamic_768_bucket=True,
             )
             prepared = inference.prepare_pose_control(request)
-        self.assertEqual(prepared.mode, "production-dynamic-768")
+        self.assertEqual(prepared.mode, inference.DYNAMIC_768_GEOMETRY)
         self.assertIn(tuple(prepared.geometry["bucket"]), RESOLUTION_768_BUCKETS)
         self.assertEqual(prepared.image.size, tuple(prepared.geometry["bucket"]))
 
@@ -103,7 +106,8 @@ class InferenceTest(unittest.TestCase):
             turbo = root / "turbo.safetensors"; turbo.write_bytes(b"turbo")
             checkpoint = root / "pose.pt"; checkpoint.write_bytes(b"pose")
             pose = root / "pose.png"; Image.new("RGB", (60, 120), "white").save(pose)
-            request = inference.PoseInferenceRequest(turbo, checkpoint, "a dancer", pose, root / "output.png", seed=77)
+            request = inference.PoseInferenceRequest(turbo, checkpoint, "a dancer", pose, root / "output.png", seed=77,
+                                                      width=768, height=768)
             conditioner = _Conditioner()
             runtime = inference.InferenceRuntime(object(), object(), conditioner, torch.device("cpu"), 4300)
             pixels = np.zeros((768, 768, 3), dtype=np.uint8)
@@ -119,6 +123,93 @@ class InferenceTest(unittest.TestCase):
             self.assertEqual(metadata["geometry_mode"], "explicit")
             self.assertEqual(metadata["output_path"], str(request.output.resolve()))
             self.assertEqual(metadata["turbo"]["mu_resolution_dependent"], False)
+            self.assertIn("candidate", metadata)
+            self.assertIn("style_lora", metadata)
+
+    def test_frozen_mix_025_validates_hashes_and_blends_only_model_tensors(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            parent = root / "parent.pt"; parent.write_bytes(b"parent")
+            finish = root / "finish.pt"; finish.write_bytes(b"finish")
+            request = inference.PoseInferenceRequest(root / "turbo", None, "pose", root / "pose.png", root / "out.png",
+                                                      parent_checkpoint=parent, finish_checkpoint=finish)
+            endpoints = {
+                "parent-4000": {"path": str(parent), "sha256": inference.sha256_file(parent), "step": 4000},
+                "finish-control-a4300": {"path": str(finish), "sha256": inference.sha256_file(finish), "step": 4300},
+            }
+            states = [
+                {"global_step": 4000, "config": {"raw_ckpt": "raw"}, "model": {"first.weight": torch.tensor([1., 2.], dtype=torch.bfloat16)}, "optimizer": {}},
+                {"global_step": 4300, "config": {"raw_ckpt": "raw"}, "model": {"first.weight": torch.tensor([5., 6.], dtype=torch.bfloat16)}, "scheduler": {}},
+            ]
+            with patch.object(inference, "CANONICAL_ENDPOINTS", endpoints), \
+                 patch("inference.load_release_contract", return_value={"release_id": "test"}), \
+                 patch("inference.load_training_state", side_effect=states):
+                candidate = inference.resolve_pose_candidate(request)
+            self.assertEqual(candidate.candidate_id, "mix-025")
+            self.assertEqual(candidate.provenance["interpolation"]["alpha"], .25)
+            self.assertTrue(torch.equal(candidate.trainable_state["first.weight"], torch.tensor([2., 3.], dtype=torch.bfloat16)))
+
+            endpoints["parent-4000"]["sha256"] = "0" * 64
+            with patch.object(inference, "CANONICAL_ENDPOINTS", endpoints), \
+                 patch("inference.load_release_contract", return_value={"release_id": "test"}):
+                with self.assertRaisesRegex(inference.InferenceError, "SHA-256 mismatch"):
+                    inference.resolve_pose_candidate(request)
+
+    def test_native_geometry_is_default_and_never_falls_back_to_dynamic(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); pose = root / "pose.png"; Image.new("RGB", (64, 128), "white").save(pose)
+            native = inference.PoseInferenceRequest(root / "t", None, "pose", pose, root / "out.png")
+            prepared = inference.prepare_pose_control(native)
+            self.assertEqual(prepared.mode, inference.NATIVE_GEOMETRY)
+            self.assertEqual(prepared.geometry["bucket"], [64, 128])
+            dynamic = inference.PoseInferenceRequest(root / "t", None, "pose", pose, root / "out.png",
+                                                      width=None, height=None, dynamic_768_bucket=True,
+                                                      geometry_mode=inference.DYNAMIC_768_GEOMETRY)
+            self.assertEqual(inference.prepare_pose_control(dynamic).mode, inference.DYNAMIC_768_GEOMETRY)
+
+    def test_style_lora_scope_strength_and_provenance(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); style = root / "style.safetensors"; style.write_bytes(b"style")
+            request = inference.PoseInferenceRequest(root / "t", None, "pose", root / "pose.png", root / "out.png",
+                                                      style_lora_paths=(style,), style_name="darkbrush", style_strength=0.0)
+            audit = inference.StyleLoRAAudit("darkbrush", str(style), inference.sha256_file(style), "official_transformer",
+                                             True, 528, 264, 32, "F32", None, {"effective_multiplier": 1.0}, {}, ())
+            with patch("inference.audit_style_lora", return_value=audit):
+                resolved = inference.resolve_style_lora(request)
+            self.assertEqual(resolved.strength, 0.0)
+            configured = inference.PoseInferenceRequest(root / "t", None, "pose", root / "pose.png", root / "out.png",
+                                                         style_lora_paths=(style,), style_name="darkbrush", style_strength=0.5)
+            with patch("inference.audit_style_lora", return_value=audit):
+                self.assertEqual(inference.resolve_style_lora(configured).strength, 0.5)
+            with self.assertRaisesRegex(inference.InferenceError, "multiple Style-LoRAs"):
+                inference._validate_request(inference.PoseInferenceRequest(
+                    root / "t", None, "pose", root / "pose.png", root / "out.png", style_lora_paths=(style, style)))
+            self.assertEqual(inference.STYLE_DEFAULT_STRENGTHS["darkbrush"], .75)
+            control = inference.PreparedPoseControl(Image.new("RGB", (64, 64)), inference.NATIVE_GEOMETRY,
+                                                     {"source_size": [64, 64], "resized_size": [64, 64], "crop_box": [0, 0, 64, 64], "bucket": [64, 64]})
+            pose = root / "pose.png"; pose.write_bytes(b"pose")
+            metadata = inference.build_metadata(request, control, None, style=resolved)
+            self.assertEqual(metadata["style_lora"]["strength"], 0.0)
+            self.assertEqual(metadata["style_lora"]["path"], str(style.resolve()))
+
+    def test_zero_strength_skips_style_adapter_loading_and_hooks(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); turbo = root / "turbo.safetensors"; turbo.write_bytes(b"turbo")
+            request = inference.PoseInferenceRequest(turbo, None, "pose", root / "pose.png", root / "out.png", device="cpu")
+            audit = inference.StyleLoRAAudit("darkbrush", "unused", "0" * 64, "official_transformer", True,
+                                             528, 264, 32, "F32", None, {"effective_multiplier": 1.0}, {}, ())
+            style = inference.ResolvedStyleLoRA(audit, 0.0)
+            candidate = inference.ResolvedPoseCandidate("mix-025", {}, {"config": {"raw_ckpt": "raw"}, "model": {}},
+                                                        None, {"candidate_id": "mix-025"})
+            model = MagicMock(); model.eval.return_value = model
+            with patch("inference.build_turbo_pose_model", return_value=model), \
+                 patch("inference.raw_to_turbo_control_compatibility"), \
+                 patch("inference.load_trainable_state_dict"), \
+                 patch("inference.load_krea_vae", return_value=object()), \
+                 patch("inference.PoseTextConditioner", return_value=object()), \
+                 patch("inference.StyleLoRAAdapter.load", side_effect=AssertionError("zero strength must not load an adapter")):
+                runtime = inference.load_inference_runtime(request, candidate=candidate, style=style)
+            self.assertIsNone(runtime.style_adapter)
 
     def test_no_duplicate_dynamic_bucket_policy(self):
         self.assertIs(inference.RESOLUTION_768_BUCKETS, RESOLUTION_768_BUCKETS)

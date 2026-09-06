@@ -25,6 +25,10 @@ from pose_controlnet.data import PreparedLatentShardDataset
 from pose_controlnet.dataset_index import validate_posebridge_snapshot
 from pose_controlnet.evaluation import _sample_by_stem, make_contact_sheet, make_evaluation_spec, save_image
 from pose_controlnet.model import build_turbo_pose_model, load_trainable_state_dict
+from pose_controlnet.trainable_interpolation import (
+    interpolate_trainable_state,
+    validate_trainable_interpolation,
+)
 from pose_controlnet.post1500_evaluation import score_authoritative_pck
 from pose_controlnet.post500_evaluation import KeypointRCNNEstimator, aggregate
 from pose_controlnet.pose_targets import load_sidecar, pck_records_from_v3
@@ -237,39 +241,7 @@ def resolve_candidate(candidate: str) -> tuple[dict[str, Any], Path | None, dict
     return selected, None, metadata
 
 
-def validate_interpolation_trainable_state(parent: Mapping[str, Any], finish: Mapping[str, Any]) -> None:
-    """Prove the two trainable-state mappings are safe to interpolate."""
-    parent_keys, finish_keys = set(parent), set(finish)
-    if parent_keys != finish_keys:
-        raise ValueError(
-            "Final-val interpolation requires exact matching trainable keys: "
-            f"missing={sorted(parent_keys - finish_keys)[:5]}, "
-            f"unexpected={sorted(finish_keys - parent_keys)[:5]}"
-        )
-    for key in sorted(parent_keys):
-        parent_tensor, finish_tensor = parent[key], finish[key]
-        if not isinstance(parent_tensor, torch.Tensor) or not isinstance(finish_tensor, torch.Tensor):
-            raise ValueError(f"Final-val interpolation requires tensors only: {key}")
-        if parent_tensor.shape != finish_tensor.shape:
-            raise ValueError(f"Final-val interpolation tensor shape mismatch for {key}: "
-                             f"{tuple(parent_tensor.shape)} != {tuple(finish_tensor.shape)}")
-        if not (parent_tensor.is_floating_point() and finish_tensor.is_floating_point()):
-            raise ValueError(f"Final-val interpolation requires floating trainable tensor: {key}")
-
-
-def interpolate_trainable_state(parent: Mapping[str, Any], finish: Mapping[str, Any], alpha: float) -> dict[str, torch.Tensor]:
-    """Blend only matching trainable model tensors, in FP32, back to parent dtype."""
-    if not isinstance(alpha, float) or not 0.0 < alpha < 1.0:
-        raise ValueError(f"Interpolation alpha must be strictly between zero and one, got {alpha!r}")
-    validate_interpolation_trainable_state(parent, finish)
-    blended: dict[str, torch.Tensor] = {}
-    for key in sorted(parent):
-        parent_tensor, finish_tensor = parent[key], finish[key]
-        blended[key] = (
-            parent_tensor.detach().to(device="cpu", dtype=torch.float32) * (1.0 - alpha)
-            + finish_tensor.detach().to(device="cpu", dtype=torch.float32) * alpha
-        ).to(dtype=parent_tensor.dtype)
-    return blended
+validate_interpolation_trainable_state = validate_trainable_interpolation
 
 
 def candidate_trainable_state(candidate: Mapping[str, Any], checkpoint: Path | None) -> dict[str, torch.Tensor]:

@@ -111,20 +111,34 @@ The diagnostic split is used for development and checkpoint selection. Validatio
 
 ## Inference
 
-The canonical entry point is:
+The canonical v1 entry point defaults to frozen `mix-025` (`75%` parent-4000
+plus `25%` finish-control-a4300), validating both pinned endpoint hashes
+before it loads the model:
 
 ```bash
 PYTHONPATH=. python inference.py \
   --turbo-ckpt /path/to/turbo.safetensors \
-  --pose-lora-ckpt /path/to/checkpoint.pt \
   --prompt "fantasy mage, ornate robes, cinematic lighting" \
   --pose-image /path/to/pose.png \
   --output output.png \
-  --seed 42 --width 768 --height 768 \
-  --steps 8 --cfg 0 --mu 1.15 --control-scale 1.0
+  --seed 42
 ```
 
-Use `--dynamic-768-bucket` for production bucket selection. Each output includes a JSON sidecar with its prompt, seed, resolution, checkpoint, pose image, and Turbo settings.
+Native/aspect-preserving pose geometry is the default: the supplied pose image
+dimensions must be divisible by 16, and are recorded exactly in the output
+sidecar. Use `--dynamic-768-bucket` only to opt into the alternate dynamic-768
+bucket policy; `--width W --height H` is an explicit fixed-output mode. The
+locked runtime is 8 steps, CFG 0, `mu=1.15`, and control scale 1.0. Stronger
+control remains explicit via `--control-scale 1.25` through `1.50`.
+
+For one reversible Style-LoRA, use a frozen name such as
+`--style-name darkbrush` (its default strength is 0.75), optionally with
+`--style-strength`; a custom `--style-lora PATH` must declare one known
+`--style-name` so its namespace can be validated. One adapter maximum is
+enforced. The prompt is never rewritten with hidden trigger phrases. Historical
+single-checkpoint inference remains available with `--pose-lora-ckpt PATH`.
+Each output includes a JSON sidecar with the release/candidate, interpolation,
+geometry, control, Style-LoRA, prompt, seed, and runtime provenance.
 
 ## Repository
 
