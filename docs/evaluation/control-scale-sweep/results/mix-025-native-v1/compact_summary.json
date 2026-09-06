@@ -1,0 +1,86 @@
+{
+  "by_control_scale": [
+    {
+      "clip_mean": 0.3436407872153483,
+      "control_scale": 0.0,
+      "detection_coverage": 1.0,
+      "generated_person_count": 13,
+      "matched_people": 11,
+      "pck_005": 0.01775147928994083,
+      "pck_010": 0.10650887573964497,
+      "pck_020": 0.33136094674556216
+    },
+    {
+      "clip_mean": 0.3424134620299483,
+      "control_scale": 0.25,
+      "detection_coverage": 1.0,
+      "generated_person_count": 16,
+      "matched_people": 11,
+      "pck_005": 0.005917159763313609,
+      "pck_010": 0.14792899408284024,
+      "pck_020": 0.3668639053254438
+    },
+    {
+      "clip_mean": 0.331034435941612,
+      "control_scale": 0.5,
+      "detection_coverage": 1.0,
+      "generated_person_count": 16,
+      "matched_people": 11,
+      "pck_005": 0.22485207100591717,
+      "pck_010": 0.3136094674556213,
+      "pck_020": 0.5384615384615384
+    },
+    {
+      "clip_mean": 0.3303165836409052,
+      "control_scale": 0.75,
+      "detection_coverage": 1.0,
+      "generated_person_count": 17,
+      "matched_people": 11,
+      "pck_005": 0.3254437869822485,
+      "pck_010": 0.4260355029585799,
+      "pck_020": 0.5029585798816568
+    },
+    {
+      "clip_mean": 0.3289532463444278,
+      "control_scale": 1.0,
+      "detection_coverage": 1.0,
+      "generated_person_count": 15,
+      "matched_people": 11,
+      "pck_005": 0.2958579881656805,
+      "pck_010": 0.3905325443786982,
+      "pck_020": 0.514792899408284
+    },
+    {
+      "clip_mean": 0.3331771523522346,
+      "control_scale": 1.25,
+      "detection_coverage": 1.0,
+      "generated_person_count": 17,
+      "matched_people": 11,
+      "pck_005": 0.31952662721893493,
+      "pck_010": 0.38461538461538464,
+      "pck_020": 0.5443786982248521
+    },
+    {
+      "clip_mean": 0.333641464788195,
+      "control_scale": 1.5,
+      "detection_coverage": 1.0,
+      "generated_person_count": 17,
+      "matched_people": 11,
+      "pck_005": 0.3254437869822485,
+      "pck_010": 0.4437869822485207,
+      "pck_020": 0.6272189349112426
+    }
+  ],
+  "candidate": "mix-025",
+  "control_scales": [
+    0.0,
+    0.25,
+    0.5,
+    0.75,
+    1.0,
+    1.25,
+    1.5
+  ],
+  "frozen_spec_sha256": "af82b4c0b0290a852cdd3d7b6b917603e3e9298aa51dfa2ace737d41a28d91a6",
+  "generation_count": 35
+}

@@ -1,0 +1,89 @@
+{
+  "candidate": "mix-025",
+  "candidate_kind": "trainable_tensor_interpolation",
+  "checkpoint_interpolation": {
+    "alpha": 0.25,
+    "candidate_id": "mix-025",
+    "compute_dtype": "float32",
+    "endpoints": [
+      {
+        "candidate": "parent-4000",
+        "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt",
+        "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+        "step": 4000
+      },
+      {
+        "candidate": "finish-control-a4300",
+        "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+        "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff",
+        "step": 4300
+      }
+    ],
+    "formula": "(1 - alpha) * parent-4000 + alpha * finish-control-a4300",
+    "tensor_scope": "state['model'] trainable control/LoRA tensors only"
+  },
+  "conditions": [
+    {
+      "bucket": [1024, 1024],
+      "control_sha256": "80eb64d325b349ed0dc57b82916ecedbc8e350253bd05c14b87d1f333207206a",
+      "pose_class": "simple_single",
+      "prompt": "A single adult woman wearing a simple cream outfit with subtle botanical embroidery, pale stone courtyard, soft natural daylight, realistic full-body fashion photography.",
+      "sampling_seed": 8675987726486463627,
+      "stem": "sculpture_humanart_14000000003803"
+    },
+    {
+      "bucket": [1152, 896],
+      "control_sha256": "e49a88c758f5f8889c5dd498f02a4c5de2eced6dbec71745aa428159fd29f1bb",
+      "pose_class": "dynamic_airborne",
+      "prompt": "A single young adult wearing a black jacket, dark trousers and sneakers, futuristic concrete plaza, dramatic blue-hour lighting, crisp editorial photography.",
+      "sampling_seed": 1075931659224113629,
+      "stem": "coco_49731_461706"
+    },
+    {
+      "bucket": [832, 1216],
+      "control_sha256": "d59c50ca283bd26aa6192f9b1eb5eb9c05fb2db6c91ee36b13353623d515ab1a",
+      "pose_class": "inversion",
+      "prompt": "A single adult woman wearing a fitted dark violet athletic outfit, modern aerial studio, soft skylight, realistic editorial photography.",
+      "sampling_seed": 1860641454841022556,
+      "stem": "real_human_humanart_15000000000521"
+    },
+    {
+      "bucket": [1472, 704],
+      "control_sha256": "4e87b281764962da7838ef76bbf5dfb889e76e03a5e75f5091a49d9d0a37db0f",
+      "pose_class": "seated_crouched",
+      "prompt": "A single young woman wearing turquoise athletic clothing, minimalist training studio, pale wooden floor, soft window light, realistic lifestyle photography.",
+      "sampling_seed": 5676061900249086193,
+      "stem": "real_human_humanart_15000000000477"
+    },
+    {
+      "bucket": [1216, 832],
+      "control_sha256": "67f485b6870f19be1b33a69799d84ca9ce2a1a2d4c6bd50ebb256e633645e845",
+      "pose_class": "multi_person",
+      "prompt": "A group of adult performers wearing simple black and gray clothing, vast minimalist hall, overhead light, realistic performance photography.",
+      "sampling_seed": 9148705073365945888,
+      "stem": "real_human_humanart_17000000002207"
+    }
+  ],
+  "control_scales": [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5],
+  "final_val_spec_sha256": "93a5254e57fa208263f6188573e0760ffedd954bf3b3b3425109ea0178957cd0",
+  "format_version": 1,
+  "generation_count": 35,
+  "geometry": "native_aspect_preserving_cached_latent_bucket",
+  "kind": "control_scale_sweep_mix_025_native_turbo_v1",
+  "prompt_source": {
+    "mode": "P3_neutral",
+    "path": "docs/evaluation/prompting-guide/prompting_study.jsonl",
+    "sha256": "4fae6d39ac7354d451ca13556d3a2a89e303691ceb30727b8561b13b494450df"
+  },
+  "runtime": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "clip_model_id": "openai/clip-vit-base-patch32",
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "zero_control_note": "control_scale 0.0 is an internal zero-control reference only; it does not replace the later full Turbo baseline experiment."
+}
