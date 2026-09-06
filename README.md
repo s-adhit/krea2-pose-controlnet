@@ -18,6 +18,8 @@ The Pose Control-LoRA has been trained for Krea-2 Raw and evaluated/deployed on 
 
 These are curated qualitative demonstrations. Franchise-inspired examples are fan-art-style demonstrations only.
 
+The definitive public package is the [final hero collage](docs/showcase/final/hero-v1/final_showcase_collage.png), with a [labeled review version](docs/showcase/final/hero-v1/final_showcase_collage_labeled.png), [frozen winner contract](docs/showcase/final/hero-v1/final_winners.json), and [prompting guide](prompting.md).
+
 ## Current evaluation candidate
 
 `mix-025` is `75% parent-4000 + 25% A4300`, interpolated over trainable `state['model']` tensors only.
