@@ -198,10 +198,19 @@ def write_json(path: Path, value: Mapping[str, Any]) -> None:
     os.replace(temporary, path)
 
 
-def paste_fit(canvas: Image.Image, source: Path, box: tuple[int, int, int, int]) -> None:
+def paste_contain(canvas: Image.Image, source: Path, box: tuple[int, int, int, int]) -> None:
+    """Paste an uncropped source into a panel, padding rather than distorting.
+
+    The showcase is a layout of attached pairs, not a reason to reframe the
+    generated artwork.  A black panel backing makes any necessary letterbox or
+    pillarbox part of the pair while retaining every source pixel.
+    """
     image = Image.open(source).convert("RGB")
-    fitted = ImageOps.fit(image, (box[2], box[3]), method=Image.Resampling.LANCZOS, centering=(0.5, 0.5))
-    canvas.paste(fitted, (box[0], box[1]))
+    panel = Image.new("RGB", (box[2], box[3]), "#000000")
+    fitted = ImageOps.contain(image, panel.size, method=Image.Resampling.LANCZOS)
+    offset = ((panel.width - fitted.width) // 2, (panel.height - fitted.height) // 2)
+    panel.paste(fitted, offset)
+    canvas.paste(panel, (box[0], box[1]))
 
 
 def font(size: int) -> ImageFont.ImageFont:
@@ -217,21 +226,25 @@ def font(size: int) -> ImageFont.ImageFont:
 def build_collage(contract: Mapping[str, Any], labeled: bool) -> Image.Image:
     """Build a dense editorial canvas from five inseparable pose/image pairs.
 
-    Each block is a left condition and right generation with identical framing.
+    Each block is a left condition and right generation.  Panels contain their
+    sources instead of cropping them: preserving a pose, silhouette, and the
+    generated composition takes priority over filling a mismatched rectangle.
     The varying block sizes create hierarchy without leaving a separate control
     tile or a presentation-artboard region.
     """
     canvas = Image.new("RGB", (2560, 1440), "#17171a")
     draw = ImageDraw.Draw(canvas)
     entries = {entry["concept"]: entry for entry in contract["winners"]}
-    # x, y, width, height. The 10 px gaps are the only exposed canvas.
-    # Areas: swordswoman 33%, mage 24%, comic 16%, starry night 14%, jester 10%.
+    # x, y, width, height. The 8 px gaps are the only exposed canvas.
+    # Reading order deliberately begins with the upper-left swordswoman pair.
+    # Source-aspect-friendly blocks make the largest artwork read first, while
+    # containment protects full figures, props, sky, cathedral, and shadows.
     pair_blocks = {
-        "fantasy_mage": (0, 0, 1270, 710),
-        "comic_fashion": (1280, 0, 1280, 470),
-        "female_swordswoman_psychedelic": (1280, 480, 1280, 960),
-        "dark_fantasy_jester": (0, 720, 1270, 300),
-        "starry_night_painterly": (0, 1030, 1270, 410),
+        "female_swordswoman_psychedelic": (0, 0, 1220, 800),
+        "fantasy_mage": (1228, 0, 850, 800),
+        "starry_night_painterly": (2086, 0, 474, 800),
+        "comic_fashion": (0, 808, 1570, 632),
+        "dark_fantasy_jester": (1578, 808, 982, 632),
     }
     labels = {
         "fantasy_mage": "Fantasy mage",
@@ -243,11 +256,23 @@ def build_collage(contract: Mapping[str, Any], labeled: bool) -> Image.Image:
     pair_gap = 8
     for concept, (x, y, width, height) in pair_blocks.items():
         entry = entries[concept]
-        panel_width = (width - pair_gap) // 2
-        condition_box = (x, y, panel_width, height)
-        generation_box = (x + panel_width + pair_gap, y, width - panel_width - pair_gap, height)
-        paste_fit(canvas, ROOT / entry["condition_path"], condition_box)
-        paste_fit(canvas, ROOT / entry["generation_path"], generation_box)
+        # Allocate the generation panel first.  Unlike the sparse black pose
+        # render, its aspect carries the actual artwork; giving it its native
+        # width wherever the pair permits minimizes letterboxing without ever
+        # cropping.  The condition remains a visibly attached left panel.
+        generation = Image.open(ROOT / entry["generation_path"])
+        generation_aspect = generation.width / generation.height
+        available_width = width - pair_gap
+        minimum_condition_width = min(180, available_width // 2)
+        generation_width = min(
+            round(height * generation_aspect),
+            available_width - minimum_condition_width,
+        )
+        condition_width = available_width - generation_width
+        condition_box = (x, y, condition_width, height)
+        generation_box = (x + condition_width + pair_gap, y, generation_width, height)
+        paste_contain(canvas, ROOT / entry["condition_path"], condition_box)
+        paste_contain(canvas, ROOT / entry["generation_path"], generation_box)
         if labeled:
             text = labels[concept]
             padding = 8
