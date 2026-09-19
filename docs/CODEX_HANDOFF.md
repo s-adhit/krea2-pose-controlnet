@@ -3,9 +3,10 @@
 ## Current objective
 
 Publication-ready blog assets have been generated from frozen training,
-evaluation, infrastructure, and release records. They await human review,
-then blog prose integration. Do not alter frozen evaluation artifacts, NFS
-checkpoints, release identity, or the existing hero-v2 winners.
+evaluation, infrastructure, release records, and a representative paired
+training-data sample. They await human review, then blog prose integration.
+Do not alter frozen evaluation artifacts, NFS checkpoints, release identity,
+or the existing hero-v2 winners.
 
 The existing architecture figure is user-approved and intentionally unchanged.
 It was neither recreated nor redesigned during this asset pass.
@@ -44,6 +45,14 @@ It was neither recreated nor redesigned during this asset pass.
 - Exact values remain in the frozen result record and the generator constants;
   figure labels are presentation rounding only. The CLIP charts retain an
   absolute `0–0.40` axis so small differences are not visually exaggerated.
+- `scripts/generate_dataset_montage.py` renders an exact paired 24-sample,
+  6x4 RGB/control montage from the read-only PoseBridge snapshot. Its selection
+  is checked against both frozen train manifests. It outputs
+  `figures/dataset_rgb_montage.png`, `figures/dataset_condition_montage.png`,
+  and `dataset_montage_manifest.json`. The manifest records order, paths,
+  source/display geometry, crop coordinates, source domain, hashes, and
+  available authoritative person counts. Controls are existing source files,
+  not regenerated or recolored.
 
 ## Verification this session
 
@@ -56,9 +65,17 @@ MPLCONFIGDIR=/tmp/krea2-blog-mpl uv run python scripts/generate_blog_assets.py
 git diff --check
 ```
 
+PASS (dataset montage session):
+
+```bash
+uv run python scripts/generate_dataset_montage.py
+# visual inspection of both dataset montage PNGs
+```
+
 ## Files changed this session
 
 - `scripts/generate_blog_assets.py`
+- `scripts/generate_dataset_montage.py`
 - `docs/blog-assets/` (generated figures, tables, and index)
 - `docs/CODEX_HANDOFF.md`
 
@@ -74,6 +91,6 @@ Do not commit or push without explicit authorization.
 
 ## Next recommended action
 
-Human review of `docs/blog-assets/`, then write blog prose using the asset
-index and frozen evidence records. Preserve the approved architecture asset
-unchanged.
+Human review of `docs/blog-assets/`, including the paired dataset montages,
+then write blog prose using the asset index and frozen evidence records.
+Preserve the approved architecture asset unchanged.
