@@ -43,6 +43,7 @@ from pose_controlnet.style_lora import (
     sha256 as sha256_file,
 )
 from pose_controlnet.trainable_interpolation import interpolate_trainable_state
+from pose_controlnet.release_artifact import ReleaseArtifactError, load_release_artifact
 from pose_controlnet.vae_preprocessing import (
     decode_normalized_latents,
     encode_preprocessed_image,
@@ -104,6 +105,7 @@ class PoseInferenceRequest:
     style_lora_paths: tuple[Path, ...] = ()
     style_name: str | None = None
     style_strength: float | None = None
+    release_artifact: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -165,6 +167,8 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--finish-ckpt", type=Path, help="override path for the pinned finish-control-a4300 endpoint")
     command.add_argument("--pose-lora-ckpt", "--control-ckpt", dest="pose_lora_ckpt", type=Path,
                          help="historical explicit full pose-control checkpoint (not the canonical mix)")
+    command.add_argument("--release-artifact", type=Path,
+                         help="standalone canonical mix-025 .safetensors release artifact")
     command.add_argument("--prompt", required=True)
     command.add_argument("--pose-image", type=Path, required=True, help="rendered pose skeleton image")
     command.add_argument("--output", type=Path, required=True, help="generated .png/.jpg image path")
@@ -194,6 +198,8 @@ def request_from_args(args: argparse.Namespace) -> PoseInferenceRequest:
         raise InferenceError("--width and --height must be supplied together")
     if args.pose_lora_ckpt is not None and (args.parent_ckpt is not None or args.finish_ckpt is not None):
         raise InferenceError("--pose-lora-ckpt cannot be combined with --parent-ckpt or --finish-ckpt")
+    if args.release_artifact is not None and (args.pose_lora_ckpt is not None or args.parent_ckpt is not None or args.finish_ckpt is not None):
+        raise InferenceError("--release-artifact cannot be combined with checkpoint overrides")
     return PoseInferenceRequest(
         turbo_checkpoint=args.turbo_ckpt,
         pose_lora_checkpoint=args.pose_lora_ckpt,
@@ -216,6 +222,7 @@ def request_from_args(args: argparse.Namespace) -> PoseInferenceRequest:
         style_lora_paths=tuple(args.style_lora),
         style_name=args.style_name,
         style_strength=args.style_strength,
+        release_artifact=args.release_artifact,
     )
 
 
@@ -248,6 +255,10 @@ def _validate_request(request: PoseInferenceRequest) -> None:
         raise InferenceError("output must have a supported image suffix: .png, .jpg, .jpeg, or .webp")
     if request.pose_lora_checkpoint is not None and (request.parent_checkpoint is not None or request.finish_checkpoint is not None):
         raise InferenceError("explicit pose checkpoint cannot be combined with canonical endpoints")
+    if request.release_artifact is not None and (request.pose_lora_checkpoint is not None
+                                                 or request.parent_checkpoint is not None
+                                                 or request.finish_checkpoint is not None):
+        raise InferenceError("release artifact cannot be combined with checkpoint overrides")
     if request.candidate != CANONICAL_CANDIDATE:
         raise InferenceError(f"unsupported candidate: {request.candidate}")
     if len(request.style_lora_paths) > 1:
@@ -329,6 +340,27 @@ def _validate_endpoint(endpoint: Mapping[str, Any]) -> dict[str, Any]:
 
 def resolve_pose_candidate(request: PoseInferenceRequest) -> ResolvedPoseCandidate:
     """Resolve either the pinned mix-025 blend or one historical checkpoint."""
+    if request.release_artifact is not None:
+        _require_file(request.release_artifact, "release artifact")
+        contract = load_release_contract()
+        try:
+            artifact = load_release_artifact(request.release_artifact)
+        except (ReleaseArtifactError, ValueError, TypeError) as exc:
+            raise InferenceError(f"Release artifact is incompatible: {request.release_artifact}") from exc
+        release = artifact["release"]
+        if (release["release_id"] != contract["release_id"] or release["candidate"] != CANONICAL_CANDIDATE
+                or release["alpha"] != 0.25 or release["release_contract_sha256"] != RELEASE_CONTRACT_SHA256):
+            raise InferenceError("Release artifact does not match the frozen mix-025 release contract")
+        return ResolvedPoseCandidate(
+            candidate_id=CANONICAL_CANDIDATE, trainable_state=artifact["model"], compatibility_state=artifact,
+            checkpoint_step=None,
+            provenance={"release_contract": {"id": contract["release_id"], "path": str(RELEASE_CONTRACT_PATH),
+                                               "sha256": RELEASE_CONTRACT_SHA256},
+                        "candidate_id": CANONICAL_CANDIDATE, "candidate_kind": "materialized_release_artifact",
+                        "release_artifact": {"path": str(request.release_artifact.resolve()),
+                                             "sha256": sha256_file(request.release_artifact),
+                                             "serialization_format": "safetensors"}},
+        )
     if request.pose_lora_checkpoint is not None:
         _require_file(request.pose_lora_checkpoint, "pose control checkpoint")
         try:
