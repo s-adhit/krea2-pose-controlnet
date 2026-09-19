@@ -11,7 +11,11 @@ tags:
 Pose-conditioned image generation for **Krea-2** using a 17-keypoint body skeleton.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/s-adhit/krea2-pose-controlnet/main/docs/showcase/final/hero-v2/final/final_generation_montage.png" alt="Krea-2 Pose Control showcase" width="100%">
+  <img src="https://raw.githubusercontent.com/s-adhit/krea2-pose-controlnet/main/docs/showcase/final/hero-v2/final/final_generation_montage.png" alt="Krea-2 Pose Control final generations" width="100%">
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/s-adhit/krea2-pose-controlnet/main/docs/showcase/final/hero-v2/final/final_condition_montage.png" alt="Krea-2 Pose Control pose conditions" width="100%">
 </p>
 
 The pose condition controls broad body geometry and placement, while the prompt controls subject appearance, clothing, environment, lighting, and style.
