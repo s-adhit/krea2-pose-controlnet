@@ -1,0 +1,538 @@
+{
+  "format_version": 1,
+  "status": "frozen_evidence_record",
+  "audited_at_utc": "2026-09-19",
+  "release": {
+    "id": "krea2-pose-control-lora-v1",
+    "candidate": "mix-025",
+    "interpolation": {
+      "formula": "(1 - 0.25) * parent-4000 + 0.25 * finish-control-a4300",
+      "compute_dtype": "float32",
+      "tensor_scope": "state['model'] trainable control/LoRA tensors only",
+      "endpoints": [
+        {
+          "id": "parent-4000",
+          "step": 4000,
+          "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/step_004000.pt",
+          "sha256": "0f10f708d12eb63bc2c17ff4556266005efaf57670886ffaf17e76c6980f7acd",
+          "confidence": "verified",
+          "evidence": [
+            "E1",
+            "E2"
+          ]
+        },
+        {
+          "id": "finish-control-a4300",
+          "step": 4300,
+          "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+          "sha256": "17405082f5efd85967278e07ac94543d3c6e2d4b8da6763b817885f1216e27ff",
+          "confidence": "verified",
+          "evidence": [
+            "E1",
+            "E2"
+          ]
+        }
+      ]
+    }
+  },
+  "infrastructure": {
+    "gpu": {
+      "value": "NVIDIA GH200 480GB (PyTorch-reported device name)",
+      "device_reported_name": "NVIDIA GH200 480GB",
+      "reported_name_note": "480GB is part of the device/product name, not a GPU-HBM capacity claim",
+      "confidence": "directly_verified_normal_host",
+      "evidence": [
+        "E24"
+      ]
+    },
+    "gpu_memory": {
+      "value": "101468602368 bytes (94.5 GiB) PyTorch-visible total device memory",
+      "torch_total_memory_bytes": 101468602368,
+      "torch_total_memory_gib": 94.5,
+      "confidence": "directly_verified_normal_host",
+      "evidence": [
+        "E24"
+      ]
+    },
+    "architecture": {
+      "value": "aarch64",
+      "confidence": "verified",
+      "evidence": [
+        "E10"
+      ]
+    },
+    "os": {
+      "value": "Ubuntu 22.04.5 LTS; kernel 6.8.0-1046-nvidia-64k",
+      "confidence": "verified",
+      "evidence": [
+        "E10"
+      ]
+    },
+    "python": {
+      "value": "3.10.12",
+      "confidence": "verified",
+      "evidence": [
+        "E10"
+      ]
+    },
+    "pytorch": {
+      "value": "2.7.0",
+      "confidence": "verified",
+      "evidence": [
+        "E10"
+      ]
+    },
+    "cuda": {
+      "pytorch_runtime": "12.8",
+      "nvcc": "12.8.93",
+      "confidence": "verified",
+      "evidence": [
+        "E10"
+      ]
+    },
+    "cudnn": {
+      "value": "9.8.0 (90800)",
+      "confidence": "verified",
+      "evidence": [
+        "E10"
+      ]
+    },
+    "triton": {
+      "value": "3.3.0",
+      "confidence": "verified",
+      "evidence": [
+        "E10"
+      ]
+    },
+    "nvidia_driver": {
+      "value": "580.105.08",
+      "confidence": "verified",
+      "evidence": [
+        "E10"
+      ]
+    },
+    "uv": {
+      "audit_time_value": "0.12.17",
+      "training_time_value": null,
+      "confidence": "audit_verified_training_time_unresolved",
+      "evidence": [
+        "E10"
+      ]
+    },
+    "venv": {
+      "inherits_system_site_packages": true,
+      "confidence": "verified",
+      "evidence": [
+        "E11"
+      ]
+    },
+    "storage": {
+      "local": "/home/ubuntu/krea2-pose-controlnet on ext4",
+      "nfs": "/lambda/nfs/adhit (NFSv4; read-only during audit)",
+      "confidence": "verified",
+      "evidence": [
+        "E12"
+      ]
+    },
+    "runtime": {
+      "world_size": 1,
+      "precision": "CUDA autocast bfloat16",
+      "compile": false,
+      "fused_adamw": false,
+      "gradient_checkpointing": false,
+      "gradient_checkpointing_blocks": 0,
+      "gradient_checkpointing_scope": "disabled in all three final-lineage production runs; c5771ef ProductionRecipe locks 0 and build_train_config explicitly sets false/0. Generic train.py supports 0 through 28 blocks but was not enabled for this lineage.",
+      "confidence": "verified",
+      "evidence": [
+        "E3",
+        "E5",
+        "E7",
+        "E13",
+        "E17"
+      ]
+    }
+  },
+  "recipe": {
+    "base_checkpoint": {
+      "model": "Krea-2 Raw",
+      "path": "/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors",
+      "sha256": "f99bb0ff8e362b77342bc4994e0c50906fe7ef7074864b181b7d48d2fa6d03d7",
+      "confidence": "verified",
+      "evidence": [
+        "E3"
+      ]
+    },
+    "trainable_state": {
+      "parameters": 215488512,
+      "tensor_count": 450,
+      "dtype": "float32",
+      "control_input_parameters": 792576,
+      "lora_parameters": 214695936,
+      "lora_rank": 64,
+      "blocks": 28,
+      "lora_targets_per_block": [
+        "attn.wq",
+        "attn.wk",
+        "attn.wv",
+        "attn.gate",
+        "attn.wo",
+        "mlp.gate",
+        "mlp.up",
+        "mlp.down"
+      ],
+      "confidence": "verified",
+      "evidence": [
+        "E16"
+      ]
+    },
+    "optimizer": {
+      "name": "AdamW",
+      "betas": [
+        0.9,
+        0.99
+      ],
+      "eps": 1e-8,
+      "weight_decay": 0,
+      "max_grad_norm": 1,
+      "confidence": "verified",
+      "evidence": [
+        "E3",
+        "E17"
+      ]
+    },
+    "batching": {
+      "microbatch_size": 1,
+      "gradient_accumulation_steps": 32,
+      "effective_batch_size": 32,
+      "workers": 4,
+      "persistent_workers": true,
+      "pin_memory": true,
+      "prefetch_factor": 4,
+      "confidence": "verified",
+      "evidence": [
+        "E3"
+      ]
+    },
+    "regularization": {
+      "caption_dropout": 0.1,
+      "control_dropout": 0,
+      "seed": 42,
+      "confidence": "verified",
+      "evidence": [
+        "E3",
+        "E14",
+        "E17"
+      ]
+    },
+    "cache": {
+      "train_samples": 16503,
+      "vae_spatial_factor": 8,
+      "vae_encoding": "qwen_posterior_sample_seeded_per_stem_v1",
+      "shard_samples": 256,
+      "buckets": [
+        [
+          768,
+          768
+        ],
+        [
+          704,
+          896
+        ],
+        [
+          896,
+          704
+        ],
+        [
+          640,
+          960
+        ],
+        [
+          960,
+          640
+        ],
+        [
+          576,
+          1024
+        ],
+        [
+          1024,
+          576
+        ],
+        [
+          512,
+          1152
+        ],
+        [
+          1152,
+          512
+        ]
+      ],
+      "confidence": "verified",
+      "evidence": [
+        "E15"
+      ]
+    }
+  },
+  "objective": {
+    "flow": {
+      "noising": "x_t = t*eps + (1-t)*x_0",
+      "prediction_target": "v = eps - x_0",
+      "loss": "float32 MSE over patch tokens",
+      "confidence": "verified",
+      "evidence": [
+        "E14",
+        "E19"
+      ]
+    },
+    "timestep": {
+      "pre_shift_distribution": "sigmoid(N(0,1))",
+      "shift": "exp(mu)*t / (exp(mu)*t + 1 - t)",
+      "mu_anchors": [
+        [
+          256,
+          0.5
+        ],
+        [
+          6400,
+          1.15
+        ]
+      ],
+      "auxiliary_pre_shift_probability": 0,
+      "forced_pose_exposure_probability": 0,
+      "confidence": "verified",
+      "evidence": [
+        "E3",
+        "E14"
+      ]
+    },
+    "pose": {
+      "loss": "normalized_coordinate_huber",
+      "lambda_pose": 0.04,
+      "active_final_timestep_window": [
+        0.1,
+        0.2
+      ],
+      "huber_delta": 1,
+      "normalization": "(xy - box_xy0) / max(box_wh, dtype_epsilon)",
+      "valid_joint_mask": "joint_provenance[*].reward_joint_valid for 17 COCO joints of positive-area authoritative boxes",
+      "critic": "frozen torchvision/keypointrcnn_resnet50_fpn:COCO_V1 fixed-box keypoint branch; no detector/RPN/NMS/argmax",
+      "combination": "flow_mse + lambda_pose * pose_loss only when active; flow_mse otherwise",
+      "confidence": "verified",
+      "evidence": [
+        "E7",
+        "E19",
+        "E20",
+        "E21"
+      ]
+    }
+  },
+  "stages": [
+    {
+      "run": "pose-control-production-3000",
+      "start_step": 0,
+      "end_step": 3000,
+      "lr": {
+        "kind": "warmup_constant",
+        "peak": 0.0001,
+        "warmup_steps": 200
+      },
+      "checkpoint": {
+        "save_every_steps": 250,
+        "fallback_seconds": 3600,
+        "hf_mirror_every_steps": 500
+      },
+      "wandb_run_id": "ni7mrpw7",
+      "purpose": "initial production",
+      "confidence": "verified",
+      "evidence": [
+        "E3",
+        "E4"
+      ]
+    },
+    {
+      "run": "pose-control-production-cooldown-3000-to5000",
+      "start_step": 3000,
+      "end_step": 5000,
+      "selected_step": 4000,
+      "lr": {
+        "kind": "cosine",
+        "start": 0.0001,
+        "final": 0.00001,
+        "updates": 2000
+      },
+      "checkpoint": {
+        "save_every_steps": 250,
+        "fallback_seconds": 3600,
+        "hf_mirror_every_steps": 250
+      },
+      "wandb_run_id": "lnevot4t",
+      "purpose": "cooldown continuation; parent-4000 selected",
+      "confidence": "verified",
+      "evidence": [
+        "E5",
+        "E6"
+      ]
+    },
+    {
+      "run": "pose-control-finish-control-4000-to4500",
+      "start_step": 4000,
+      "end_step": 4500,
+      "selected_step": 4300,
+      "lr": {
+        "kind": "cosine",
+        "start": 0.00002,
+        "final": 0.000005,
+        "updates": 500
+      },
+      "lambda_pose_schedule": {
+        "kind": "constant",
+        "value": 0.04
+      },
+      "checkpoint": {
+        "save_every_steps": 100,
+        "fallback_seconds": 3600,
+        "hf_mirror_every_steps": 100
+      },
+      "wandb_run_id": "lr55nmk8",
+      "purpose": "finish-control branch; A4300 selected",
+      "confidence": "verified",
+      "evidence": [
+        "E7",
+        "E8"
+      ]
+    }
+  ],
+  "runtime": {
+    "metric_step_seconds": {
+      "initial_0_3000": 44620.25607368638,
+      "cooldown_3001_5000": 29840.202972068655,
+      "finish_4001_4500": 7613.231886212103,
+      "endpoint_relevant_0_3000_4000_4300": 64264.89721439508,
+      "confidence": "reconstructed",
+      "evidence": [
+        "E4",
+        "E6",
+        "E8"
+      ]
+    },
+    "cache_artifact_intervals": {
+      "latent_and_pose_sidecar_seconds": 2421.257,
+      "text_train_seconds": 817,
+      "confidence": "reconstructed_not_complete_job_runtime",
+      "evidence": [
+        "E15",
+        "E22"
+      ]
+    },
+    "evaluation": {
+      "exact_total": null,
+      "final_val_observed_artifact_span_seconds": 5747.595,
+      "confidence": "reconstructed_lower_bound",
+      "evidence": [
+        "E23"
+      ]
+    }
+  },
+  "unresolved": [
+    "Training-time uv executable version",
+    "Complete preprocessing, startup, upload, and evaluation wall-clock totals"
+  ],
+  "evidence_registry": {
+    "E1": {
+      "path": "docs/evaluation/release/final_release_v1.json",
+      "locator": "candidate.interpolation; FINAL_RELEASE_DECISION.md"
+    },
+    "E2": {
+      "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/{cooldown,finish-control}/step endpoint files",
+      "locator": "2026-09-19 sha256sum"
+    },
+    "E3": {
+      "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-3000/run_metadata.json",
+      "locator": "scientific_recipe, optimizer, observability"
+    },
+    "E4": {
+      "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-3000/metrics.jsonl",
+      "locator": "all records; matching log and checkpoint mtimes"
+    },
+    "E5": {
+      "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/run_metadata.json",
+      "locator": "continuation, scheduler, scientific_recipe"
+    },
+    "E6": {
+      "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-production-cooldown-3000-to5000/metrics.jsonl",
+      "locator": "all records; matching log and checkpoint mtimes"
+    },
+    "E7": {
+      "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/run_metadata.json",
+      "locator": "continuation, scheduler, scientific_recipe"
+    },
+    "E8": {
+      "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/metrics.jsonl",
+      "locator": "all records; matching log and checkpoint mtimes"
+    },
+    "E9": {
+      "path": "AGENTS.md",
+      "locator": "Verified GH200 environment"
+    },
+    "E10": {
+      "path": "direct host audit",
+      "locator": "2026-09-19 uname/os-release/proc-driver/python/nvcc/nvidia-smi"
+    },
+    "E11": {
+      "path": ".venv/pyvenv.cfg; scripts/create_uv_env.sh; pyproject.toml",
+      "locator": "system-site-packages contract"
+    },
+    "E12": {
+      "path": "direct host audit",
+      "locator": "findmnt -T /lambda/nfs/adhit/krea2-pose; df -hT"
+    },
+    "E13": {
+      "path": "pose_controlnet/production_training.py",
+      "locator": "c5771ef ProductionRecipe default/lock gradient_checkpointing_blocks=0; build_train_config passes gradient_checkpointing=False and gradient_checkpointing_blocks=0"
+    },
+    "E14": {
+      "path": "pose_controlnet/diffusion.py",
+      "locator": "c5771ef sampler/make_flow_pair/forward_pose_control"
+    },
+    "E15": {
+      "path": "/lambda/nfs/adhit/krea2-pose/posebridge_latents_768/shards.json",
+      "locator": "cache contract and policy_buckets"
+    },
+    "E16": {
+      "path": "/lambda/nfs/adhit/krea2-pose/checkpoints/pose-control-finish-control-4000-to4500/step_004300.pt",
+      "locator": "mmap state['model'] accounting"
+    },
+    "E17": {
+      "path": "train.py",
+      "locator": "c5771ef _adamw_kwargs/build_optimizer/DeterministicBucketBatches/apply_cached_caption_dropout; generic --gradient-checkpointing-blocks validation range [0,28]"
+    },
+    "E18": {
+      "path": "NFS stage checkpoint directories and run_metadata.json",
+      "locator": "checkpoint filenames/observability.hf"
+    },
+    "E19": {
+      "path": "scripts/train_pose_reward_smoke.py",
+      "locator": "c5771ef _pose_smoke_loss"
+    },
+    "E20": {
+      "path": "pose_controlnet/keypoint_critic.py",
+      "locator": "c5771ef FixedBoxKeypointRCNNCritic"
+    },
+    "E21": {
+      "path": "scripts/audit_keypoint_critic.py; pose_controlnet/keypoint_critic.py",
+      "locator": "c5771ef _person_tensors/normalized_coordinate_huber"
+    },
+    "E22": {
+      "path": "/lambda/nfs/adhit/krea2-pose/text_conditioning/train and posebridge_latents_768",
+      "locator": "artifact mtimes"
+    },
+    "E23": {
+      "path": "/lambda/nfs/adhit/krea2-pose/evaluation/final-val-turbo",
+      "locator": "artifact mtimes"
+    },
+    "E24": {
+      "path": "direct normal-host PyTorch query",
+      "locator": "torch.cuda.get_device_name(0) = NVIDIA GH200 480GB; torch.cuda.get_device_properties(0).total_memory = 101468602368 bytes = 94.5 GiB"
+    }
+  }
+}
