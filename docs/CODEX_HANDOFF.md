@@ -2,132 +2,114 @@
 
 ## Current objective
 
-Training-methodology and infrastructure evidence for the final Krea-2 Pose
-Control-LoRA lineage is frozen for blog use. Do not alter frozen evaluation
-results, NFS checkpoints, release identity, or historical logs. Hero-v2 also
-remains frozen for human visual review; its authoritative winner manifest is
-`docs/showcase/final/hero-v2/final_winners.json`.
+Training and final evaluation evidence are frozen for blog/release review. Do
+not alter frozen evaluation artifacts, NFS checkpoints, release identity, or
+hero-v2 winners. The next action is human review and freezing of blog figures
+and tables; do not regenerate benchmark images without an explicit decision.
 
-## Final training evidence frozen
+## Final release and training facts
 
-- Release: `mix-025` / `krea2-pose-control-lora-v1`, float32
-  `0.75 * parent-4000 + 0.25 * A4300` over trainable `state['model']` only.
-  Endpoint hashes were recomputed and match the release contract.
-- Exact trainable state: 215,488,512 float32 parameters / 450 tensors:
-  expanded ControlInputLayer plus rank-64 A/B LoRA on eight targets in each of
-  28 blocks; backbone frozen.
-- Recipe: AdamW `(0.9,0.99)`, eps `1e-8`, zero weight decay, clip `1.0`,
-  microbatch 1, accumulation 32, effective batch 32, BF16 autocast, seed 42,
-  caption dropout 0.10, control dropout 0, no compile/fused AdamW, and
-  gradient checkpointing disabled (`gradient_checkpointing_blocks=0`). All
-  three final-lineage metadata records have zero blocks; at `c5771ef`, the
-  production recipe locks zero and `build_train_config` explicitly passes
-  `gradient_checkpointing=False`/zero blocks. Generic `train.py` supports up
-  to 28 blocks, but that capability was not enabled for these production runs.
-- Objective: flow velocity MSE `x_t=t*eps+(1-t)*x_0`, target `eps-x_0`, plus
-  `0.04` normalized-coordinate Huber (`delta=1`) only for eligible shifted
-  timesteps `[0.10,0.20]`; frozen fixed-box COCO Keypoint R-CNN, without
-  detector/RPN/NMS/argmax.
-- Runtime conclusion: endpoint-relevant metric-step time through A4300 is
-  17:51:05. Observed spans are 12:24:47 (initial), 4:10:42 (to parent-4000),
-  and 1:17:25 (to A4300); 25:06:48 calendar span includes inter-run gaps.
-- Host record: PyTorch normal-host device name `NVIDIA GH200 480GB` (the
-  `480GB` string is a device/product name, not an HBM-capacity claim); directly
-  verified PyTorch-visible total device memory `101468602368` bytes (94.5
-  GiB). ARM64 host is Ubuntu 22.04.5, Python 3.10.12, PyTorch 2.7.0/CUDA 12.8,
-  cuDNN 9.8, Triton 3.3.0, driver 580.105.08. `.venv` inherits system packages;
-  data/checkpoints are NFS.
-- Evidence outputs: `docs/blog-evidence/TRAINING_METHODS_INFRA.md`,
-  `docs/blog-evidence/training_methods_infra.json`, and
-  `docs/blog-evidence/RUNTIME_AUDIT.md`.
-- Unresolved rather than guessed: training-time uv version and complete
-  preprocessing/startup/upload/eval wall-clock totals.
+- Release `mix-025` / `krea2-pose-control-lora-v1`: float32 interpolation of
+  trainable `state['model']` only, `0.75 * parent-4000 + 0.25 * A4300`.
+  Release SHA-256: `6d97e9c2e102e07928fc8864346401a0d2e6082d610ca6b037c4704102e3f8d1`.
+- Endpoint: 215,488,512 float32 parameters / 450 tensors; expanded control
+  projection plus rank-64 LoRA across eight targets in 28 blocks; backbone
+  frozen. Objective: flow MSE plus `.04` normalized-coordinate Huber at
+  shifted timesteps `[.10,.20]`.
+- Training evidence: `docs/blog-evidence/TRAINING_METHODS_INFRA.md`,
+  `training_methods_infra.json`, and `RUNTIME_AUDIT.md`.
+- Normal-host record: ARM64 GH200; Python 3.10.12, torch 2.7.0/CUDA 12.8,
+  cuDNN 9.8, Triton 3.3.0. The audit sandbox has no CUDA; this is not contrary
+  evidence.
 
-## Frozen hero-v2 winners
+## Evaluation methodology and results frozen
 
-The authoritative manifest is `docs/showcase/final/hero-v2/final_winners.json`.
-Its order is also the left-to-right order of both final montages:
+- PCK uses thresholds `.05/.10/.20`, globally pools renderer-qualified
+  reference joints, and applies inclusive Euclidean thresholds normalized by
+  the reference person valid-joint extent diagonal. References are
+  authoritative source annotations transformed into output geometry.
+- Missing detector joints and unmatched eligible references remain denominator
+  zeros; extra generated people are reported but do not directly add a PCK
+  penalty. People use Hungarian matching on mean unnormalized distance over
+  shared valid joints.
+- Generated pose uses torchvision `keypointrcnn_resnet50_fpn:COCO_V1`; person
+  and keypoint confidence thresholds are `.5`.
+- CLIP is `openai/clip-vit-base-patch32`, image/prompt cosine similarity,
+  averaged across complete generated sets independently from PCK matching.
+  Prompt injection uses injected prompt text.
+- Native uses persisted paired cached geometry. Dynamic-768 is a five-condition
+  geometry/control-encoding ablation: aspect-ratio bucket, resize-to-cover,
+  center crop, and control VAE encode, with no source RGB fallback.
+- Full source locations, formulae, detector-default caveat, and limitations:
+  `docs/blog-evidence/EVALUATION_METHODS.md` and
+  `docs/blog-evidence/evaluation_methods.json`.
+- Evaluation methodology and results are frozen for blog/release review;
+  preserve all metrics, formulas, frozen artifacts, and methodology.
 
-1. psychedelic swordswoman
-2. fantasy mage
-3. comic fashion
-4. starry-night painterly
-5. dark-fantasy jester
-6. elegant male warrior / wandering knight (`canonical-v1`)
-7. gothic masked noble with attendant (`canonical-v1`)
-8. painterly mythic companions (`retry-a`)
-9. moonlit lotus princess (`retry-b`)
-10. astral empress / cosmic oracle (`retry-b`)
+## Verified headline result facts
 
-Explicitly excluded from the final hero are realistic female warrior, realistic
-fashion/editorial portrait, original moonlit priestess/dreamy floral oracle,
-and stained-glass saint/celestial figure.
+- Final-val: 48 images, 101 renderer-qualified people, 1,544 eligible joints.
+  mix-025 PCK `.4520725389/.6042746114/.7240932642`, CLIP `.3369378586`, 95
+  matched; parent-4000 `.4300518135/.5725388601/.7104922280`, CLIP
+  `.3364916809`, 94; A4300 `.4404145078/.5939119171/.7169689119`, CLIP
+  `.3369788169`, 93. Turbo baseline `.0356217617/.1101036269/.3387305699`,
+  CLIP `.3440154150`, 95.
+- Native/dynamic (five images each): native
+  `.2920353982/.4026548673/.5884955752`, CLIP `.3074624562`, 14 matched;
+  dynamic `.2477876106/.3584070796/.5309734513`, CLIP `.3096808381`, 14.
+- Hard stress: single (8 images) `.3727272727/.5181818182/.6818181818`, CLIP
+  `.3281741025`, 8; multi (4 images) `.2916666667/.4097222222/.5625000000`,
+  CLIP `.3174141528`, 12.
+- Prompt injection mix-025: 48 images, PCK
+  `.4009067358/.5563471503/.6832901554`, CLIP `.3394259131`, 96 matched.
+- Exact candidate/composition/count tables and raw source paths:
+  `docs/blog-evidence/EVALUATION_RESULTS.md`.
 
-## Final presentation assets
-
-- Generation montage:
-  `docs/showcase/final/hero-v2/final/final_generation_montage.png`
-- Matching condition montage:
-  `docs/showcase/final/hero-v2/final/final_condition_montage.png`
-- Stable numbered generation/condition copies:
-  `docs/showcase/final/hero-v2/final/`
-
-`scripts/package_hero_v2_final.py` deterministically copies the selected,
-already-recorded source images and controls, records prompt/seed/geometry/
-candidate/control-scale provenance plus SHA-256s in the frozen manifest, and
-builds the two same-order justified montages. It does not generate images.
-
-## Documentation refreshed
-
-- `README.md` now presents the hero-v2 generation montage and links the
-  matching conditions.
-- `docs/release/HF_MODEL_CARD.md` uses the same montage through the raw GitHub
-  URL.
-- `prompting.md` preserves the geometry-versus-appearance guidance and now has
-  the final ten concise, exact-prompt examples with their condition/generation
-  images, seed, native dimensions, candidate, and control scale.
-
-## Verified release/environment facts
-
-- Release candidate: `mix-025`; release ID: `krea2-pose-control-lora-v1`.
-- Release SHA-256:
-  `6d97e9c2e102e07928fc8864346401a0d2e6082d610ca6b037c4704102e3f8d1`.
-- Runtime contract: Krea-2 Turbo, 8 steps, CFG 0, `mu=1.15`, native geometry,
-  no Style-LoRA. Most heroes use control scale `1.0`; painterly mythic
-  companions uses `1.25`.
-- Normal-host verification records PyTorch device name `NVIDIA GH200 480GB`
-  (a reported name, not an HBM-capacity claim) and visible device memory 94.5
-  GiB. The host is Linux ARM64 with Python 3.10.12, PyTorch 2.7.0 / CUDA 12.8 /
-  cuDNN 9.8 / Triton 3.3.0; BF16, SDPA, and `torch.compile` passed from the
-  normal host shell. Use `uv`.
-
-## Files changed this session
-
-- `scripts/package_hero_v2_final.py`
-- `docs/showcase/final/hero-v2/final_winners.json`
-- `docs/showcase/final/hero-v2/final/` (20 selected source copies and two
-  montages)
-- `README.md`
-- `docs/release/HF_MODEL_CARD.md`
-- `prompting.md`
-- `docs/CODEX_HANDOFF.md`
-- `docs/blog-evidence/TRAINING_METHODS_INFRA.md`
-- `docs/blog-evidence/training_methods_infra.json`
-
-## Verification
+## Verification this session
 
 PASS:
 
 ```bash
-uv run python scripts/package_hero_v2_final.py
-# visual inspection of both final montages
+uv run python scripts/audit_evaluation_results.py
+uv run python -m unittest tests.test_turbo_evaluation
+git diff --check
 ```
 
-Before ending, run `git diff --check` and `git status --short`. Do not commit
-or push.
+The audit checks raw NFS final-val/Turbo-baseline score payloads against the
+committed rounded summary and summarizes native, hard-pose, and prompt results.
+
+Known non-session failure:
+
+```bash
+uv run python -m unittest tests.test_hard_pose_multiperson_benchmark
+```
+
+It fails before assertions because the hard-pose frozen spec expects historical
+`inference.py` SHA-256 `60992bba...f8c47a5b`, while current `inference.py` is
+`38153edb...c804dd23`. Do not alter the historical hash/spec as part of this
+documentation audit.
+
+## Files changed this session
+
+- `docs/blog-evidence/EVALUATION_METHODS.md`
+- `docs/blog-evidence/evaluation_methods.json`
+- `docs/blog-evidence/EVALUATION_RESULTS.md`
+- `scripts/audit_evaluation_results.py`
+- `docs/CODEX_HANDOFF.md`
+
+Pre-existing/unrelated untracked file: `scripts/package_hero_v2_final.py`.
+Do not commit or push without explicit authorization.
+
+## Unresolved items
+
+- Result payloads pin model identifiers and code behavior but not a separate
+  detector-weight digest, original Transformers version, or expanded serialized
+  CLIPProcessor transform configuration.
+- Detector internal defaults are reconstructed from audit-time torchvision
+  0.22.0; PCK output coordinates are postprocessed generated-image coordinates.
 
 ## Next recommended action
 
-Evaluation-metric verification: audit frozen final-val, hard-pose,
-control-scale, and hand metrics before making blog-performance claims. Preserve
-the frozen evaluation artifacts and release contract.
+Review and freeze blog figures/tables from `EVALUATION_RESULTS.md` together
+with its methodology/limitations; preserve raw result artifacts and release
+contract unchanged.

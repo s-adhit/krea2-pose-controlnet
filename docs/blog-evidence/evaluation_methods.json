@@ -1,0 +1,72 @@
+{
+  "format_version": 1,
+  "status": "frozen_evaluation_methodology",
+  "audit_date": "2026-09-19",
+  "confidence_vocabulary": {
+    "verified": "Directly read from executable scoring code, an immutable specification, or a retained result payload.",
+    "reconstructed": "Derived mechanically from verified code or retained fields.",
+    "unresolved": "Not asserted as a frozen fact."
+  },
+  "pck": {
+    "thresholds": [0.05, 0.1, 0.2],
+    "formula": "For each renderer-qualified reference joint j, PCK@t = sum_j 1[d_j <= t * s_person] / N_eligible, where d_j is Euclidean pixel distance between the source-derived reference and detector prediction and s_person is the diagonal of the axis-aligned extent of valid reference joints.",
+    "comparison_is_inclusive": true,
+    "coordinate_space": "The generated image/output bucket. Source keypoints are scaled to the resize-to-cover image and shifted by the center-crop origin before comparison; detector output coordinates are returned in the generated image's original pixel coordinates.",
+    "normalization": "Per-person diagonal sqrt((max_x-min_x)^2 + (max_y-min_y)^2) over renderer-qualified reference joints; not width, height, max-side, torso, or head scale.",
+    "aggregation": "Globally pooled correct eligible joints across all evaluable images; not a mean of joints, people, or images.",
+    "eligibility": "A COCO-17 reference joint must be source-visible and analytically represented by the source skeleton renderer. A reference person must have at least two eligible joints and a nonzero diagonal.",
+    "missing_prediction_joint": "Remains in the eligible denominator and contributes zero correct counts.",
+    "unmatched_reference": "Its eligible joints remain in the denominator and contribute zero correct counts.",
+    "extra_generated_person": "Counted as unmatched_predicted_people but does not directly change the PCK denominator or numerator.",
+    "source": [
+      {"path": "pose_controlnet/post500_evaluation.py", "locator": "PCK_THRESHOLDS; _scale; associate_people; pck_for_people, lines 20, 33-107", "confidence": "verified"},
+      {"path": "pose_controlnet/post1500_evaluation.py", "locator": "_pool_pose and score_authoritative_pck, lines 148-205", "confidence": "verified"},
+      {"path": "pose_controlnet/reference_pose.py", "locator": "renderer_joint_states and pck_person_from_source, lines 55-123", "confidence": "verified"}
+    ]
+  },
+  "person_detection_and_matching": {
+    "detector": "torchvision.models.detection.keypointrcnn_resnet50_fpn with KeypointRCNN_ResNet50_FPN_Weights.DEFAULT = COCO_V1, producing COCO-17 keypoints.",
+    "detector_score_threshold": 0.5,
+    "keypoint_confidence_threshold": 0.5,
+    "model_defaults_reconstructed_from_audit_environment": {"torchvision": "0.22.0", "box_score_threshold": 0.05, "box_nms_iou_threshold": 0.5, "box_detections_per_image": 100, "rpn_nms_iou_threshold": 0.7, "inference_min_size": 800, "inference_max_size": 1333},
+    "matching": "One-to-one Hungarian assignment (scipy.optimize.linear_sum_assignment). Edge cost is the unnormalized mean Euclidean pixel distance over shared valid (reference and predicted keypoint confidence >= 0.5) joints; pairs with no shared valid joint are forbidden.",
+    "matched_count": "Number of finite-cost Hungarian pairs; it is a person-pair count, not a correct-joint count.",
+    "reference_representation": "Authoritative COCO/Human-Art source joints, analytically filtered by renderer topology then mapped through recorded resize/crop geometry.",
+    "generated_representation": "Detector boxes, person scores, and 17 keypoints from the generated RGB image after score filtering.",
+    "source": [
+      {"path": "pose_controlnet/post500_evaluation.py", "locator": "associate_people, pck_for_people, KeypointRCNNEstimator, lines 47-142", "confidence": "verified"},
+      {"path": "pose_controlnet/reference_pose.py", "locator": "reference_person_from_sidecar/reference_people_from_sidecar, lines 126-172", "confidence": "verified"},
+      {"path": "installed torchvision 0.22.0", "locator": "KeypointRCNN constructor signature/source inspected during audit", "confidence": "reconstructed"}
+    ]
+  },
+  "clip": {
+    "model": "transformers.CLIPModel and CLIPProcessor from openai/clip-vit-base-patch32",
+    "comparison": "Each generated RGB image versus the exact evaluation prompt used to generate that image; never source RGB. Prompt-injection uses the frozen injected prompt text.",
+    "preprocessing": "CLIPProcessor receives RGB PIL image and one text string with padding, truncation, and max_length=clip.config.text_config.max_position_embeddings; processor-defined image resize/crop/normalization applies.",
+    "score": "Cosine similarity of get_image_features and get_text_features projected embeddings, computed explicitly as dot(a,b)/(||a|| ||b||), with no logit scale.",
+    "aggregation": "Arithmetic mean over all successful generated samples; median and population standard deviation are also retained. It is independent of PCK matching and includes every generated image in a complete benchmark.",
+    "failure_handling": "The frozen headline paths require every generation before scoring; missing images raise rather than being silently dropped.",
+    "source": [
+      {"path": "scripts/turbo_benchmark.py", "locator": "_clip_score, lines 368-374", "confidence": "verified"},
+      {"path": "pose_controlnet/post500_evaluation.py", "locator": "prepare_clip_scoring_inputs and aggregate, lines 160-175", "confidence": "verified"},
+      {"path": "scripts/frozen_prompt_turbo.py", "locator": "prompt_score, lines 332-355", "confidence": "verified"}
+    ]
+  },
+  "geometry": {
+    "native": "Uses the persisted paired cached-latent bucket and validates source_size, resized_size, crop_box, and bucket against the canonical resize-to-cover + center-crop calculation. The original paired RGB/control preprocessing applies the same geometry to both; final generation consumes the cached control latent.",
+    "dynamic_768": "Only in the five-condition ablation. It chooses the closest log-aspect-ratio bucket from [(768,768),(704,896),(896,704),(640,960),(960,640),(576,1024),(1024,576),(512,1152),(1152,512)], resize-to-cover, then center-crops the authoritative control raster and VAE-encodes it with the per-condition sampling seed. It does not use source RGB. Reference joints are independently transformed through the matching dynamic geometry before PCK.",
+    "resize_crop": "scale=max(bucket_w/source_w,bucket_h/source_h); resized dimensions use round; crop origin is integer floor half-excess. Aspect ratio is preserved before crop; no padding is used.",
+    "metric_bias_note": "Native and dynamic results are not a pure resolution-only comparison: output buckets, resized control raster, crop framing, and VAE control encoding differ. PCK remains internally aligned within each mode because its source reference is transformed by that mode's geometry.",
+    "source": [
+      {"path": "pose_controlnet/paired_preprocessing.py", "locator": "choose_bucket and resize_center_crop_geometry, lines 68-105", "confidence": "verified"},
+      {"path": "pose_controlnet/evaluation_geometry.py", "locator": "persisted_scoring_geometry, lines 9-31", "confidence": "verified"},
+      {"path": "scripts/native_vs_dynamic768.py", "locator": "_inputs and _dynamic_sample, lines 165-277", "confidence": "verified"}
+    ]
+  },
+  "evaluation_limitations": "Hungarian person association uses mean raw pixel-distance cost over shared valid joints, while PCK scoring afterward uses the matched reference person's diagonal normalization. This is the defined association-and-scoring procedure, not an invalidation of the metric.",
+  "unresolved": [
+    "The retained result payloads do not pin a separate detector-weight file SHA-256 or the original Transformers package version; model identifiers and executable scoring code are pinned.",
+    "The exact CLIPProcessor transform parameter values are delegated to the named Hugging Face processor checkpoint rather than duplicated in repository code.",
+    "Detector internal resize defaults are reconstructed from audit-time torchvision 0.22.0 source; PCK uses postprocessed output coordinates in the generated-image coordinate space."
+  ]
+}
