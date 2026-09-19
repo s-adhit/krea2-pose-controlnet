@@ -2,10 +2,9 @@
 
 ## Current objective
 
-Draft the final Hugging Face model card for the frozen public
-`krea2-pose-control-lora-v1` candidate `mix-025`. The draft is local only;
-no Hugging Face upload, commit, push, frozen artifact, or evaluation artifact
-was modified.
+Complete the control-only audition for the seven new `hero-v2` concepts.
+No final image was generated, selected, or promoted; frozen `hero-v1` and
+evaluation artifacts were not modified.
 
 ## Frozen input verification
 
@@ -45,30 +44,52 @@ format through the normal control/LoRA compatibility and strict trainable-state
 load path; legacy full checkpoint and endpoint interpolation paths remain
 unchanged.
 
-## Model-card draft
+## Hero-v1 audit and hero-v2 plan
 
-- Draft: `docs/release/HF_MODEL_CARD.md`
-- Intended HF repo: `adhit-420/Krea-2-PoseControl-LoRA-checkpoints`
-- Reuses the exact README hero asset, without creating a new image:
-  `docs/showcase/final/hero-v1/final_showcase_collage.png`
-- Sources used: `docs/evaluation/release/final_release_v1.json`,
-  `docs/evaluation/release/FINAL_RELEASE_DECISION.md`, `inference.py`,
-  `prompting.md`, `README.md`,
-  `docs/showcase/final/hero-v1/final_winners.json`, and the release artifact
-  provenance JSON at
-  `/lambda/nfs/adhit/krea2-pose/release/krea2-pose-control-lora-v1/`.
-- The card identifies `release/` as the public artifact and names
-  `pose-learning/`, `pose-control-production/`, and `finish-*` as historical
-  training checkpoints. It deliberately omits unverified training-duration,
-  parameter-total, optimizer, loss-formula, and methodology claims.
-- Unresolved publication placeholders: copy the draft into the Hugging Face
-  repository README/model card; ensure the linked GitHub hero image remains
-  publicly reachable (or place that exact existing asset in the HF repo with
-  the same presentation). Do not upload until explicitly authorized.
+- Plan: `docs/showcase/final/hero-v2/SHOWCASE_PLAN.md`
+- Current accepted inventory: five single-person `mix-025` winners, all at
+  control scale `1.0`: psychedelic swordswoman (896x1152), fantasy mage
+  (896x1152), comic fashion (1216x832), starry-night painterly (704x1472),
+  and dark-fantasy jester (1472x704).
+- All five are retained for the expanded 12-image final set. They have clear
+  pose-to-image correspondence and collectively cover action fantasy,
+  cinematic fantasy, comic fashion, painterly nocturne, and gothic fantasy.
+- Proposed additions: realistic female warrior; elegant male warrior/wandering
+  knight; moonlit priestess/dreamy floral oracle; stained-glass saint/celestial
+  figure; realistic fashion/editorial portrait; gothic masked noble with one
+  attendant; painterly mythic companions.
+- Proposed final ratio: 10 single-person images and 2 duo images. Duo controls
+  are admission-gated on exactly two cleanly separated people and retain
+  single-person fallbacks.
+- Gap analysis: current winners are fantasy/painterly-heavy with no grounded
+  photographic hero, light/celestial or floral register, or intentional duo.
+  New concepts correct those gaps without regenerating retained assets.
+
+## Hero-v2 control audition
+
+PASS, pending human selection:
+
+- Review document: `docs/showcase/final/hero-v2/control-audition/AUDITION.md`
+- Machine-readable provenance: `docs/showcase/final/hero-v2/control-audition/audition_candidates.json`
+- 21 total rendered native-bucket candidate controls: 3 for each of the 7
+  new concepts. Every single candidate has authoritative person count 1;
+  every duo candidate has authoritative person count 2.
+- Contact sheets:
+  - `control-audition/realistic-female-warrior_contact_sheet.png`
+  - `control-audition/elegant-male-warrior-wandering-knight_contact_sheet.png`
+  - `control-audition/moonlit-priestess-dreamy-floral-oracle_contact_sheet.png`
+  - `control-audition/stained-glass-saint-celestial-figure_contact_sheet.png`
+  - `control-audition/realistic-fashion-editorial-portrait_contact_sheet.png`
+  - `control-audition/gothic-masked-noble-with-attendant_contact_sheet.png`
+  - `control-audition/painterly-mythic-companions_contact_sheet.png`
+- Weak pool: both duo concepts are deliberately cautious. They pass the
+  authoritative exactly-two-person and initial separation checks, but their
+  sparse/compositional reads require human review at final montage size.
 
 ## Files changed this session
 
-- `docs/release/HF_MODEL_CARD.md`
+- `docs/showcase/final/hero-v2/control-audition/` (controls, 7 contact
+  sheets, provenance JSON, and `AUDITION.md`)
 - `docs/CODEX_HANDOFF.md`
 
 ## Verification
@@ -76,25 +97,17 @@ unchanged.
 PASS:
 
 ```bash
-PYTHONPATH="$PWD/.venv/lib/python3.10/site-packages" /usr/bin/python3 -m py_compile pose_controlnet/release_artifact.py scripts/materialize_final_release.py inference.py tests/test_release_artifact.py
-PYTHONPATH="$PWD/.venv/lib/python3.10/site-packages" /usr/bin/python3 -m unittest tests.test_release_artifact tests.test_inference -v
-PYTHONPATH="$PWD/.venv/lib/python3.10/site-packages" /usr/bin/python3 scripts/materialize_final_release.py --output /tmp/krea2-release-final.XYB3BA/krea2-pose-control-mix025.safetensors
-sha256sum /tmp/krea2-release-final.XYB3BA/krea2-pose-control-mix025.safetensors
+Read AGENTS/handoff/hero-v2 plan; inspected existing v4/v5 audition controls;
+screened authoritative `pose_targets_v3` records by native geometry, person
+count, readable head/torso/limbs, crop margin, and (for duos) scale/separation
+and low bounding-box overlap; rendered selected controls using the persisted
+resize/crop geometry; visually inspected all seven contact sheets. Final
+`git diff --check` is required after this handoff update.
 ```
-
-The prior unit suite passed 18 tests, including key mismatch rejection, shape
-mismatch rejection, exact alpha interpolation, non-model-state exclusion, and
-byte-deterministic serialization. The materializer independently reloaded and
-exactly compared every one of the 450 saved tensors. A direct CPU resolver
-check confirmed `inference.resolve_pose_candidate` loads the staged artifact
-as canonical `mix-025` with all 215,488,512 float32 parameters.
-
-This session: source facts and card links were inspected; `git diff --check`
-passed.
 
 ## Next recommended action
 
-Review `docs/release/HF_MODEL_CARD.md` against the eventual HF file layout,
-verify the exact release artifact is present at `release/` with SHA-256
-`6d97e9c2e102e07928fc8864346401a0d2e6082d610ca6b037c4704102e3f8d1`, and
-only then copy/upload the reviewed card with explicit authorization.
+Human selection of one final control per concept. Keep the duo controls
+admission-gated until their final composition is confirmed readable at montage
+size. Do not generate images or alter frozen evaluation/hero-v1 artifacts as
+part of this audition milestone.

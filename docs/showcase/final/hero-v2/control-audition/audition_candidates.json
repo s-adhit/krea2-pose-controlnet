@@ -1,0 +1,226 @@
+{
+  "realistic-female-warrior": [
+    {
+      "rank": 1,
+      "stem": "real_human_humanart_15000000001697",
+      "source_domain": "humanart_real_human",
+      "person_count": 1,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/realistic-female-warrior/01_real_human_humanart_15000000001697.png",
+      "width": 1216,
+      "height": 832,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_01/real_human_humanart_15000000001697.png"
+    },
+    {
+      "rank": 2,
+      "stem": "real_human_humanart_15000000000016",
+      "source_domain": "humanart_real_human",
+      "person_count": 1,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/realistic-female-warrior/02_real_human_humanart_15000000000016.png",
+      "width": 896,
+      "height": 1152,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_07/real_human_humanart_15000000000016.png"
+    },
+    {
+      "rank": 3,
+      "stem": "real_human_humanart_15000000001026",
+      "source_domain": "humanart_real_human",
+      "person_count": 1,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/realistic-female-warrior/03_real_human_humanart_15000000001026.png",
+      "width": 1216,
+      "height": 832,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_08/real_human_humanart_15000000001026.png"
+    }
+  ],
+  "elegant-male-warrior-wandering-knight": [
+    {
+      "rank": 1,
+      "stem": "painting_humanart_9000000000455",
+      "source_domain": "humanart_painting",
+      "person_count": 1,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/elegant-male-warrior-wandering-knight/01_painting_humanart_9000000000455.png",
+      "width": 832,
+      "height": 1216,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_02/painting_humanart_9000000000455.png"
+    },
+    {
+      "rank": 2,
+      "stem": "painting_humanart_9000000001986",
+      "source_domain": "humanart_painting",
+      "person_count": 1,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/elegant-male-warrior-wandering-knight/02_painting_humanart_9000000001986.png",
+      "width": 896,
+      "height": 1152,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_08/painting_humanart_9000000001986.png"
+    },
+    {
+      "rank": 3,
+      "stem": "real_human_humanart_17000000002087",
+      "source_domain": "humanart_real_human",
+      "person_count": 1,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/elegant-male-warrior-wandering-knight/03_real_human_humanart_17000000002087.png",
+      "width": 1152,
+      "height": 896,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_00/real_human_humanart_17000000002087.png"
+    }
+  ],
+  "moonlit-priestess-dreamy-floral-oracle": [
+    {
+      "rank": 1,
+      "stem": "painting_humanart_10000000001554",
+      "source_domain": "humanart_painting",
+      "person_count": 1,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/moonlit-priestess-dreamy-floral-oracle/01_painting_humanart_10000000001554.png",
+      "width": 704,
+      "height": 1472,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_02/painting_humanart_10000000001554.png"
+    },
+    {
+      "rank": 2,
+      "stem": "painting_humanart_9000000000724",
+      "source_domain": "humanart_painting",
+      "person_count": 1,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/moonlit-priestess-dreamy-floral-oracle/02_painting_humanart_9000000000724.png",
+      "width": 768,
+      "height": 1344,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_02/painting_humanart_9000000000724.png"
+    },
+    {
+      "rank": 3,
+      "stem": "sculpture_humanart_14000000003553",
+      "source_domain": "humanart_sculpture",
+      "person_count": 1,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/moonlit-priestess-dreamy-floral-oracle/03_sculpture_humanart_14000000003553.png",
+      "width": 896,
+      "height": 1152,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_00/sculpture_humanart_14000000003553.png"
+    }
+  ],
+  "stained-glass-saint-celestial-figure": [
+    {
+      "rank": 1,
+      "stem": "sculpture_humanart_14000000001340",
+      "source_domain": "humanart_sculpture",
+      "person_count": 1,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/stained-glass-saint-celestial-figure/01_sculpture_humanart_14000000001340.png",
+      "width": 832,
+      "height": 1216,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_00/sculpture_humanart_14000000001340.png"
+    },
+    {
+      "rank": 2,
+      "stem": "sculpture_humanart_14000000004082",
+      "source_domain": "humanart_sculpture",
+      "person_count": 1,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/stained-glass-saint-celestial-figure/02_sculpture_humanart_14000000004082.png",
+      "width": 1024,
+      "height": 1024,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/sculpture_humanart_14000000004082.png"
+    },
+    {
+      "rank": 3,
+      "stem": "painting_humanart_9000000000938",
+      "source_domain": "humanart_painting",
+      "person_count": 1,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/stained-glass-saint-celestial-figure/03_painting_humanart_9000000000938.png",
+      "width": 1024,
+      "height": 1024,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_03/painting_humanart_9000000000938.png"
+    }
+  ],
+  "realistic-fashion-editorial-portrait": [
+    {
+      "rank": 1,
+      "stem": "real_human_humanart_15000000000016",
+      "source_domain": "humanart_real_human",
+      "person_count": 1,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/realistic-fashion-editorial-portrait/01_real_human_humanart_15000000000016.png",
+      "width": 896,
+      "height": 1152,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_07/real_human_humanart_15000000000016.png"
+    },
+    {
+      "rank": 2,
+      "stem": "painting_humanart_9000000000455",
+      "source_domain": "humanart_painting",
+      "person_count": 1,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/realistic-fashion-editorial-portrait/02_painting_humanart_9000000000455.png",
+      "width": 832,
+      "height": 1216,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_02/painting_humanart_9000000000455.png"
+    },
+    {
+      "rank": 3,
+      "stem": "painting_humanart_9000000001986",
+      "source_domain": "humanart_painting",
+      "person_count": 1,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/realistic-fashion-editorial-portrait/03_painting_humanart_9000000001986.png",
+      "width": 896,
+      "height": 1152,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_08/painting_humanart_9000000001986.png"
+    }
+  ],
+  "gothic-masked-noble-with-attendant": [
+    {
+      "rank": 1,
+      "stem": "real_human_humanart_15000000002216",
+      "source_domain": "humanart_real_human",
+      "person_count": 2,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/gothic-masked-noble-with-attendant/01_real_human_humanart_15000000002216.png",
+      "width": 1472,
+      "height": 704,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_05/real_human_humanart_15000000002216.png"
+    },
+    {
+      "rank": 2,
+      "stem": "real_human_humanart_15000000002158",
+      "source_domain": "humanart_real_human",
+      "person_count": 2,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/gothic-masked-noble-with-attendant/02_real_human_humanart_15000000002158.png",
+      "width": 1152,
+      "height": 896,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_06/real_human_humanart_15000000002158.png"
+    },
+    {
+      "rank": 3,
+      "stem": "real_human_humanart_17000000001847",
+      "source_domain": "humanart_real_human",
+      "person_count": 2,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/gothic-masked-noble-with-attendant/03_real_human_humanart_17000000001847.png",
+      "width": 1152,
+      "height": 896,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_05/real_human_humanart_17000000001847.png"
+    }
+  ],
+  "painterly-mythic-companions": [
+    {
+      "rank": 1,
+      "stem": "painting_humanart_9000000001099",
+      "source_domain": "humanart_painting",
+      "person_count": 2,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/painterly-mythic-companions/01_painting_humanart_9000000001099.png",
+      "width": 1472,
+      "height": 704,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_02/painting_humanart_9000000001099.png"
+    },
+    {
+      "rank": 2,
+      "stem": "painting_humanart_9000000000976",
+      "source_domain": "humanart_painting",
+      "person_count": 2,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/painterly-mythic-companions/02_painting_humanart_9000000000976.png",
+      "width": 1216,
+      "height": 832,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_00/painting_humanart_9000000000976.png"
+    },
+    {
+      "rank": 3,
+      "stem": "painting_humanart_9000000000571",
+      "source_domain": "humanart_painting",
+      "person_count": 2,
+      "rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/painterly-mythic-companions/03_painting_humanart_9000000000571.png",
+      "width": 896,
+      "height": 1152,
+      "source_control_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_02/painting_humanart_9000000000571.png"
+    }
+  ]
+}
