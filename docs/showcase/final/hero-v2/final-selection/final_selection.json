@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "status": "frozen_generation_plan",
+  "scope": "Seven new hero-v2 concepts only; no final images generated and no hero-v1 or evaluation artifact is modified.",
+  "defaults": {
+    "release_candidate": "mix-025",
+    "mode": "turbo-pose-control",
+    "geometry": "native_aspect_preserving",
+    "control_scale": 1.0
+  },
+  "selections": [
+    {
+      "concept_name": "realistic female warrior",
+      "source_stem": "real_human_humanart_15000000000016",
+      "final_rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/realistic-female-warrior/02_real_human_humanart_15000000000016.png",
+      "dimensions": { "width": 896, "height": 1152 },
+      "people_count": 1,
+      "rationale": "Clear upright body and separated arms provide a readable heroic silhouette while adding grounded cinematic realism to the showcase.",
+      "prompt": "A battle-worn female warrior in practical layered steel and dark leather armor, weathered wool cloak and subtle travel gear, on a windswept highland at dawn, natural skin texture, cool mist and restrained golden light, cinematic fantasy realism, tactile materials and atmospheric detail.",
+      "seed": 7194308401,
+      "control_scale": 1.0
+    },
+    {
+      "concept_name": "elegant male warrior / wandering knight",
+      "source_stem": "painting_humanart_9000000000455",
+      "final_rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/elegant-male-warrior-wandering-knight/01_painting_humanart_9000000000455.png",
+      "dimensions": { "width": 832, "height": 1216 },
+      "people_count": 1,
+      "rationale": "The tall, relaxed silhouette is distinct from the existing mage and supports refined travel clothing without prescribing body geometry.",
+      "prompt": "An elegant wandering knight in tailored charcoal wool, aged steel accents and a deep green travel cloak, crossing a quiet stone moor beneath an overcast sky, soft directional daylight, refined realistic fantasy photography, natural fabric texture and muted cinematic color.",
+      "seed": 7194308402,
+      "control_scale": 1.0
+    },
+    {
+      "concept_name": "moonlit priestess / dreamy floral oracle",
+      "source_stem": "painting_humanart_9000000000724",
+      "final_rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/moonlit-priestess-dreamy-floral-oracle/02_painting_humanart_9000000000724.png",
+      "dimensions": { "width": 768, "height": 1344 },
+      "people_count": 1,
+      "rationale": "The asymmetric stance and separated hands support a calm oracle reading, adding a soft floral and silvery-blue register.",
+      "prompt": "A moonlit floral oracle in layered ivory silk and pale blue embroidered veils, surrounded by night-blooming flowers and drifting petals in a secluded garden, silver lunar glow, dreamy romantic fantasy painting, delicate textures and luminous pastel color.",
+      "seed": 7194308403,
+      "control_scale": 1.0
+    },
+    {
+      "concept_name": "stained-glass saint / celestial figure",
+      "source_stem": "sculpture_humanart_14000000004082",
+      "final_rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/stained-glass-saint-celestial-figure/02_sculpture_humanart_14000000004082.png",
+      "dimensions": { "width": 1024, "height": 1024 },
+      "people_count": 1,
+      "rationale": "The symmetric near-square control is suited to a graphic sacred icon treatment and expands the set with a luminous celestial image.",
+      "prompt": "A celestial saint in radiant ivory and jewel-toned ceremonial robes, before an ornate cathedral of stained glass and gilded tracery, prismatic light and a quiet sacred atmosphere, richly detailed luminous sacred-art illustration, deep sapphire, ruby and gold.",
+      "seed": 7194308404,
+      "control_scale": 1.0
+    },
+    {
+      "concept_name": "realistic fashion/editorial portrait",
+      "source_stem": "painting_humanart_9000000001986",
+      "final_rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/realistic-fashion-editorial-portrait/03_painting_humanart_9000000001986.png",
+      "dimensions": { "width": 896, "height": 1152 },
+      "people_count": 1,
+      "rationale": "The asymmetric upright geometry supports a polished editorial look while remaining visually separate from the comic-fashion hero.",
+      "prompt": "A contemporary fashion model in a sculptural graphite tailored ensemble with brushed-metal jewelry, within a minimalist terracotta studio, soft sculpting daylight and subtle film grain, premium photographic fashion editorial, natural skin texture and restrained modern color.",
+      "seed": 7194308405,
+      "control_scale": 1.0
+    },
+    {
+      "concept_name": "gothic masked noble with attendant",
+      "source_stem": "real_human_humanart_15000000002158",
+      "final_rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/gothic-masked-noble-with-attendant/02_real_human_humanart_15000000002158.png",
+      "dimensions": { "width": 1152, "height": 896 },
+      "people_count": 2,
+      "rationale": "Two upright, separated full-body figures provide an intentional, readable gothic duo with low limb overlap.",
+      "prompt": "A masked gothic noble and one devoted attendant in black velvet, antique silver and muted crimson ceremonial dress, inside a candlelit ancestral hall of dark stone and faded portraits, low amber light and deep shadows, elegant cinematic dark-fantasy painting, ornate textile detail.",
+      "seed": 7194308406,
+      "control_scale": 1.0,
+      "fallback_retry": { "allowed": true, "control_scale": 1.25, "condition": "only if initial 1.0 generation has weak two-person adherence" }
+    },
+    {
+      "concept_name": "painterly mythic companions",
+      "source_stem": "painting_humanart_9000000000976",
+      "final_rendered_control_path": "docs/showcase/final/hero-v2/control-audition/controls/painterly-mythic-companions/02_painting_humanart_9000000000976.png",
+      "dimensions": { "width": 1216, "height": 832 },
+      "people_count": 2,
+      "rationale": "The two readable walking-scale silhouettes form a coherent pair with low overlap and add a warm landscape-oriented painterly duo.",
+      "prompt": "Two mythic companions in weathered indigo, ochre and moss-green travel layers, moving through an ancient valley of tall grasses and distant standing stones, warm late-afternoon light, expressive painterly fantasy illustration, textured brushwork and a quiet sense of shared journey.",
+      "seed": 7194308407,
+      "control_scale": 1.0,
+      "fallback_retry": { "allowed": true, "control_scale": 1.25, "condition": "only if initial 1.0 generation has weak two-person adherence" }
+    }
+  ]
+}

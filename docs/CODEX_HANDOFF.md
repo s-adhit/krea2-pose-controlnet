@@ -2,9 +2,36 @@
 
 ## Current objective
 
-Complete the control-only audition for the seven new `hero-v2` concepts.
-No final image was generated, selected, or promoted; frozen `hero-v1` and
-evaluation artifacts were not modified.
+Materialize the seven frozen new `hero-v2` canonical `mix-025` candidates,
+then perform human visual review and only selective duo retries if warranted.
+Frozen `hero-v1` and evaluation artifacts remain unmodified.
+
+## Hero-v2 canonical generation status
+
+- Runner: `scripts/generate_hero_v2_canonical.py`; it reuses `inference.py`
+  request/runtime/generation functions (no sampler or model-loader copy).
+- Required output directory: `/lambda/nfs/adhit/krea2-pose/showcase/hero-v2/canonical-v1/`
+- Repo presentation target: `docs/showcase/final/hero-v2/generations/canonical-v1/`
+- The runner validates the frozen selection, each control's native dimensions,
+  frozen release runtime, and release artifact SHA before it loads a model. It
+  generates only scale-1.0 candidates and writes augmented adjacent canonical
+  sidecars with concept/stem/release fields, then packages copies and a
+  control-plus-output contact sheet.
+- `uv run python scripts/generate_hero_v2_canonical.py preflight`: PASS (all
+  seven frozen controls and release SHA validated).
+- `uv run python scripts/generate_hero_v2_canonical.py generate`: BLOCKED
+  before model load or output creation. This Codex sandbox mounts `/lambda/nfs`
+  read-only (`OSError: [Errno 30] Read-only file system` creating the required
+  output directory). No concepts were generated and no contact sheet exists.
+- Run the same command from the writable GH200/Lambda host shell. It will
+  write `/lambda/nfs/adhit/krea2-pose/showcase/hero-v2/canonical-v1/` and
+  `docs/showcase/final/hero-v2/generations/canonical-v1/canonical-v1_contact_sheet.png`.
+
+## Next recommended action
+
+From a shell with writable `/lambda/nfs`, run the canonical generation command
+above. Then perform human visual review; only the two duo concepts may receive
+a selective scale-`1.25` retry. Do not select winners automatically.
 
 ## Frozen input verification
 
@@ -65,9 +92,25 @@ unchanged.
   photographic hero, light/celestial or floral register, or intentional duo.
   New concepts correct those gaps without regenerating retained assets.
 
-## Hero-v2 control audition
+## Hero-v2 frozen selection and generation plan
 
-PASS, pending human selection:
+PASS: the seven new controls are frozen in
+`docs/showcase/final/hero-v2/final-selection/FINAL_SELECTION.md` and the
+machine-readable `final_selection.json`. The plan fixes `mix-025`, turbo mode,
+native aspect-preserving geometry, control scale `1.0`, and one seed per
+concept. The two duo concepts allow a `1.25` retry only for weak adherence.
+
+Frozen selected stems:
+
+- realistic female warrior: `real_human_humanart_15000000000016`
+- elegant male warrior / wandering knight: `painting_humanart_9000000000455`
+- moonlit priestess / dreamy floral oracle: `painting_humanart_9000000000724`
+- stained-glass saint / celestial figure: `sculpture_humanart_14000000004082`
+- realistic fashion/editorial portrait: `painting_humanart_9000000001986`
+- gothic masked noble with attendant: `real_human_humanart_15000000002158`
+- painterly mythic companions: `painting_humanart_9000000000976`
+
+The preceding control-only audition remains the provenance source:
 
 - Review document: `docs/showcase/final/hero-v2/control-audition/AUDITION.md`
 - Machine-readable provenance: `docs/showcase/final/hero-v2/control-audition/audition_candidates.json`
@@ -88,8 +131,9 @@ PASS, pending human selection:
 
 ## Files changed this session
 
-- `docs/showcase/final/hero-v2/control-audition/` (controls, 7 contact
-  sheets, provenance JSON, and `AUDITION.md`)
+- `docs/showcase/final/hero-v2/final-selection/FINAL_SELECTION.md`
+- `docs/showcase/final/hero-v2/final-selection/final_selection.json`
+- `scripts/generate_hero_v2_canonical.py`
 - `docs/CODEX_HANDOFF.md`
 
 ## Verification
@@ -97,17 +141,9 @@ PASS, pending human selection:
 PASS:
 
 ```bash
-Read AGENTS/handoff/hero-v2 plan; inspected existing v4/v5 audition controls;
-screened authoritative `pose_targets_v3` records by native geometry, person
-count, readable head/torso/limbs, crop margin, and (for duos) scale/separation
-and low bounding-box overlap; rendered selected controls using the persisted
-resize/crop geometry; visually inspected all seven contact sheets. Final
-`git diff --check` is required after this handoff update.
+Read AGENTS/handoff/hero-v2 plan/audition and `prompting.md`; verified every
+selected stem, native dimensions, person count, and rendered-control path
+against `audition_candidates.json`. Prompts are geometry-neutral, retain the
+authoritative subject count, and avoid framing or joint-by-joint instructions.
+Final `git diff --check` is required after this handoff update.
 ```
-
-## Next recommended action
-
-Human selection of one final control per concept. Keep the duo controls
-admission-gated until their final composition is confirmed readable at montage
-size. Do not generate images or alter frozen evaluation/hero-v1 artifacts as
-part of this audition milestone.
