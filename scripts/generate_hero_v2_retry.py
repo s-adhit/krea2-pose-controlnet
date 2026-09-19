@@ -21,7 +21,16 @@ from inference import (
 )
 
 
-MANIFEST = ROOT / "docs/showcase/final/hero-v2/retries/retry-a/retry_a.json"
+RETRY_BATCHES = {
+    "retry-a": {
+        "manifest": ROOT / "docs/showcase/final/hero-v2/retries/retry-a/retry_a.json",
+        "count": 5,
+    },
+    "retry-b": {
+        "manifest": ROOT / "docs/showcase/final/hero-v2/retries/retry-b/retry_b.json",
+        "count": 3,
+    },
+}
 EXPECTED_DEFAULTS = {
     "release_candidate": "mix-025", "mode": "turbo-pose-control",
     "geometry": "native_aspect_preserving", "steps": 8, "cfg": 0.0,
@@ -29,34 +38,36 @@ EXPECTED_DEFAULTS = {
 }
 
 
-def load_retries() -> tuple[list[dict[str, Any]], Path, Path]:
-    payload = _read_json(MANIFEST)
+def load_retries(batch: str) -> tuple[list[dict[str, Any]], Path, Path]:
+    batch_spec = RETRY_BATCHES[batch]
+    payload = _read_json(batch_spec["manifest"])
     rows = payload.get("retries")
     if (payload.get("schema_version") != 1 or payload.get("status") != "approved_selective_retry_plan"
-            or payload.get("defaults") != EXPECTED_DEFAULTS or not isinstance(rows, list) or len(rows) != 5):
-        raise HeroV2Error("retry-a manifest identity or default contract drifted")
+            or payload.get("retry_batch", batch) != batch or payload.get("defaults") != EXPECTED_DEFAULTS
+            or not isinstance(rows, list) or len(rows) != batch_spec["count"]):
+        raise HeroV2Error(f"{batch} manifest identity or default contract drifted")
     output_root = Path(str(payload.get("output_root", "")))
     docs_root = ROOT / str(payload.get("presentation_root", ""))
-    if output_root != Path("/lambda/nfs/adhit/krea2-pose/showcase/hero-v2/retry-a"):
-        raise HeroV2Error("retry-a output root drifted")
-    if docs_root != ROOT / "docs/showcase/final/hero-v2/generations/retry-a":
-        raise HeroV2Error("retry-a presentation root drifted")
+    if output_root != Path(f"/lambda/nfs/adhit/krea2-pose/showcase/hero-v2/{batch}"):
+        raise HeroV2Error(f"{batch} output root drifted")
+    if docs_root != ROOT / f"docs/showcase/final/hero-v2/generations/{batch}":
+        raise HeroV2Error(f"{batch} presentation root drifted")
     required = {"concept_name", "slug", "source_stem", "control_path", "dimensions", "people_count", "seed", "control_scale", "prompt"}
     seen: set[str] = set()
     retries: list[dict[str, Any]] = []
     for row in rows:
         if not isinstance(row, dict) or not required.issubset(row):
-            raise HeroV2Error("retry-a row is incomplete")
+            raise HeroV2Error(f"{batch} row is incomplete")
         slug, dimensions = row["slug"], row["dimensions"]
         control = ROOT / str(row["control_path"])
         if (not isinstance(slug, str) or slug in seen or not isinstance(row["seed"], int)
                 or row["control_scale"] not in (1.0, 1.25) or not isinstance(row["prompt"], str)
                 or not row["prompt"].strip() or not isinstance(dimensions, dict)
                 or set(dimensions) != {"width", "height"} or not control.is_file()):
-            raise HeroV2Error(f"Invalid retry-a row: {row.get('concept_name')}")
+            raise HeroV2Error(f"Invalid {batch} row: {row.get('concept_name')}")
         width, height = dimensions["width"], dimensions["height"]
         if not isinstance(width, int) or not isinstance(height, int) or width % 16 or height % 16:
-            raise HeroV2Error(f"Invalid retry-a dimensions: {row['concept_name']}")
+            raise HeroV2Error(f"Invalid {batch} dimensions: {row['concept_name']}")
         with Image.open(control) as image:
             if image.size != (width, height):
                 raise HeroV2Error(f"Control geometry mismatch: {row['concept_name']}")
@@ -77,7 +88,7 @@ def _request(row: Mapping[str, Any], output: Path) -> PoseInferenceRequest:
     )
 
 
-def _validate_and_annotate(row: Mapping[str, Any], output: Path) -> dict[str, Any]:
+def _validate_and_annotate(batch: str, row: Mapping[str, Any], output: Path) -> dict[str, Any]:
     sidecar = metadata_path_for(output)
     if not output.is_file() or not sidecar.is_file():
         raise HeroV2Error(f"Missing retry output or provenance: {output}")
@@ -92,7 +103,7 @@ def _validate_and_annotate(row: Mapping[str, Any], output: Path) -> dict[str, An
         raise HeroV2Error(f"Unexpected release candidate: {sidecar}")
     if metadata.get("candidate", {}).get("release_artifact", {}).get("sha256") != EXPECTED_RELEASE_SHA256:
         raise HeroV2Error(f"Release artifact provenance mismatch: {sidecar}")
-    metadata["hero_v2_retry_a"] = {
+    metadata[f"hero_v2_{batch.replace('-', '_')}"] = {
         "concept": row["concept_name"], "source_stem": row["source_stem"],
         "control_path": str((ROOT / str(row["control_path"])).resolve()),
         "width": row["dimensions"]["width"], "height": row["dimensions"]["height"],
@@ -104,8 +115,8 @@ def _validate_and_annotate(row: Mapping[str, Any], output: Path) -> dict[str, An
     return metadata
 
 
-def generate() -> tuple[list[tuple[dict[str, Any], Path]], Path]:
-    rows, output_root, docs_root = load_retries()
+def generate(batch: str) -> tuple[list[tuple[dict[str, Any], Path]], Path]:
+    rows, output_root, docs_root = load_retries(batch)
     validate_release()
     output_root.mkdir(parents=True, exist_ok=True)
     first = _request(rows[0], output_root / f"{rows[0]['slug']}.png")
@@ -115,12 +126,12 @@ def generate() -> tuple[list[tuple[dict[str, Any], Path]], Path]:
         output = output_root / f"{row['slug']}.png"
         if not output.exists() and not metadata_path_for(output).exists():
             generate_pose(_request(row, output), runtime=runtime)
-        _validate_and_annotate(row, output)
+        _validate_and_annotate(batch, row, output)
         generated.append((row, output))
     return generated, docs_root
 
 
-def package(generated: Sequence[tuple[dict[str, Any], Path]], docs_root: Path) -> Path:
+def package(batch: str, generated: Sequence[tuple[dict[str, Any], Path]], docs_root: Path) -> Path:
     for row, output in generated:
         _copy_no_overwrite(output, docs_root / output.name)
         _copy_no_overwrite(metadata_path_for(output), docs_root / metadata_path_for(output).name)
@@ -129,7 +140,7 @@ def package(generated: Sequence[tuple[dict[str, Any], Path]], docs_root: Path) -
     sheet = Image.new("RGB", (thumb * 2, header + thumb * len(generated)), "white")
     draw = ImageDraw.Draw(sheet)
     draw.text((gutter, gutter), "Retry control", fill="black")
-    draw.text((thumb + gutter, gutter), "Retry-a mix-025", fill="black")
+    draw.text((thumb + gutter, gutter), f"{batch.title()} mix-025", fill="black")
     for index, (row, output) in enumerate(generated):
         y = header + index * thumb
         draw.text((gutter, y + gutter), str(row["concept_name"]), fill="black")
@@ -138,7 +149,7 @@ def package(generated: Sequence[tuple[dict[str, Any], Path]], docs_root: Path) -
                 display = image.convert("RGB")
             display.thumbnail((thumb - 2 * gutter, thumb - 42))
             sheet.paste(display, (column * thumb + (thumb - display.width) // 2, y + 36 + (thumb - 42 - display.height) // 2))
-    contact = docs_root / "retry-a_contact_sheet.png"
+    contact = docs_root / f"{batch}_contact_sheet.png"
     sheet.save(contact)
     return contact
 
@@ -146,15 +157,16 @@ def package(generated: Sequence[tuple[dict[str, Any], Path]], docs_root: Path) -
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("preflight", "generate"), nargs="?", default="generate")
+    parser.add_argument("--batch", choices=tuple(RETRY_BATCHES), default="retry-a")
     args = parser.parse_args(argv)
-    rows, output_root, docs_root = load_retries()
+    rows, output_root, docs_root = load_retries(args.batch)
     if args.command == "preflight":
         validate_release()
-        print(f"PASS: {len(rows)} retry-a selections; outputs: {output_root}; presentation: {docs_root}")
+        print(f"PASS: {len(rows)} {args.batch} selections; outputs: {output_root}; presentation: {docs_root}")
         return
-    generated, docs_root = generate()
-    contact = package(generated, docs_root)
-    print(f"PASS: retry-a generated at {output_root}; contact sheet: {contact}")
+    generated, docs_root = generate(args.batch)
+    contact = package(args.batch, generated, docs_root)
+    print(f"PASS: {args.batch} generated at {output_root}; contact sheet: {contact}")
 
 
 if __name__ == "__main__":  # pragma: no cover

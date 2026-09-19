@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "status": "approved_selective_retry_plan",
+  "retry_batch": "retry-b",
+  "scope": "Three hero-v2 retry-b concepts only. Existing canonical-v1, retry-a, and keeper artifacts are immutable and excluded.",
+  "source_batch": "docs/showcase/final/hero-v2/generations/canonical-v1/GENERATION_SUMMARY.md",
+  "defaults": {
+    "release_candidate": "mix-025",
+    "mode": "turbo-pose-control",
+    "geometry": "native_aspect_preserving",
+    "steps": 8,
+    "cfg": 0.0,
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "style_lora": null
+  },
+  "output_root": "/lambda/nfs/adhit/krea2-pose/showcase/hero-v2/retry-b/",
+  "presentation_root": "docs/showcase/final/hero-v2/generations/retry-b/",
+  "retries": [
+    {
+      "concept_name": "realistic female warrior",
+      "slug": "realistic-female-warrior",
+      "source_stem": "real_human_humanart_15000000001026",
+      "control_path": "docs/showcase/final/hero-v2/control-audition/controls/realistic-female-warrior/03_real_human_humanart_15000000001026.png",
+      "dimensions": { "width": 1216, "height": 832 },
+      "people_count": 1,
+      "control_change": "Uses audition control 03 for retry-b.",
+      "seed": 7194308601,
+      "control_scale": 1.25,
+      "prompt": "A full-body realistic female warrior in practical dark steel and leather armor with a weathered cloak, shown in a rugged windswept landscape, natural skin texture, cool dawn light, restrained cinematic fantasy realism, grounded materials, and clear full-body action."
+    },
+    {
+      "concept_name": "moonlit lotus princess",
+      "slug": "moonlit-lotus-princess",
+      "source_stem": "painting_humanart_9000000000724",
+      "control_path": "docs/showcase/final/hero-v2/control-audition/controls/moonlit-priestess-dreamy-floral-oracle/02_painting_humanart_9000000000724.png",
+      "dimensions": { "width": 768, "height": 1344 },
+      "people_count": 1,
+      "control_change": "Reuses audition control 02 for retry-b.",
+      "seed": 7194308602,
+      "control_scale": 1.0,
+      "prompt": "A moonlit lotus princess in flowing ivory and pale blue silk robes, seated peacefully among blooming night flowers and floating petals in an enchanted garden, silver lunar glow, dreamy romantic fantasy painting, delicate textures, luminous floral atmosphere, and elegant serenity."
+    },
+    {
+      "concept_name": "astral empress / cosmic oracle",
+      "slug": "astral-empress-cosmic-oracle",
+      "source_stem": "sculpture_humanart_14000000004082",
+      "control_path": "docs/showcase/final/hero-v2/control-audition/controls/stained-glass-saint-celestial-figure/02_sculpture_humanart_14000000004082.png",
+      "dimensions": { "width": 1024, "height": 1024 },
+      "people_count": 1,
+      "control_change": "Reuses audition control 02 for retry-b.",
+      "seed": 7194308603,
+      "control_scale": 1.0,
+      "prompt": "A cosmic oracle seated in a centered meditative pose, wearing radiant midnight-blue, ivory, and gold ceremonial robes, surrounded by celestial motifs, star maps, luminous halos, and prismatic sacred geometry, in a surreal astral sanctuary, richly detailed mystical illustration, luminous atmosphere, elegant symmetry, and deep cosmic color."
+    }
+  ]
+}
