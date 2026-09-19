@@ -9,8 +9,10 @@ Training uses **Krea-2 Raw**. Inference and evaluation use **Krea-2 Turbo**.
 The pose condition controls broad body geometry while the prompt controls compatible identity, clothing, environment, lighting, and rendering style.
 
 <p align="center">
-  <img src="docs/showcase/final/hero-v1/final_showcase_collage.png" alt="Krea-2 Pose Control final showcase" width="100%">
+  <img src="docs/showcase/final/hero-v2/final/final_generation_montage.png" alt="Krea-2 Pose Control final showcase" width="100%">
 </p>
+
+[Matching pose conditions](docs/showcase/final/hero-v2/final/final_condition_montage.png)
 
 See [prompting.md](prompting.md) for prompt structure, control-strength guidance, examples, and common failure modes.
 

@@ -11,7 +11,7 @@ tags:
 Pose-conditioned image generation for **Krea-2** using a 17-keypoint body skeleton.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/s-adhit/krea2-pose-controlnet/main/docs/showcase/final/hero-v1/final_showcase_collage.png" alt="Krea-2 Pose Control showcase" width="100%">
+  <img src="https://raw.githubusercontent.com/s-adhit/krea2-pose-controlnet/main/docs/showcase/final/hero-v2/final/final_generation_montage.png" alt="Krea-2 Pose Control showcase" width="100%">
 </p>
 
 The pose condition controls broad body geometry and placement, while the prompt controls subject appearance, clothing, environment, lighting, and style.
@@ -91,4 +91,3 @@ Native aspect-preserving inference gave better pose adherence than dynamic-768 i
 * [Release decision](https://github.com/s-adhit/krea2-pose-controlnet/blob/main/docs/evaluation/release/FINAL_RELEASE_DECISION.md)
 * [PoseBridge dataset](https://huggingface.co/datasets/adhit-420/PoseBridge)
 * [Krea-2](https://github.com/krea-ai/krea-2)
-

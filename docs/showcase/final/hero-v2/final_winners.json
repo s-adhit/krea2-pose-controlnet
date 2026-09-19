@@ -1,0 +1,278 @@
+{
+  "format_version": 1,
+  "id": "final-hero-v2-winners",
+  "status": "frozen",
+  "ordering": "Matches final_generation_montage.png and final_condition_montage.png left-to-right, first row then second row.",
+  "winners": [
+    {
+      "order": 1,
+      "id": "psychedelic-swordswoman",
+      "concept": "psychedelic swordswoman",
+      "generation_source_path": "docs/showcase/final/hero-v1/original_winners/female_swordswoman_psychedelic.png",
+      "control_source_path": "docs/showcase/final/hero-v1/conditions/female_swordswoman_psychedelic.png",
+      "generation_path": "docs/showcase/final/hero-v2/final/01_psychedelic-swordswoman_generation.png",
+      "control_path": "docs/showcase/final/hero-v2/final/01_psychedelic-swordswoman_condition.png",
+      "exact_prompt": "A female swordswoman in ornate fantasy clothing wielding a long glowing sword, stylized digital painting with bold expressive brushstrokes and a vibrant psychedelic color palette, iridescent marbled fabrics, surreal fantasy mood, deep shadows, dramatic theatrical lighting, highly detailed concept art.",
+      "seed": 7194308222,
+      "dimensions": {
+        "width": 896,
+        "height": 1152
+      },
+      "candidate": "mix-025",
+      "control_scale": 1.0,
+      "source_provenance": {
+        "batch": "hero-v1",
+        "generation_sidecar_path": "docs/showcase/final/hero-v1/original_winners/female_swordswoman_psychedelic.json",
+        "recorded_output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/generations/04_02_female_swordswoman_psychedelic_s2.png",
+        "recorded_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/controls/danbooru_anime_11917323.png",
+        "release_id": "krea2-pose-control-lora-v1",
+        "release_sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+      },
+      "generation_sha256": "2604b147710c27b3ec7a1122addd2821caafc431fb7d2f43589c514dcda02092",
+      "control_sha256": "c6f87ed4cba13a1e2ae95bc6b95ddc9e44a7cad69266dc60176aa9e55b091915"
+    },
+    {
+      "order": 2,
+      "id": "fantasy-mage",
+      "concept": "fantasy mage",
+      "generation_source_path": "docs/showcase/final/hero-v1/original_winners/fantasy_mage.png",
+      "control_source_path": "docs/showcase/final/hero-v1/conditions/fantasy_mage.png",
+      "generation_path": "docs/showcase/final/hero-v2/final/02_fantasy-mage_generation.png",
+      "control_path": "docs/showcase/final/hero-v2/final/02_fantasy-mage_condition.png",
+      "exact_prompt": "an ancient fantasy mage in layered sapphire, burgundy and ivory ceremonial robes, intricate gold embroidery, arcane jewelry and weathered magical textiles, inside a vast ruined cathedral filled with drifting dust and fragments of glowing runes, cold blue window light mixed with warm candlelight, richly detailed cinematic fantasy painting, dramatic atmosphere, tactile fabrics and ornate fantasy craftsmanship",
+      "seed": 1847302951,
+      "dimensions": {
+        "width": 896,
+        "height": 1152
+      },
+      "candidate": "mix-025",
+      "control_scale": 1.0,
+      "source_provenance": {
+        "batch": "hero-v1",
+        "generation_sidecar_path": "docs/showcase/final/hero-v1/original_winners/fantasy_mage.json",
+        "recorded_output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/generations/02_fantasy_mage_m1.png",
+        "recorded_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/painting_humanart_10000000004967.png",
+        "release_id": "krea2-pose-control-lora-v1",
+        "release_sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+      },
+      "generation_sha256": "3e6fb59479958285c79b505a6a918f5ef1bdb2d60be22548a16dc74db2fd96b1",
+      "control_sha256": "4917a0b8043a25dd4094e396515b3ef97afd2c3b16f72e60d00f1d88e5d18a0c"
+    },
+    {
+      "order": 3,
+      "id": "comic-fashion",
+      "concept": "comic fashion",
+      "generation_source_path": "docs/showcase/final/hero-v1/original_winners/comic_fashion.png",
+      "control_source_path": "docs/showcase/final/hero-v1/conditions/comic_fashion.png",
+      "generation_path": "docs/showcase/final/hero-v2/final/03_comic-fashion_generation.png",
+      "control_path": "docs/showcase/final/hero-v2/final/03_comic-fashion_condition.png",
+      "exact_prompt": "a severe dark-haired comic-fashion antihero wearing a long structured charcoal coat, sharp tailored layers, metallic accessories and bold geometric details, photographed like an avant-garde fashion editorial against graphic architectural shapes, dramatic hard shadows, deep indigo and black palette with selective gold accents, expressive manga-inspired linework blended with high-fashion photography, powerful cinematic composition",
+      "seed": 2519074836,
+      "dimensions": {
+        "width": 1216,
+        "height": 832
+      },
+      "candidate": "mix-025",
+      "control_scale": 1.0,
+      "source_provenance": {
+        "batch": "hero-v1",
+        "generation_sidecar_path": "docs/showcase/final/hero-v1/original_winners/comic_fashion.json",
+        "recorded_output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/generations/09_comic_fashion_unique.png",
+        "recorded_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/real_human_humanart_15000000000930.png",
+        "release_id": "krea2-pose-control-lora-v1",
+        "release_sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+      },
+      "generation_sha256": "09bd533408c53f914911c36b018a9dfd37fde531aad7d6e81ab9412bab252a0c",
+      "control_sha256": "1c405fc440641934017a14fafbb80e8490a70b0639c20c4b46fe7f96419a2dca"
+    },
+    {
+      "order": 4,
+      "id": "starry-night-painterly",
+      "concept": "starry-night painterly",
+      "generation_source_path": "docs/showcase/final/hero-v1/original_winners/starry_night_painterly.png",
+      "control_source_path": "docs/showcase/final/hero-v1/conditions/starry_night_painterly.png",
+      "generation_path": "docs/showcase/final/hero-v2/final/04_starry-night-painterly_generation.png",
+      "control_path": "docs/showcase/final/hero-v2/final/04_starry-night-painterly_condition.png",
+      "exact_prompt": "A solitary figure in flowing clothing beneath a swirling star-filled night sky, painterly dreamlike scene with expressive brushwork, luminous blues and warm gold highlights, poetic atmosphere, richly textured, highly detailed, fantasy-inspired nightscape.",
+      "seed": 7194308251,
+      "dimensions": {
+        "width": 704,
+        "height": 1472
+      },
+      "candidate": "mix-025",
+      "control_scale": 1.0,
+      "source_provenance": {
+        "batch": "hero-v1",
+        "generation_sidecar_path": "docs/showcase/final/hero-v1/original_winners/starry_night_painterly.json",
+        "recorded_output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/generations/09_05_starry_night_painterly_s1.png",
+        "recorded_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch2-v1/controls/painting_humanart_9000000000608.png",
+        "release_id": "krea2-pose-control-lora-v1",
+        "release_sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+      },
+      "generation_sha256": "d17364327ff73f49e7464c6558d893585c7870365c665153151b3e8f843921e3",
+      "control_sha256": "cff02adf69f638208e42958918ae1a8bc7724a95f96ba9b31a652479b8ecb6d3"
+    },
+    {
+      "order": 5,
+      "id": "dark-fantasy-jester",
+      "concept": "dark-fantasy jester",
+      "generation_source_path": "docs/showcase/final/hero-v1/original_winners/dark_fantasy_jester.png",
+      "control_source_path": "docs/showcase/final/hero-v1/conditions/dark_fantasy_jester.png",
+      "generation_path": "docs/showcase/final/hero-v2/final/05_dark-fantasy-jester_generation.png",
+      "control_path": "docs/showcase/final/hero-v2/final/05_dark-fantasy-jester_condition.png",
+      "exact_prompt": "a sinister dark-fantasy court jester in elaborate black, crimson and antique-gold ceremonial clothing, asymmetric silk panels, embroidered bells, dramatic ruffled collar, intricate harlequin details and a mysterious theatrical mask, inside a decaying gothic palace hall with faded murals and candlelit stone arches, deep shadows with saturated jewel-tone highlights, painterly dark-fantasy concept art, elegant, strange and unsettling",
+      "seed": 3028147759,
+      "dimensions": {
+        "width": 1472,
+        "height": 704
+      },
+      "candidate": "mix-025",
+      "control_scale": 1.0,
+      "source_provenance": {
+        "batch": "hero-v1",
+        "generation_sidecar_path": "docs/showcase/final/hero-v1/original_winners/dark_fantasy_jester.json",
+        "recorded_output_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/generations/03_dark_fantasy_jester_unique.png",
+        "recorded_control_path": "/lambda/nfs/adhit/krea2-pose/showcase/final/batch1-v1/controls/danbooru_anime_11903560.png",
+        "release_id": "krea2-pose-control-lora-v1",
+        "release_sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+      },
+      "generation_sha256": "7186696c5e7bb8dea28d626a96c5d8bb9b41dbfb497762b641b74b8c2a3a2ff1",
+      "control_sha256": "e43ab4ee5d717fe2de6eafc3cfd2861a229c30a9d9482bfd5bf5ad270b893169"
+    },
+    {
+      "order": 6,
+      "id": "elegant-male-warrior-wandering-knight",
+      "concept": "elegant male warrior / wandering knight",
+      "generation_source_path": "docs/showcase/final/hero-v2/generations/canonical-v1/elegant-male-warrior-wandering-knight.png",
+      "control_source_path": "docs/showcase/final/hero-v2/generations/canonical-v1/controls/elegant-male-warrior-wandering-knight.png",
+      "generation_path": "docs/showcase/final/hero-v2/final/06_elegant-male-warrior-wandering-knight_generation.png",
+      "control_path": "docs/showcase/final/hero-v2/final/06_elegant-male-warrior-wandering-knight_condition.png",
+      "exact_prompt": "An elegant wandering knight in tailored charcoal wool, aged steel accents and a deep green travel cloak, crossing a quiet stone moor beneath an overcast sky, soft directional daylight, refined realistic fantasy photography, natural fabric texture and muted cinematic color.",
+      "seed": 7194308402,
+      "dimensions": {
+        "width": 832,
+        "height": 1216
+      },
+      "candidate": "mix-025",
+      "control_scale": 1.0,
+      "source_provenance": {
+        "batch": "canonical-v1",
+        "generation_sidecar_path": "docs/showcase/final/hero-v2/generations/canonical-v1/elegant-male-warrior-wandering-knight.json",
+        "recorded_output_path": "/lambda/nfs/adhit/krea2-pose/showcase/hero-v2/canonical-v1/elegant-male-warrior-wandering-knight.png",
+        "recorded_control_path": "/home/ubuntu/krea2-pose-controlnet/docs/showcase/final/hero-v2/control-audition/controls/elegant-male-warrior-wandering-knight/01_painting_humanart_9000000000455.png",
+        "release_id": "krea2-pose-control-lora-v1",
+        "release_sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+      },
+      "generation_sha256": "b56cb886694ade72d832932a2068c0f152b12b26c47c737971d933c6055924f9",
+      "control_sha256": "9c7bf449c539fadc1d3a2b2c0f194bcc4e07245c2b09545f46d000ebfa45c773"
+    },
+    {
+      "order": 7,
+      "id": "gothic-masked-noble-with-attendant",
+      "concept": "gothic masked noble with attendant",
+      "generation_source_path": "docs/showcase/final/hero-v2/generations/canonical-v1/gothic-masked-noble-with-attendant.png",
+      "control_source_path": "docs/showcase/final/hero-v2/generations/canonical-v1/controls/gothic-masked-noble-with-attendant.png",
+      "generation_path": "docs/showcase/final/hero-v2/final/07_gothic-masked-noble-with-attendant_generation.png",
+      "control_path": "docs/showcase/final/hero-v2/final/07_gothic-masked-noble-with-attendant_condition.png",
+      "exact_prompt": "A masked gothic noble and one devoted attendant in black velvet, antique silver and muted crimson ceremonial dress, inside a candlelit ancestral hall of dark stone and faded portraits, low amber light and deep shadows, elegant cinematic dark-fantasy painting, ornate textile detail.",
+      "seed": 7194308406,
+      "dimensions": {
+        "width": 1152,
+        "height": 896
+      },
+      "candidate": "mix-025",
+      "control_scale": 1.0,
+      "source_provenance": {
+        "batch": "canonical-v1",
+        "generation_sidecar_path": "docs/showcase/final/hero-v2/generations/canonical-v1/gothic-masked-noble-with-attendant.json",
+        "recorded_output_path": "/lambda/nfs/adhit/krea2-pose/showcase/hero-v2/canonical-v1/gothic-masked-noble-with-attendant.png",
+        "recorded_control_path": "/home/ubuntu/krea2-pose-controlnet/docs/showcase/final/hero-v2/control-audition/controls/gothic-masked-noble-with-attendant/02_real_human_humanart_15000000002158.png",
+        "release_id": "krea2-pose-control-lora-v1",
+        "release_sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+      },
+      "generation_sha256": "2b0dec314d41dbb5efcb2557104dfcacfb0da2508a57bbeec414fdb95ddbad1c",
+      "control_sha256": "0bc4632b4aff77a8c5683dd3053c5e8bd4678633081e672b51586c4ee9eaf8ed"
+    },
+    {
+      "order": 8,
+      "id": "painterly-mythic-companions",
+      "concept": "painterly mythic companions",
+      "generation_source_path": "docs/showcase/final/hero-v2/generations/retry-a/painterly-mythic-companions.png",
+      "control_source_path": "docs/showcase/final/hero-v2/generations/retry-a/controls/painterly-mythic-companions.png",
+      "generation_path": "docs/showcase/final/hero-v2/final/08_painterly-mythic-companions_generation.png",
+      "control_path": "docs/showcase/final/hero-v2/final/08_painterly-mythic-companions_condition.png",
+      "exact_prompt": "Exactly two mythic companions, both fully visible, in weathered indigo, ochre and moss-green travel layers, moving together through an ancient valley of tall grasses and distant standing stones, warm late-afternoon light, expressive painterly fantasy illustration, textured brushwork, and no additional people.",
+      "seed": 7194308505,
+      "dimensions": {
+        "width": 1216,
+        "height": 832
+      },
+      "candidate": "mix-025",
+      "control_scale": 1.25,
+      "source_provenance": {
+        "batch": "retry-a",
+        "generation_sidecar_path": "docs/showcase/final/hero-v2/generations/retry-a/painterly-mythic-companions.json",
+        "recorded_output_path": "/lambda/nfs/adhit/krea2-pose/showcase/hero-v2/retry-a/painterly-mythic-companions.png",
+        "recorded_control_path": "/home/ubuntu/krea2-pose-controlnet/docs/showcase/final/hero-v2/control-audition/controls/painterly-mythic-companions/02_painting_humanart_9000000000976.png",
+        "release_id": "krea2-pose-control-lora-v1",
+        "release_sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+      },
+      "generation_sha256": "51f0777ae27a23f7c72295cd3c1ad61358cb4b233c61081c254d8af1b98a5a55",
+      "control_sha256": "50e0128c76ef992ca911ef38212cdc31a48aa54df02b257ff95c169e24431449"
+    },
+    {
+      "order": 9,
+      "id": "moonlit-lotus-princess",
+      "concept": "moonlit lotus princess",
+      "generation_source_path": "docs/showcase/final/hero-v2/generations/retry-b/moonlit-lotus-princess.png",
+      "control_source_path": "docs/showcase/final/hero-v2/generations/retry-b/controls/moonlit-lotus-princess.png",
+      "generation_path": "docs/showcase/final/hero-v2/final/09_moonlit-lotus-princess_generation.png",
+      "control_path": "docs/showcase/final/hero-v2/final/09_moonlit-lotus-princess_condition.png",
+      "exact_prompt": "A moonlit lotus princess in flowing ivory and pale blue silk robes, seated peacefully among blooming night flowers and floating petals in an enchanted garden, silver lunar glow, dreamy romantic fantasy painting, delicate textures, luminous floral atmosphere, and elegant serenity.",
+      "seed": 7194308602,
+      "dimensions": {
+        "width": 768,
+        "height": 1344
+      },
+      "candidate": "mix-025",
+      "control_scale": 1.0,
+      "source_provenance": {
+        "batch": "retry-b",
+        "generation_sidecar_path": "docs/showcase/final/hero-v2/generations/retry-b/moonlit-lotus-princess.json",
+        "recorded_output_path": "/lambda/nfs/adhit/krea2-pose/showcase/hero-v2/retry-b/moonlit-lotus-princess.png",
+        "recorded_control_path": "/home/ubuntu/krea2-pose-controlnet/docs/showcase/final/hero-v2/control-audition/controls/moonlit-priestess-dreamy-floral-oracle/02_painting_humanart_9000000000724.png",
+        "release_id": "krea2-pose-control-lora-v1",
+        "release_sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+      },
+      "generation_sha256": "a689ee4773f35d7c974b9d9161e077aad090448bdaa798b5bdc3d8aa9e8a0983",
+      "control_sha256": "3ff4ab88bcb0e948cdcd8cfecac06e6cdd1cebf198d58d57d8e55e5b61072d96"
+    },
+    {
+      "order": 10,
+      "id": "astral-empress-cosmic-oracle",
+      "concept": "astral empress / cosmic oracle",
+      "generation_source_path": "docs/showcase/final/hero-v2/generations/retry-b/astral-empress-cosmic-oracle.png",
+      "control_source_path": "docs/showcase/final/hero-v2/generations/retry-b/controls/astral-empress-cosmic-oracle.png",
+      "generation_path": "docs/showcase/final/hero-v2/final/10_astral-empress-cosmic-oracle_generation.png",
+      "control_path": "docs/showcase/final/hero-v2/final/10_astral-empress-cosmic-oracle_condition.png",
+      "exact_prompt": "A cosmic oracle seated in a centered meditative pose, wearing radiant midnight-blue, ivory, and gold ceremonial robes, surrounded by celestial motifs, star maps, luminous halos, and prismatic sacred geometry, in a surreal astral sanctuary, richly detailed mystical illustration, luminous atmosphere, elegant symmetry, and deep cosmic color.",
+      "seed": 7194308603,
+      "dimensions": {
+        "width": 1024,
+        "height": 1024
+      },
+      "candidate": "mix-025",
+      "control_scale": 1.0,
+      "source_provenance": {
+        "batch": "retry-b",
+        "generation_sidecar_path": "docs/showcase/final/hero-v2/generations/retry-b/astral-empress-cosmic-oracle.json",
+        "recorded_output_path": "/lambda/nfs/adhit/krea2-pose/showcase/hero-v2/retry-b/astral-empress-cosmic-oracle.png",
+        "recorded_control_path": "/home/ubuntu/krea2-pose-controlnet/docs/showcase/final/hero-v2/control-audition/controls/stained-glass-saint-celestial-figure/02_sculpture_humanart_14000000004082.png",
+        "release_id": "krea2-pose-control-lora-v1",
+        "release_sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+      },
+      "generation_sha256": "7e0e6016a08de27553e2f55d67f97ead4a114394f970e4cfe21cd47e71d35829",
+      "control_sha256": "f194f02952408ba1b10cca70408b1f9ee676e8de16a4707317833ffc11bfdea8"
+    }
+  ]
+}
