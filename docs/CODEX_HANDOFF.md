@@ -2,9 +2,31 @@
 
 ## Current objective
 
-Materialize the seven frozen new `hero-v2` canonical `mix-025` candidates,
-then perform human visual review and only selective duo retries if warranted.
-Frozen `hero-v1` and evaluation artifacts remain unmodified.
+Materialize the approved five-concept `hero-v2` retry-a batch on the writable
+GH200 host, then conduct human visual review. Do not modify `canonical-v1`,
+the two accepted canonical-v1 keepers, hero-v1, or evaluation artifacts.
+
+## Hero-v2 retry-a status
+
+- Manifest: `docs/showcase/final/hero-v2/retries/retry-a/retry_a.json`
+- Readable plan: `docs/showcase/final/hero-v2/retries/retry-a/RETRY_A.md`
+- Runner: `scripts/generate_hero_v2_retry.py`; it reuses canonical release
+  validation/no-overwrite helpers and `inference.py` generation/runtime.
+- NFS output directory: `/lambda/nfs/adhit/krea2-pose/showcase/hero-v2/retry-a/`
+- Repo presentation directory:
+  `docs/showcase/final/hero-v2/generations/retry-a/`
+- Retry set: realistic female warrior (replacement native 1216x832 control,
+  seed 7194308501, scale 1.0); moonlit priestess (7194308502, 1.0);
+  stained-glass saint (7194308503, 1.0); fashion/editorial portrait
+  (7194308504, 1.0); painterly mythic companions (7194308505, 1.25).
+  The latter four retain their frozen canonical controls.
+- `uv run python -m py_compile scripts/generate_hero_v2_retry.py`: PASS.
+- `uv run python scripts/generate_hero_v2_retry.py preflight`: PASS. It
+  validated all five native control geometries, exact manifest contract, and
+  release artifact SHA. No generation was attempted in this sandbox.
+- This Codex sandbox's `/lambda/nfs` is read-only. Run the command below from
+  the writable GH200/Lambda host; the runner refuses to overwrite differing
+  NFS or presentation files.
 
 ## Hero-v2 canonical generation status
 
@@ -29,9 +51,16 @@ Frozen `hero-v1` and evaluation artifacts remain unmodified.
 
 ## Next recommended action
 
-From a shell with writable `/lambda/nfs`, run the canonical generation command
-above. Then perform human visual review; only the two duo concepts may receive
-a selective scale-`1.25` retry. Do not select winners automatically.
+From the writable GH200 host, run:
+
+```bash
+cd /home/ubuntu/krea2-pose-controlnet
+uv run python scripts/generate_hero_v2_retry.py preflight
+uv run python scripts/generate_hero_v2_retry.py generate
+```
+
+Then inspect `docs/showcase/final/hero-v2/generations/retry-a/retry-a_contact_sheet.png`
+and select only through human review. Do not commit or launch production training.
 
 ## Frozen input verification
 
@@ -134,6 +163,9 @@ The preceding control-only audition remains the provenance source:
 - `docs/showcase/final/hero-v2/final-selection/FINAL_SELECTION.md`
 - `docs/showcase/final/hero-v2/final-selection/final_selection.json`
 - `scripts/generate_hero_v2_canonical.py`
+- `docs/showcase/final/hero-v2/retries/retry-a/retry_a.json`
+- `docs/showcase/final/hero-v2/retries/retry-a/RETRY_A.md`
+- `scripts/generate_hero_v2_retry.py`
 - `docs/CODEX_HANDOFF.md`
 
 ## Verification

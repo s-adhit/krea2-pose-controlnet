@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "status": "approved_selective_retry_plan",
+  "scope": "Five hero-v2 retry-a concepts only. The two accepted canonical-v1 keepers are excluded, and canonical-v1 outputs are immutable.",
+  "source_batch": "docs/showcase/final/hero-v2/generations/canonical-v1/GENERATION_SUMMARY.md",
+  "defaults": {
+    "release_candidate": "mix-025",
+    "mode": "turbo-pose-control",
+    "geometry": "native_aspect_preserving",
+    "steps": 8,
+    "cfg": 0.0,
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "style_lora": null
+  },
+  "output_root": "/lambda/nfs/adhit/krea2-pose/showcase/hero-v2/retry-a/",
+  "presentation_root": "docs/showcase/final/hero-v2/generations/retry-a/",
+  "retries": [
+    {
+      "concept_name": "realistic female warrior",
+      "slug": "realistic-female-warrior",
+      "source_stem": "real_human_humanart_15000000001026",
+      "control_path": "docs/showcase/final/hero-v2/control-audition/controls/realistic-female-warrior/03_real_human_humanart_15000000001026.png",
+      "dimensions": { "width": 1216, "height": 832 },
+      "people_count": 1,
+      "control_change": "Replaces the canonical-v1 control with audition control 03.",
+      "seed": 7194308501,
+      "control_scale": 1.0,
+      "prompt": "A realistic female warrior in practical layered steel and dark leather armor, with a weathered cloak and travel-worn gear, shown as a full-body figure in a rugged windswept landscape, natural skin texture, cool mist and restrained dawn light, cinematic fantasy realism, tactile materials and grounded atmospheric detail."
+    },
+    {
+      "concept_name": "moonlit priestess / dreamy floral oracle",
+      "slug": "moonlit-priestess-dreamy-floral-oracle",
+      "source_stem": "painting_humanart_9000000000724",
+      "control_path": "docs/showcase/final/hero-v2/control-audition/controls/moonlit-priestess-dreamy-floral-oracle/02_painting_humanart_9000000000724.png",
+      "dimensions": { "width": 768, "height": 1344 },
+      "people_count": 1,
+      "control_change": "Retains the frozen canonical-v1 control.",
+      "seed": 7194308502,
+      "control_scale": 1.0,
+      "prompt": "A full-body moonlit floral oracle in layered ivory silk and pale blue embroidered veils, standing in a secluded garden surrounded by night-blooming flowers and drifting petals, silver lunar glow, dreamy romantic fantasy painting, delicate textures and luminous pastel color."
+    },
+    {
+      "concept_name": "stained-glass saint / celestial figure",
+      "slug": "stained-glass-saint-celestial-figure",
+      "source_stem": "sculpture_humanart_14000000004082",
+      "control_path": "docs/showcase/final/hero-v2/control-audition/controls/stained-glass-saint-celestial-figure/02_sculpture_humanart_14000000004082.png",
+      "dimensions": { "width": 1024, "height": 1024 },
+      "people_count": 1,
+      "control_change": "Retains the frozen canonical-v1 control.",
+      "seed": 7194308503,
+      "control_scale": 1.0,
+      "prompt": "A full-body celestial saint in radiant ivory and jewel-toned ceremonial robes, centered before an ornate wall of stained glass and gilded tracery, prismatic light, sacred icon-like composition, richly detailed luminous sacred-art illustration in sapphire, ruby and gold."
+    },
+    {
+      "concept_name": "realistic fashion/editorial portrait",
+      "slug": "realistic-fashion-editorial-portrait",
+      "source_stem": "painting_humanart_9000000001986",
+      "control_path": "docs/showcase/final/hero-v2/control-audition/controls/realistic-fashion-editorial-portrait/03_painting_humanart_9000000001986.png",
+      "dimensions": { "width": 896, "height": 1152 },
+      "people_count": 1,
+      "control_change": "Retains the frozen canonical-v1 control.",
+      "seed": 7194308504,
+      "control_scale": 1.0,
+      "prompt": "A full-body contemporary fashion model in a sculptural graphite tailored ensemble with brushed-metal jewelry, standing in a minimalist terracotta studio, soft sculpting daylight and subtle film grain, premium photographic fashion editorial, natural skin texture and restrained modern color."
+    },
+    {
+      "concept_name": "painterly mythic companions",
+      "slug": "painterly-mythic-companions",
+      "source_stem": "painting_humanart_9000000000976",
+      "control_path": "docs/showcase/final/hero-v2/control-audition/controls/painterly-mythic-companions/02_painting_humanart_9000000000976.png",
+      "dimensions": { "width": 1216, "height": 832 },
+      "people_count": 2,
+      "control_change": "Retains the frozen canonical-v1 control.",
+      "seed": 7194308505,
+      "control_scale": 1.25,
+      "prompt": "Exactly two mythic companions, both fully visible, in weathered indigo, ochre and moss-green travel layers, moving together through an ancient valley of tall grasses and distant standing stones, warm late-afternoon light, expressive painterly fantasy illustration, textured brushwork, and no additional people."
+    }
+  ]
+}
