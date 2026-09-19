@@ -1,0 +1,11 @@
+# Evaluation method summary
+
+Source: `docs/blog-evidence/EVALUATION_RESULTS.md; docs/blog-evidence/EVALUATION_METHODS.md; docs/blog-evidence/evaluation_methods.json`.
+
+| Metric / process | Exact definition | Threshold / model | Aggregation | Failure handling | Important caveat |
+| --- | --- | --- | --- | --- | --- |
+| PCK | For each eligible reference joint, 1[d ≤ threshold × reference-person valid-joint extent diagonal]; inclusive comparison in generated-image coordinates | Thresholds .05, .10, .20 | Global correct eligible joints / global eligible joints | Missing valid detector joint and unmatched eligible reference remain denominator zeros | Not per-image/person mean; normalization is extent diagonal, not bbox/torso/head scale |
+| Person matching | One-to-one Hungarian assignment using mean unnormalized pixel Euclidean distance over shared valid joints | Keypoint R-CNN ResNet50-FPN COCO_V1; person and keypoint confidence ≥ .5 | Finite-cost assigned reference/generated pairs; `matched` is a person-pair count | No-shared-joint pairs forbidden; unmatched references score zero eligible joints | No match-distance cutoff; extra generated people are reported but not directly PCK-penalized |
+| CLIP | Explicit cosine of generated-image and exact evaluation-prompt embeddings | `openai/clip-vit-base-patch32` | Arithmetic mean over every completed generated image | Missing required generation raises; no silent drop | Independent of PCK matching; prompt injection uses injected prompt text |
+| Native geometry | Persisted paired cached-latent bucket with validated recorded resize/crop geometry; cached control latent consumed at generation | Native aspect-preserving cached geometry | PCK source references transformed through native geometry | Frozen scoring requires complete generation set | Original paired RGB/control preprocessing used shared geometry |
+| Dynamic-768 geometry | Closest log-aspect bucket, resize-to-cover, center crop, authoritative control VAE encode with fixed sampling seed; source RGB not used | Nine frozen buckets, including 768×768 and aspect buckets | PCK source references transformed through dynamic geometry | Frozen five-condition ablation requires complete set | Not a pure resolution-only experiment: bucket, crop framing, control raster, and control encoding differ |
