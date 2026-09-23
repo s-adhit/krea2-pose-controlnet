@@ -19,35 +19,35 @@
   "format_version": 1,
   "geometry": {
     "bucket": [
-      1024,
-      1024
+      832,
+      1216
     ],
     "crop_box": [
       0,
-      0,
-      1024,
-      1024
+      17,
+      832,
+      1233
     ],
     "resized_size": [
-      1024,
-      1024
+      832,
+      1250
     ],
     "source_size": [
-      640,
+      426,
       640
     ]
   },
   "geometry_mode": "explicit",
-  "height": 1024,
+  "height": 1216,
   "mode": "turbo-pose-control",
   "mu": 1.15,
   "output_dimensions": [
-    1024,
-    1024
+    832,
+    1216
   ],
-  "output_path": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/generations/single_06_seated__editorial_high_fashion_photography.png",
-  "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/single_06_seated.png",
-  "pose_image_sha256": "f6ad369e84110750736324004bb62b9ebf0615a76d0fc7dc2f3a83d9113052dd",
+  "output_path": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/generations/single_08_overhead_arms__editorial_high_fashion_photography.png",
+  "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/single_08_overhead_arms.png",
+  "pose_image_sha256": "70b533c7feaf5897ecebe5db4ffb26af0dc45f2c06332ac66a3aa15d3eb7a5ed",
   "pose_lora_checkpoint": null,
   "prompt": "Editorial high-fashion photography, sculptural slate tailoring with silver jewelry and matte silk, a minimalist travertine gallery with sculpted light, soft directional studio illumination, premium medium-format detail, subtle film grain, quiet modern luxury.",
   "release": {
@@ -55,7 +55,7 @@
     "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
     "sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
   },
-  "seed": 2575746663293500282,
+  "seed": 4400101060460139206,
   "steps": 8,
   "style_lora": {
     "effective_prompt": "Editorial high-fashion photography, sculptural slate tailoring with silver jewelry and matte silk, a minimalist travertine gallery with sculpted light, soft directional studio illumination, premium medium-format detail, subtle film grain, quiet modern luxury.",
@@ -74,5 +74,5 @@
     "steps": 8
   },
   "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
-  "width": 1024
+  "width": 832
 }

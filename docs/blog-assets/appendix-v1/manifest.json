@@ -672,7 +672,7 @@
       "control_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/controls/coco_268556_2203816.png",
       "control_type": "single",
       "copied_control_path": "docs/blog-assets/appendix-v1/controls/single_06_seated.png",
-      "failure": "stale appendix output geometry (640, 640); expected (1024, 1024)",
+      "failure": null,
       "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
       "height": 1024,
       "id": "single_06_seated__cinematic_fantasy_realism",
@@ -691,11 +691,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 01_seated",
       "source_height": 640,
       "source_width": 640,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "cinematic_fantasy_realism",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1024
     },
     {
@@ -705,7 +705,7 @@
       "control_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/controls/coco_268556_2203816.png",
       "control_type": "single",
       "copied_control_path": "docs/blog-assets/appendix-v1/controls/single_06_seated.png",
-      "failure": "stale appendix output geometry (640, 640); expected (1024, 1024)",
+      "failure": null,
       "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
       "height": 1024,
       "id": "single_06_seated__painterly_storybook_fantasy",
@@ -724,11 +724,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 01_seated",
       "source_height": 640,
       "source_width": 640,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "painterly_storybook_fantasy",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1024
     },
     {
@@ -738,7 +738,7 @@
       "control_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/controls/coco_268556_2203816.png",
       "control_type": "single",
       "copied_control_path": "docs/blog-assets/appendix-v1/controls/single_06_seated.png",
-      "failure": "stale appendix output geometry (640, 640); expected (1024, 1024)",
+      "failure": null,
       "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
       "height": 1024,
       "id": "single_06_seated__polished_modern_anime",
@@ -757,11 +757,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 01_seated",
       "source_height": 640,
       "source_width": 640,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "polished_modern_anime",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1024
     },
     {
@@ -771,7 +771,7 @@
       "control_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/controls/coco_268556_2203816.png",
       "control_type": "single",
       "copied_control_path": "docs/blog-assets/appendix-v1/controls/single_06_seated.png",
-      "failure": "stale appendix output geometry (640, 640); expected (1024, 1024)",
+      "failure": null,
       "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
       "height": 1024,
       "id": "single_06_seated__editorial_high_fashion_photography",
@@ -790,11 +790,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 01_seated",
       "source_height": 640,
       "source_width": 640,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "editorial_high_fashion_photography",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1024
     },
     {
@@ -823,11 +823,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 02_crouched",
       "source_height": 313,
       "source_width": 612,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "cinematic_fantasy_realism",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1472
     },
     {
@@ -856,11 +856,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 02_crouched",
       "source_height": 313,
       "source_width": 612,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "painterly_storybook_fantasy",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1472
     },
     {
@@ -889,11 +889,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 02_crouched",
       "source_height": 313,
       "source_width": 612,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "polished_modern_anime",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1472
     },
     {
@@ -922,11 +922,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 02_crouched",
       "source_height": 313,
       "source_width": 612,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "editorial_high_fashion_photography",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1472
     },
     {
@@ -955,11 +955,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 04_overhead_arms",
       "source_height": 640,
       "source_width": 426,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "cinematic_fantasy_realism",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 832
     },
     {
@@ -988,11 +988,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 04_overhead_arms",
       "source_height": 640,
       "source_width": 426,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "painterly_storybook_fantasy",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 832
     },
     {
@@ -1021,11 +1021,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 04_overhead_arms",
       "source_height": 640,
       "source_width": 426,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "polished_modern_anime",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 832
     },
     {
@@ -1054,11 +1054,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 04_overhead_arms",
       "source_height": 640,
       "source_width": 426,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "editorial_high_fashion_photography",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 832
     },
     {
@@ -1087,11 +1087,11 @@
       "source_evaluation_showcase_provenance": "hero-v2 canonical-v1 / gothic masked noble with attendant",
       "source_height": 896,
       "source_width": 1152,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "cinematic_fantasy_realism",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1152
     },
     {
@@ -1120,11 +1120,11 @@
       "source_evaluation_showcase_provenance": "hero-v2 canonical-v1 / gothic masked noble with attendant",
       "source_height": 896,
       "source_width": 1152,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "painterly_storybook_fantasy",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1152
     },
     {
@@ -1153,11 +1153,11 @@
       "source_evaluation_showcase_provenance": "hero-v2 canonical-v1 / gothic masked noble with attendant",
       "source_height": 896,
       "source_width": 1152,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "polished_modern_anime",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1152
     },
     {
@@ -1186,11 +1186,11 @@
       "source_evaluation_showcase_provenance": "hero-v2 canonical-v1 / gothic masked noble with attendant",
       "source_height": 896,
       "source_width": 1152,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "editorial_high_fashion_photography",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1152
     },
     {
@@ -1219,11 +1219,11 @@
       "source_evaluation_showcase_provenance": "hero-v2 canonical-v1 / painterly mythic companions",
       "source_height": 832,
       "source_width": 1216,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "cinematic_fantasy_realism",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1216
     },
     {
@@ -1252,11 +1252,11 @@
       "source_evaluation_showcase_provenance": "hero-v2 canonical-v1 / painterly mythic companions",
       "source_height": 832,
       "source_width": 1216,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "painterly_storybook_fantasy",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1216
     },
     {
@@ -1285,11 +1285,11 @@
       "source_evaluation_showcase_provenance": "hero-v2 canonical-v1 / painterly mythic companions",
       "source_height": 832,
       "source_width": 1216,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "polished_modern_anime",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1216
     },
     {
@@ -1318,11 +1318,11 @@
       "source_evaluation_showcase_provenance": "hero-v2 canonical-v1 / painterly mythic companions",
       "source_height": 832,
       "source_width": 1216,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "editorial_high_fashion_photography",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1216
     },
     {
@@ -1351,11 +1351,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 10_overlapping_two_person_pose",
       "source_height": 5184,
       "source_width": 3456,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "cinematic_fantasy_realism",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 832
     },
     {
@@ -1384,11 +1384,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 10_overlapping_two_person_pose",
       "source_height": 5184,
       "source_width": 3456,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "painterly_storybook_fantasy",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 832
     },
     {
@@ -1417,11 +1417,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 10_overlapping_two_person_pose",
       "source_height": 5184,
       "source_width": 3456,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "polished_modern_anime",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 832
     },
     {
@@ -1450,11 +1450,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 10_overlapping_two_person_pose",
       "source_height": 5184,
       "source_width": 3456,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "editorial_high_fashion_photography",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 832
     },
     {
@@ -1483,11 +1483,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 12_crowd_dense_group",
       "source_height": 427,
       "source_width": 640,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "cinematic_fantasy_realism",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1216
     },
     {
@@ -1516,11 +1516,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 12_crowd_dense_group",
       "source_height": 427,
       "source_width": 640,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "painterly_storybook_fantasy",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1216
     },
     {
@@ -1549,11 +1549,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 12_crowd_dense_group",
       "source_height": 427,
       "source_width": 640,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "polished_modern_anime",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1216
     },
     {
@@ -1582,11 +1582,11 @@
       "source_evaluation_showcase_provenance": "hard-pose-multiperson-mix-025-v1 / 12_crowd_dense_group",
       "source_height": 427,
       "source_width": 640,
-      "status": "pending_cuda",
+      "status": "success",
       "steps": 8,
       "style_family": "editorial_high_fashion_photography",
       "style_lora": null,
-      "success": null,
+      "success": true,
       "width": 1216
     }
   ],

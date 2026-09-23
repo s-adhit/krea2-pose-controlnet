@@ -19,46 +19,46 @@
   "format_version": 1,
   "geometry": {
     "bucket": [
-      1024,
-      1024
+      1216,
+      832
     ],
     "crop_box": [
+      15,
       0,
-      0,
-      1024,
-      1024
+      1231,
+      832
     ],
     "resized_size": [
-      1024,
-      1024
+      1247,
+      832
     ],
     "source_size": [
       640,
-      640
+      427
     ]
   },
   "geometry_mode": "explicit",
-  "height": 1024,
+  "height": 832,
   "mode": "turbo-pose-control",
   "mu": 1.15,
   "output_dimensions": [
-    1024,
-    1024
+    1216,
+    832
   ],
-  "output_path": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/generations/single_06_seated__editorial_high_fashion_photography.png",
-  "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/single_06_seated.png",
-  "pose_image_sha256": "f6ad369e84110750736324004bb62b9ebf0615a76d0fc7dc2f3a83d9113052dd",
+  "output_path": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/generations/multi_04_dense_group__cinematic_fantasy_realism.png",
+  "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/multi_04_dense_group.png",
+  "pose_image_sha256": "e487e747fd868117073d9e3c907f085fb6a2dfaea4e0d6456fcebe0503e23f19",
   "pose_lora_checkpoint": null,
-  "prompt": "Editorial high-fashion photography, sculptural slate tailoring with silver jewelry and matte silk, a minimalist travertine gallery with sculpted light, soft directional studio illumination, premium medium-format detail, subtle film grain, quiet modern luxury.",
+  "prompt": "Cinematic fantasy realism, elegant emerald wool garments with aged brass filigree and midnight-blue textiles, a ruined mountain observatory at storm-softened dawn, natural skin texture, tactile fabric and metal detail, restrained jewel tones, immersive filmic atmosphere.",
   "release": {
     "id": "krea2-pose-control-lora-v1",
     "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
     "sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
   },
-  "seed": 2575746663293500282,
+  "seed": 8005897438992571312,
   "steps": 8,
   "style_lora": {
-    "effective_prompt": "Editorial high-fashion photography, sculptural slate tailoring with silver jewelry and matte silk, a minimalist travertine gallery with sculpted light, soft directional studio illumination, premium medium-format detail, subtle film grain, quiet modern luxury.",
+    "effective_prompt": "Cinematic fantasy realism, elegant emerald wool garments with aged brass filigree and midnight-blue textiles, a ruined mountain observatory at storm-softened dawn, natural skin texture, tactile fabric and metal detail, restrained jewel tones, immersive filmic atmosphere.",
     "name": null,
     "path": null,
     "sha256": null,
@@ -74,5 +74,5 @@
     "steps": 8
   },
   "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
-  "width": 1024
+  "width": 1216
 }

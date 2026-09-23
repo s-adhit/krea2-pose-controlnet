@@ -19,31 +19,31 @@
   "format_version": 1,
   "geometry": {
     "bucket": [
-      640,
-      640
+      1024,
+      1024
     ],
     "crop_box": [
       0,
       0,
-      640,
-      640
+      1024,
+      1024
     ],
     "resized_size": [
-      640,
-      640
+      1024,
+      1024
     ],
     "source_size": [
       640,
       640
     ]
   },
-  "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
-  "height": 640,
+  "geometry_mode": "explicit",
+  "height": 1024,
   "mode": "turbo-pose-control",
   "mu": 1.15,
   "output_dimensions": [
-    640,
-    640
+    1024,
+    1024
   ],
   "output_path": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/generations/single_06_seated__painterly_storybook_fantasy.png",
   "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/single_06_seated.png",
@@ -74,5 +74,5 @@
     "steps": 8
   },
   "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
-  "width": 640
+  "width": 1024
 }

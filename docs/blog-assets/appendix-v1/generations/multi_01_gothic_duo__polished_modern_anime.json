@@ -19,46 +19,46 @@
   "format_version": 1,
   "geometry": {
     "bucket": [
-      1024,
-      1024
+      1152,
+      896
     ],
     "crop_box": [
       0,
       0,
-      1024,
-      1024
+      1152,
+      896
     ],
     "resized_size": [
-      1024,
-      1024
+      1152,
+      896
     ],
     "source_size": [
-      640,
-      640
+      1152,
+      896
     ]
   },
   "geometry_mode": "explicit",
-  "height": 1024,
+  "height": 896,
   "mode": "turbo-pose-control",
   "mu": 1.15,
   "output_dimensions": [
-    1024,
-    1024
+    1152,
+    896
   ],
-  "output_path": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/generations/single_06_seated__editorial_high_fashion_photography.png",
-  "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/single_06_seated.png",
-  "pose_image_sha256": "f6ad369e84110750736324004bb62b9ebf0615a76d0fc7dc2f3a83d9113052dd",
+  "output_path": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/generations/multi_01_gothic_duo__polished_modern_anime.png",
+  "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/multi_01_gothic_duo.png",
+  "pose_image_sha256": "0bc4632b4aff77a8c5683dd3053c5e8bd4678633081e672b51586c4ee9eaf8ed",
   "pose_lora_checkpoint": null,
-  "prompt": "Editorial high-fashion photography, sculptural slate tailoring with silver jewelry and matte silk, a minimalist travertine gallery with sculpted light, soft directional studio illumination, premium medium-format detail, subtle film grain, quiet modern luxury.",
+  "prompt": "Polished modern anime, sleek black-and-coral technical apparel with translucent accents, a rain-glossed neon botanical conservatory, cool cyan reflections and magenta rim light, crisp cel shading, refined linework, luminous contemporary color design.",
   "release": {
     "id": "krea2-pose-control-lora-v1",
     "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
     "sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
   },
-  "seed": 2575746663293500282,
+  "seed": 4254912873364022197,
   "steps": 8,
   "style_lora": {
-    "effective_prompt": "Editorial high-fashion photography, sculptural slate tailoring with silver jewelry and matte silk, a minimalist travertine gallery with sculpted light, soft directional studio illumination, premium medium-format detail, subtle film grain, quiet modern luxury.",
+    "effective_prompt": "Polished modern anime, sleek black-and-coral technical apparel with translucent accents, a rain-glossed neon botanical conservatory, cool cyan reflections and magenta rim light, crisp cel shading, refined linework, luminous contemporary color design.",
     "name": null,
     "path": null,
     "sha256": null,
@@ -74,5 +74,5 @@
     "steps": 8
   },
   "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
-  "width": 1024
+  "width": 1152
 }
