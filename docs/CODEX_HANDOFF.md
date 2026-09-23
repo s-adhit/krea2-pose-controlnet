@@ -4,7 +4,9 @@
 
 Publication-ready blog assets have been generated from frozen training,
 evaluation, infrastructure, release records, and a representative paired
-training-data sample. They await human review, then blog prose integration.
+training-data sample. The Data and conditioning montages were revised to a
+full-source justified editorial layout and await human review, then blog prose
+integration.
 Do not alter frozen evaluation artifacts, NFS checkpoints, release identity,
 or the existing hero-v2 winners.
 
@@ -45,14 +47,15 @@ It was neither recreated nor redesigned during this asset pass.
 - Exact values remain in the frozen result record and the generator constants;
   figure labels are presentation rounding only. The CLIP charts retain an
   absolute `0–0.40` axis so small differences are not visually exaggerated.
-- `scripts/generate_dataset_montage.py` renders an exact paired 24-sample,
-  6x4 RGB/control montage from the read-only PoseBridge snapshot. Its selection
-  is checked against both frozen train manifests. It outputs
+- `scripts/generate_dataset_montage.py` renders an exact paired 24-sample
+  RGB/control justified editorial montage from the read-only PoseBridge
+  snapshot. It uses uncropped, aspect-ratio-preserving source images and its
+  selection is checked against both frozen train manifests. It outputs
   `figures/dataset_rgb_montage.png`, `figures/dataset_condition_montage.png`,
   and `dataset_montage_manifest.json`. The manifest records order, paths,
-  source/display geometry, crop coordinates, source domain, hashes, and
-  available authoritative person counts. Controls are existing source files,
-  not regenerated or recolored.
+  source/display geometry, full-image bounds, shared cell positions, source
+  domain, hashes, and available authoritative person counts. Controls are
+  existing source files, not regenerated or recolored.
 
 ## Verification this session
 
@@ -69,14 +72,22 @@ PASS (dataset montage session):
 
 ```bash
 uv run python scripts/generate_dataset_montage.py
-# visual inspection of both dataset montage PNGs
+# visual inspection of both dataset montage PNGs: full-source justified layout
+# and shared paired positions confirmed
+# inline Python provenance audit of both frozen train manifests, source/control
+# stems, dimensions, and all recorded SHA-256 hashes
+# PASS: hashes, stems, geometry, and dual frozen-train provenance verified for
+# 24 paired samples
+git diff --check
 ```
 
 ## Files changed this session
 
-- `scripts/generate_blog_assets.py`
 - `scripts/generate_dataset_montage.py`
-- `docs/blog-assets/` (generated figures, tables, and index)
+- `docs/blog-assets/figures/dataset_rgb_montage.png`
+- `docs/blog-assets/figures/dataset_condition_montage.png`
+- `docs/blog-assets/dataset_montage_manifest.json`
+- `docs/blog-assets/BLOG_ASSET_INDEX.md`
 - `docs/CODEX_HANDOFF.md`
 
 Pre-existing/unrelated untracked file: `scripts/package_hero_v2_final.py`.
@@ -91,6 +102,6 @@ Do not commit or push without explicit authorization.
 
 ## Next recommended action
 
-Human review of `docs/blog-assets/`, including the paired dataset montages,
-then write blog prose using the asset index and frozen evidence records.
+Human review of `docs/blog-assets/`, including the paired full-source dataset
+montages, then write blog prose using the asset index and frozen evidence records.
 Preserve the approved architecture asset unchanged.

@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "description": "Representative exact paired RGB and existing pose-condition renders from the frozen PoseBridge training split, in shared left-to-right/top-to-bottom order.",
   "dataset_root": "/lambda/nfs/adhit/krea2-pose/posebridge_hf",
   "frozen_train_manifests_verified": [
@@ -7,18 +7,25 @@
     "/home/ubuntu/krea2-pose-controlnet/data/manifests/train.jsonl"
   ],
   "layout": {
-    "columns": 6,
-    "rows": 4,
-    "cell_dimensions": {
-      "width": 320,
-      "height": 320
+    "type": "justified editorial rows",
+    "canvas_dimensions": {
+      "width": 2048,
+      "height": 1418
     },
-    "cell_gap": 8,
+    "row_sizes": [
+      5,
+      6,
+      6,
+      7
+    ],
+    "outer_gutter": 12,
+    "cell_gap": 10,
     "background_rgb": [
       18,
       18,
       20
-    ]
+    ],
+    "image_treatment": "full-source, aspect-ratio-preserving resize; no cropping, distortion, recoloring, or stylization"
   },
   "assets": {
     "rgb_montage": "docs/blog-assets/figures/dataset_rgb_montage.png",
@@ -40,16 +47,22 @@
         "height": 409
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 537,
+        "height": 343
+      },
+      "layout_position": {
+        "x": 12,
+        "y": 12,
+        "row": 1,
+        "column": 1
       },
       "source_crop_box_xyxy": {
-        "left": 115,
+        "left": 0,
         "top": 0,
-        "right": 524,
+        "right": 640,
         "bottom": 409
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "coco photograph",
       "rgb_sha256": "c7801dc78a00e2c11afc7b533e77e3014d3c66b9c1ebf7a1184347171b82a68d",
       "pose_condition_sha256": "71eafa8263e56affbb575414bcb4ab4875506183d1ea40c50f2d057923782d40",
@@ -71,16 +84,22 @@
         "height": 348
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 631,
+        "height": 343
+      },
+      "layout_position": {
+        "x": 559,
+        "y": 12,
+        "row": 1,
+        "column": 2
       },
       "source_crop_box_xyxy": {
-        "left": 146,
+        "left": 0,
         "top": 0,
-        "right": 494,
+        "right": 640,
         "bottom": 348
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "coco photograph",
       "rgb_sha256": "6371d8cd4609d3bf0f901c4384f4aea9afd05a77a4b89a36f6c6646a03ddc539",
       "pose_condition_sha256": "c4fe63d8f2d73462c859a728ef614f187a8f3947f5e64a90b257361b3c9e748a",
@@ -102,16 +121,22 @@
         "height": 640
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 257,
+        "height": 343
+      },
+      "layout_position": {
+        "x": 1200,
+        "y": 12,
+        "row": 1,
+        "column": 3
       },
       "source_crop_box_xyxy": {
         "left": 0,
-        "top": 80,
+        "top": 0,
         "right": 480,
-        "bottom": 560
+        "bottom": 640
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "coco photograph",
       "rgb_sha256": "0a49a17bb2cbb94a7e53c3ebfc1257e4b9643c9cdebdd718f9a231b761b3aac3",
       "pose_condition_sha256": "f8acd591c4a819555bc09134e49c1a827998d37d5bb1a1fd1077ba49178b14c6",
@@ -133,16 +158,22 @@
         "height": 500
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 334,
+        "height": 343
+      },
+      "layout_position": {
+        "x": 1467,
+        "y": 12,
+        "row": 1,
+        "column": 4
       },
       "source_crop_box_xyxy": {
         "left": 0,
-        "top": 6,
+        "top": 0,
         "right": 487,
-        "bottom": 493
+        "bottom": 500
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "coco photograph",
       "rgb_sha256": "acf2383eee811de7fe7abd5eaa4f2207aa556d94b9565cb3c263be1d0e4daaac",
       "pose_condition_sha256": "1d26f5ed38a7cf75cadd7d252630d5398c7b838e2b6bda9950ed099ee650e917",
@@ -164,16 +195,22 @@
         "height": 640
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 227,
+        "height": 343
+      },
+      "layout_position": {
+        "x": 1811,
+        "y": 12,
+        "row": 1,
+        "column": 5
       },
       "source_crop_box_xyxy": {
         "left": 0,
-        "top": 108,
+        "top": 0,
         "right": 424,
-        "bottom": 532
+        "bottom": 640
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "coco photograph",
       "rgb_sha256": "0872a7d7ef16983eaa6e42ca9003eab2f9f21c327749bde6a977f1950fbcc820",
       "pose_condition_sha256": "36d61810375c930ddcc8ecfb12ea69d339d712cf0651b4fe84b25098ae035d06",
@@ -195,16 +232,22 @@
         "height": 960
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 271,
+        "height": 361
+      },
+      "layout_position": {
+        "x": 12,
+        "y": 365,
+        "row": 2,
+        "column": 1
       },
       "source_crop_box_xyxy": {
         "left": 0,
-        "top": 120,
+        "top": 0,
         "right": 720,
-        "bottom": 840
+        "bottom": 960
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "anime illustration",
       "rgb_sha256": "09650ca89dbe4fb6e04e6c3cd79a2cd9f98976b00866965b6a63927b2ebbcc03",
       "pose_condition_sha256": "a4bcc6cc56e1aa7b63f2458531fc03beab5c5b9332725bffdeeaede99ff45e3d",
@@ -226,16 +269,22 @@
         "height": 2786
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 263,
+        "height": 361
+      },
+      "layout_position": {
+        "x": 293,
+        "y": 365,
+        "row": 2,
+        "column": 2
       },
       "source_crop_box_xyxy": {
         "left": 0,
-        "top": 379,
+        "top": 0,
         "right": 2027,
-        "bottom": 2406
+        "bottom": 2786
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "anime illustration",
       "rgb_sha256": "ec101dfc21ffd540a02395a2ddc011387527529850cae04f84669af445c526c8",
       "pose_condition_sha256": "83171f2a87096734bb5cc06c9c1fbd3931a778c7cca0645dd76f3f65773f0d91",
@@ -257,16 +306,22 @@
         "height": 913
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 314,
+        "height": 361
+      },
+      "layout_position": {
+        "x": 566,
+        "y": 365,
+        "row": 2,
+        "column": 3
       },
       "source_crop_box_xyxy": {
         "left": 0,
-        "top": 60,
+        "top": 0,
         "right": 793,
-        "bottom": 853
+        "bottom": 913
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "anime illustration",
       "rgb_sha256": "999ada95b4b834f540573bc520275bfd0fa8f62f1037420b31577036fcc656d8",
       "pose_condition_sha256": "ae7e95b66457ead9811035a277eb43b42de7a1c7f955877b7995de4a66cf6d45",
@@ -288,16 +343,22 @@
         "height": 1125
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 321,
+        "height": 361
+      },
+      "layout_position": {
+        "x": 890,
+        "y": 365,
+        "row": 2,
+        "column": 4
       },
       "source_crop_box_xyxy": {
         "left": 0,
-        "top": 62,
+        "top": 0,
         "right": 1000,
-        "bottom": 1062
+        "bottom": 1125
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "anime illustration",
       "rgb_sha256": "02fbcb0887335e4e15673b6f2f8e92666a70b61b9a7950cdc42fab410292979f",
       "pose_condition_sha256": "d53d79a822d8155e167e1f4ee48a64bb70e3491608fa8a986f1f5482061e278d",
@@ -319,16 +380,22 @@
         "height": 854
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 541,
+        "height": 361
+      },
+      "layout_position": {
+        "x": 1221,
+        "y": 365,
+        "row": 2,
+        "column": 5
       },
       "source_crop_box_xyxy": {
-        "left": 213,
+        "left": 0,
         "top": 0,
-        "right": 1067,
+        "right": 1280,
         "bottom": 854
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "painting / digital illustration",
       "rgb_sha256": "a35d19d64710075fa6767acf3ab37c7afcf74da053da9d67e0b281c0b3e61122",
       "pose_condition_sha256": "b2b73be45cfff8ca1a5bd769a3661939b632c70712cf81df9a9eeeedaa82eab3",
@@ -350,16 +417,22 @@
         "height": 4398
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 266,
+        "height": 361
+      },
+      "layout_position": {
+        "x": 1772,
+        "y": 365,
+        "row": 2,
+        "column": 6
       },
       "source_crop_box_xyxy": {
         "left": 0,
-        "top": 581,
+        "top": 0,
         "right": 3235,
-        "bottom": 3816
+        "bottom": 4398
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "painting / portrait",
       "rgb_sha256": "282ec0ed7bc3915e51cb30429c91d49b2f64dc1f376fdb223c4e51f5a392ff6e",
       "pose_condition_sha256": "a5a814cfab1d0b5207dceb014d3869d9dde70e4513e9337f2360ecf80c55cc91",
@@ -381,16 +454,22 @@
         "height": 688
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 532,
+        "height": 269
+      },
+      "layout_position": {
+        "x": 12,
+        "y": 736,
+        "row": 3,
+        "column": 1
       },
       "source_crop_box_xyxy": {
-        "left": 336,
+        "left": 0,
         "top": 0,
-        "right": 1024,
+        "right": 1360,
         "bottom": 688
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "painting / landscape illustration",
       "rgb_sha256": "bda095978eb5a0f8d0b715ad814fd0bcdf54497f4bee1a42db67dbaed0971d40",
       "pose_condition_sha256": "36c9fa509db88e2e41d61ee8afc3e8b2bb6a12cb0ecb7c09791a4665b2de0875",
@@ -399,32 +478,38 @@
     },
     {
       "order": 13,
-      "stem": "painting_humanart_1000000002893",
+      "stem": "painting_humanart_10000000000489",
       "split": "train",
-      "source_rgb_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/images/shard_01/painting_humanart_1000000002893.jpg",
-      "pose_condition_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_01/painting_humanart_1000000002893.png",
+      "source_rgb_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/images/shard_03/painting_humanart_10000000000489.jpg",
+      "pose_condition_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_03/painting_humanart_10000000000489.png",
       "source_dimensions": {
-        "width": 1280,
-        "height": 1981
+        "width": 300,
+        "height": 622
       },
       "pose_condition_dimensions": {
-        "width": 1280,
-        "height": 1981
+        "width": 300,
+        "height": 622
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 130,
+        "height": 269
+      },
+      "layout_position": {
+        "x": 554,
+        "y": 736,
+        "row": 3,
+        "column": 2
       },
       "source_crop_box_xyxy": {
         "left": 0,
-        "top": 350,
-        "right": 1280,
-        "bottom": 1630
+        "top": 0,
+        "right": 300,
+        "bottom": 622
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
-      "category_domain": "comic illustration",
-      "rgb_sha256": "bf29a46969ef8286e04ee6aa9b50beef5bd21f67c8fd67de3c5652d9ff1f082b",
-      "pose_condition_sha256": "f9dc35f96c473edd330ea8447d446f199450972e5ad9d806ae2166407c6af86f",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
+      "category_domain": "painting / ukiyo-e illustration",
+      "rgb_sha256": "1188e2b122afd86e81bc1f60f18baf72efe539a7ad0d01ac14f6a932f84917a1",
+      "pose_condition_sha256": "93b8a6f82665f1cacf0aaf1ab78e584c9775220ea5b412965b55d96d08098973",
       "person_count": 2,
       "pose_annotation_source": "humanart"
     },
@@ -443,16 +528,22 @@
         "height": 800
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 190,
+        "height": 269
+      },
+      "layout_position": {
+        "x": 694,
+        "y": 736,
+        "row": 3,
+        "column": 3
       },
       "source_crop_box_xyxy": {
         "left": 0,
-        "top": 117,
+        "top": 0,
         "right": 566,
-        "bottom": 683
+        "bottom": 800
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "painting / science-fiction illustration",
       "rgb_sha256": "83e972e132acd60df1ec788fabf87bd3b0bef71a26df15217a8ce9cc1777d607",
       "pose_condition_sha256": "970709e7760ebbdf6ab9535bcee5125448d3ae6cecadcb18c1bf2bdb7ff7a0eb",
@@ -474,16 +565,22 @@
         "height": 1600
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 316,
+        "height": 269
+      },
+      "layout_position": {
+        "x": 894,
+        "y": 736,
+        "row": 3,
+        "column": 4
       },
       "source_crop_box_xyxy": {
-        "left": 140,
+        "left": 0,
         "top": 0,
-        "right": 1740,
+        "right": 1880,
         "bottom": 1600
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "real human / dance photography",
       "rgb_sha256": "da172ed10f41a1ed13dc7d7d098dac43228969d16573c5ad2be992d61670b4d4",
       "pose_condition_sha256": "3502627764b1510a7e6da776329ff2706bc3664bc11b7f4beaef1885a6ee5e35",
@@ -505,16 +602,22 @@
         "height": 1333
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 404,
+        "height": 269
+      },
+      "layout_position": {
+        "x": 1220,
+        "y": 736,
+        "row": 3,
+        "column": 5
       },
       "source_crop_box_xyxy": {
-        "left": 333,
+        "left": 0,
         "top": 0,
-        "right": 1666,
+        "right": 2000,
         "bottom": 1333
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "real human / stage performance",
       "rgb_sha256": "fa3893859e3fc6524be5c3201f1775d49c7ab1ce7d91246f1f669272670b32e1",
       "pose_condition_sha256": "b9ddf6d1cc601851cf2835c3d334122b222498deea4a96f840cd7f5b556070da",
@@ -536,16 +639,22 @@
         "height": 640
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 404,
+        "height": 269
+      },
+      "layout_position": {
+        "x": 1634,
+        "y": 736,
+        "row": 3,
+        "column": 6
       },
       "source_crop_box_xyxy": {
-        "left": 160,
+        "left": 0,
         "top": 0,
-        "right": 800,
+        "right": 960,
         "bottom": 640
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "real human / action photography",
       "rgb_sha256": "e7f5dfe7e68d732959afc2c1f788a1824a8270ed13d8cfb53313f06871b0c283",
       "pose_condition_sha256": "73ba4abd9c8e2b8bc3cbde6c91939ce6324ec32a14a14aac00f978b340561881",
@@ -567,8 +676,14 @@
         "height": 612
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 391,
+        "height": 391
+      },
+      "layout_position": {
+        "x": 12,
+        "y": 1015,
+        "row": 4,
+        "column": 1
       },
       "source_crop_box_xyxy": {
         "left": 0,
@@ -576,7 +691,7 @@
         "right": 612,
         "bottom": 612
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "real human / equestrian photography",
       "rgb_sha256": "d255641bf61202c5f60de5b01549b0c52d1fa3cbc9df31ec23d9458c16e28c49",
       "pose_condition_sha256": "8d63c025d813ac4f0bef2416291f67f0b08c36ee32060917fb7d2ef25c2814b2",
@@ -598,16 +713,22 @@
         "height": 612
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 261,
+        "height": 391
+      },
+      "layout_position": {
+        "x": 413,
+        "y": 1015,
+        "row": 4,
+        "column": 2
       },
       "source_crop_box_xyxy": {
         "left": 0,
-        "top": 102,
+        "top": 0,
         "right": 408,
-        "bottom": 510
+        "bottom": 612
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "real human / urban photography",
       "rgb_sha256": "feb66d0b7bc39015ecd8e91ba2eb1cb92f77b14781266cb6c6cd57a91a477ae9",
       "pose_condition_sha256": "29dbe872ddfd587894ed282ee29b19a6fa7c8af9ba29d694c980ac4f6207eecb",
@@ -616,37 +737,6 @@
     },
     {
       "order": 20,
-      "stem": "sculpture_humanart_14000000003822",
-      "split": "train",
-      "source_rgb_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/images/shard_03/sculpture_humanart_14000000003822.jpg",
-      "pose_condition_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_03/sculpture_humanart_14000000003822.png",
-      "source_dimensions": {
-        "width": 1200,
-        "height": 1800
-      },
-      "pose_condition_dimensions": {
-        "width": 1200,
-        "height": 1800
-      },
-      "displayed_dimensions": {
-        "width": 320,
-        "height": 320
-      },
-      "source_crop_box_xyxy": {
-        "left": 0,
-        "top": 300,
-        "right": 1200,
-        "bottom": 1500
-      },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
-      "category_domain": "sculpture / public monument",
-      "rgb_sha256": "aff9aafbf69d32248a4e64c060312e0725409ec0e6382ff02647fd6328cd864a",
-      "pose_condition_sha256": "3a075f5b2ab3ac392ba94a01b631a5baf2c4d4b59a8d703e7f222558daf6841f",
-      "person_count": 1,
-      "pose_annotation_source": "humanart"
-    },
-    {
-      "order": 21,
       "stem": "sculpture_humanart_14000000000666",
       "split": "train",
       "source_rgb_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/images/shard_00/sculpture_humanart_14000000000666.jpg",
@@ -660,24 +750,30 @@
         "height": 3890
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 246,
+        "height": 391
+      },
+      "layout_position": {
+        "x": 684,
+        "y": 1015,
+        "row": 4,
+        "column": 3
       },
       "source_crop_box_xyxy": {
         "left": 0,
-        "top": 720,
+        "top": 0,
         "right": 2450,
-        "bottom": 3170
+        "bottom": 3890
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
-      "category_domain": "sculpture / figurative artwork",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
+      "category_domain": "sculpture / weathered figurative artifact",
       "rgb_sha256": "5af392d75d8e1e5583bb6704eb2ff5f86a4c2d9ed626aebb7508a94233354674",
       "pose_condition_sha256": "06a9608a0cd26f10c27f7561450cf813ce46cbaf8092470593ebca646d94ade0",
       "person_count": 1,
       "pose_annotation_source": "humanart"
     },
     {
-      "order": 22,
+      "order": 21,
       "stem": "sculpture_humanart_14000000003911",
       "split": "train",
       "source_rgb_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/images/shard_06/sculpture_humanart_14000000003911.jpg",
@@ -691,16 +787,22 @@
         "height": 532
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 269,
+        "height": 391
+      },
+      "layout_position": {
+        "x": 940,
+        "y": 1015,
+        "row": 4,
+        "column": 4
       },
       "source_crop_box_xyxy": {
         "left": 0,
-        "top": 83,
+        "top": 0,
         "right": 366,
-        "bottom": 449
+        "bottom": 532
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
       "category_domain": "sculpture / public monument",
       "rgb_sha256": "636fb17bac798d40639481f8690b8b587cf42381faefc3daa37161cd4429f1cf",
       "pose_condition_sha256": "aef03884e61102917576c0302b4031573532df18343ba0414b8a7ae05d18b1db",
@@ -708,65 +810,114 @@
       "pose_annotation_source": "humanart"
     },
     {
-      "order": 23,
-      "stem": "sculpture_humanart_14000000000820",
+      "order": 22,
+      "stem": "sculpture_humanart_14000000000005",
       "split": "train",
-      "source_rgb_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/images/shard_04/sculpture_humanart_14000000000820.jpg",
-      "pose_condition_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_04/sculpture_humanart_14000000000820.png",
+      "source_rgb_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/images/shard_07/sculpture_humanart_14000000000005.jpg",
+      "pose_condition_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_07/sculpture_humanart_14000000000005.png",
       "source_dimensions": {
-        "width": 3120,
-        "height": 4160
+        "width": 1944,
+        "height": 2592
       },
       "pose_condition_dimensions": {
-        "width": 3120,
-        "height": 4160
+        "width": 1944,
+        "height": 2592
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 293,
+        "height": 391
+      },
+      "layout_position": {
+        "x": 1219,
+        "y": 1015,
+        "row": 4,
+        "column": 5
       },
       "source_crop_box_xyxy": {
         "left": 0,
-        "top": 520,
-        "right": 3120,
-        "bottom": 3640
+        "top": 0,
+        "right": 1944,
+        "bottom": 2592
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
-      "category_domain": "sculpture / outdoor artwork",
-      "rgb_sha256": "bf894d23e5adb07ec3d2e3e240b27ee91a7c6ff6e4acfa7137736ea0dc5c6dfb",
-      "pose_condition_sha256": "fed8cc8336901eeeaf97827e5a01f94095861cd898d17e77f09d975342055ed9",
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
+      "category_domain": "sculpture / museum classical figure",
+      "rgb_sha256": "3bf15a72bf4825693a05b19401490f31b4809497ced0b919eb1f0f3334a77067",
+      "pose_condition_sha256": "6843b1f1f5c824d5a6d4c3df3c06bffea8c19c31cbc54332ed921bdef321740f",
+      "person_count": 1,
+      "pose_annotation_source": "humanart"
+    },
+    {
+      "order": 23,
+      "stem": "sculpture_humanart_14000000000036",
+      "split": "train",
+      "source_rgb_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/images/shard_08/sculpture_humanart_14000000000036.jpg",
+      "pose_condition_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_08/sculpture_humanart_14000000000036.png",
+      "source_dimensions": {
+        "width": 1536,
+        "height": 2048
+      },
+      "pose_condition_dimensions": {
+        "width": 1536,
+        "height": 2048
+      },
+      "displayed_dimensions": {
+        "width": 293,
+        "height": 391
+      },
+      "layout_position": {
+        "x": 1522,
+        "y": 1015,
+        "row": 4,
+        "column": 6
+      },
+      "source_crop_box_xyxy": {
+        "left": 0,
+        "top": 0,
+        "right": 1536,
+        "bottom": 2048
+      },
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
+      "category_domain": "sculpture / contemporary metal figure",
+      "rgb_sha256": "29a4d1144a39b6abf8b3cfb6ac12744b9dde52f2c387c0bc2222ccfd2cb70bb4",
+      "pose_condition_sha256": "99b52faed7f966f574d1146cf409235d186d9e0fed231a5699c534b209175ae9",
       "person_count": 1,
       "pose_annotation_source": "humanart"
     },
     {
       "order": 24,
-      "stem": "sculpture_humanart_14000000004138",
+      "stem": "sculpture_humanart_14000000004547",
       "split": "train",
-      "source_rgb_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/images/shard_05/sculpture_humanart_14000000004138.jpg",
-      "pose_condition_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_05/sculpture_humanart_14000000004138.png",
+      "source_rgb_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/images/shard_02/sculpture_humanart_14000000004547.jpg",
+      "pose_condition_path": "/lambda/nfs/adhit/krea2-pose/posebridge_hf/conditioning_images/shard_02/sculpture_humanart_14000000004547.png",
       "source_dimensions": {
-        "width": 1125,
-        "height": 1500
+        "width": 564,
+        "height": 1057
       },
       "pose_condition_dimensions": {
-        "width": 1125,
-        "height": 1500
+        "width": 564,
+        "height": 1057
       },
       "displayed_dimensions": {
-        "width": 320,
-        "height": 320
+        "width": 209,
+        "height": 391
+      },
+      "layout_position": {
+        "x": 1825,
+        "y": 1015,
+        "row": 4,
+        "column": 7
       },
       "source_crop_box_xyxy": {
         "left": 0,
-        "top": 187,
-        "right": 1125,
-        "bottom": 1312
+        "top": 0,
+        "right": 564,
+        "bottom": 1057
       },
-      "crop_policy": "center square crop, identically applied to the exact paired RGB and existing pose render; no source artifacts were changed",
-      "category_domain": "sculpture / equestrian artwork",
-      "rgb_sha256": "c2f739c8e60e155d5e7d6a63a9eb93dea1110ece1c36fe3b90d59b245ff49fa6",
-      "pose_condition_sha256": "26b005a4378242de10233d0f151e330dc5303fba7d3cbd8e9b7f17d971256378",
-      "person_count": 1,
+      "crop_policy": "full source image displayed without cropping or distortion; the exact paired RGB and existing pose render use the same aspect-preserving layout cell",
+      "category_domain": "sculpture / multi-figure marble artwork",
+      "rgb_sha256": "4dda7c389802b0aebc6d00ea4a8a6111ec9d1f8917296346c23c888c415e0d2d",
+      "pose_condition_sha256": "93f65469035c14daa19dd6c653b047d2cc39b4ce4d3eb52eec98568e001fbaee",
+      "person_count": 2,
       "pose_annotation_source": "humanart"
     }
   ]
