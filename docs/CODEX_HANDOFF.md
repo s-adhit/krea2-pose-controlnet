@@ -2,106 +2,59 @@
 
 ## Current objective
 
-Publication-ready blog assets have been generated from frozen training,
-evaluation, infrastructure, release records, and a representative paired
-training-data sample. The Data and conditioning montages were revised to a
-full-source justified editorial layout and await human review, then blog prose
-integration.
-Do not alter frozen evaluation artifacts, NFS checkpoints, release identity,
-or the existing hero-v2 winners.
+Standalone ComfyUI integration for frozen Krea-2 Pose Control-LoRA v1 is implemented. It is scoped to the release's exact COCO-17 skeleton condition and canonical Krea-2 Turbo path; it adds no new training capability.
 
-The existing architecture figure is user-approved and intentionally unchanged.
-It was neither recreated nor redesigned during this asset pass.
+## Frozen facts in force
 
-## Frozen project facts in force
+- Release `krea2-pose-control-mix025.safetensors`: SHA-256 `6d97e9c2e102e07928fc8864346401a0d2e6082d610ca6b037c4704102e3f8d1`; 450 tensors / 215,488,512 trainable parameters.
+- Release defaults: Krea-2 Turbo, 8 steps, CFG 0, `mu=1.15`, fixed mu (no resolution-dependent shift), control scale 1.0, native/aspect geometry, no Style-LoRA.
+- Renderer contract is historic PoseBridge topology: COCO-17 mapped to unified Body-18, neck only when both shoulders exist, 17 ordered rainbow limbs with 3px strokes, white radius-4 endpoints. No hands/fingers/dense face landmarks.
+- Normal host remains ARM64 GH200 / 96 GB, Python 3.10.12, PyTorch 2.7.0 CUDA 12.8, cuDNN 9.8, Triton 3.3.0. Codex sandbox CUDA absence is not host evidence.
 
-- Release `mix-025` / `krea2-pose-control-lora-v1` is float32 interpolation of
-  trainable `state['model']` only: `0.75 * parent-4000 + 0.25 * A4300`.
-  Release SHA-256: `6d97e9c2e102e07928fc8864346401a0d2e6082d610ca6b037c4704102e3f8d1`.
-- Endpoint: 215,488,512 float32 trainable parameters / 450 tensors;
-  expanded control projection plus rank-64 LoRA; backbone frozen. Objective:
-  flow MSE plus `.04` normalized-coordinate Huber at shifted timesteps
-  `[.10,.20]`.
-- Normal-host evidence: ARM64 GH200; Python 3.10.12, PyTorch 2.7.0/CUDA 12.8,
-  cuDNN 9.8, Triton 3.3.0. The Codex audit sandbox does not expose CUDA; this
-  does not contradict the host record.
-- Frozen evaluation methods/results are authoritative in
-  `docs/blog-evidence/EVALUATION_METHODS.md`, `evaluation_methods.json`, and
-  `EVALUATION_RESULTS.md`. PCK is globally pooled eligible joints; CLIP is
-  mean image/prompt cosine similarity; native/dynamic is not a pure
-  resolution-only comparison.
+## ComfyUI delivery
 
-## Generated blog assets
-
-- Generator: `scripts/generate_blog_assets.py` (Matplotlib only; no seaborn).
-  It exports purple-obsidian themed high-resolution PNG and SVG figures.
-- Figure pairs in `docs/blog-assets/figures/`:
-  `training_objective_overview`, `training_lineage`, `final_val_pck`,
-  `final_val_clip`, `native_vs_dynamic`, `hard_pose_single_multi`,
-  `prompt_injection_effect`, and `infra_summary`.
-- Tables in `docs/blog-assets/tables/`: `training_recipe.md`,
-  `training_stages.md`, `evaluation_method_summary.md`, `final_val_results.md`,
-  `ablation_results.md`, and `release_identity.md`.
-- `docs/blog-assets/BLOG_ASSET_INDEX.md` gives intended section, paths,
-  frozen sources, captions/caveats, and status for every logical asset.
-- Exact values remain in the frozen result record and the generator constants;
-  figure labels are presentation rounding only. The CLIP charts retain an
-  absolute `0–0.40` axis so small differences are not visually exaggerated.
-- `scripts/generate_dataset_montage.py` renders an exact paired 24-sample
-  RGB/control justified editorial montage from the read-only PoseBridge
-  snapshot. It uses uncropped, aspect-ratio-preserving source images and its
-  selection is checked against both frozen train manifests. It outputs
-  `figures/dataset_rgb_montage.png`, `figures/dataset_condition_montage.png`,
-  and `dataset_montage_manifest.json`. The manifest records order, paths,
-  source/display geometry, full-image bounds, shared cell positions, source
-  domain, hashes, and available authoritative person counts. Controls are
-  existing source files, not regenerated or recolored.
+- Custom-node package: `comfyui/krea2_pose_control/`; copy directly to `ComfyUI/custom_nodes/krea2_pose_control/`.
+- Workflows: `comfyui/workflows/krea2_pose_from_reference.json` and `comfyui/workflows/krea2_pose_from_condition.json`.
+- Installation, model layout, defaults, and limitations: `comfyui/README.md`.
+- The package vendors package-relative MMDiT model surgery and Turbo sampling. It has no runtime `sys.path` mutation, no dependency on this repository path, and no NFS/checkpoint fallback.
+- `Krea2PoseExtractor` uses torchvision `KeypointRCNN_ResNet50_FPN_Weights.COCO_V1`, selects all score-qualified people (optional cap), uses only 17 body joints, preserves source canvas geometry, and never creates missing joints.
+- `Krea2PoseCondition` leaves a finite valid ComfyUI IMAGE untouched. Raster provenance cannot be inferred from pixels, so docs explicitly prohibit generic OpenPose inputs.
+- `Krea2PoseGenerate` requires local Turbo and materialized release files, supports `hf://owner/repo/filename` through the HF cache, checks SHA/tensor/parameter identity, and has no Style-LoRA or historical NFS path. Raw input is optional provenance-path validation; Turbo is the actual inference base.
+- No-generation preflight `krea2_pose_control.preflight` validates model paths/release identity, imports the nodes, then extracts/renders a condition.
 
 ## Verification this session
 
 PASS:
 
 ```bash
-MPLCONFIGDIR=/tmp/krea2-blog-mpl uv run python scripts/generate_blog_assets.py
-# visual inspection of all eight PNG figures
-# indexed PNG, SVG, and table paths exist
+uv run python -m unittest comfyui/krea2_pose_control/tests/test_integration.py
+uv run python -m compileall -q comfyui/krea2_pose_control
+PYTHONPATH=comfyui uv run python -m krea2_pose_control.preflight --help
 git diff --check
 ```
 
-PASS (dataset montage session):
-
-```bash
-uv run python scripts/generate_dataset_montage.py
-# visual inspection of both dataset montage PNGs: full-source justified layout
-# and shared paired positions confirmed
-# inline Python provenance audit of both frozen train manifests, source/control
-# stems, dimensions, and all recorded SHA-256 hashes
-# PASS: hashes, stems, geometry, and dual frozen-train provenance verified for
-# 24 paired samples
-git diff --check
-```
+Focused tests cover exact COCO-17 topology, renderer neck/limb behavior, Comfy tensor/PIL range conversion, release SHA rejection, both workflow JSONs, and custom-node import. No full model generation was attempted.
 
 ## Files changed this session
 
-- `scripts/generate_dataset_montage.py`
-- `docs/blog-assets/figures/dataset_rgb_montage.png`
-- `docs/blog-assets/figures/dataset_condition_montage.png`
-- `docs/blog-assets/dataset_montage_manifest.json`
-- `docs/blog-assets/BLOG_ASSET_INDEX.md`
+- `comfyui/krea2_pose_control/` (nodes, renderer, geometry, vendored runtime, preflight, focused tests)
+- `comfyui/workflows/krea2_pose_from_reference.json`
+- `comfyui/workflows/krea2_pose_from_condition.json`
+- `comfyui/README.md`
 - `docs/CODEX_HANDOFF.md`
 
-Pre-existing/unrelated untracked file: `scripts/package_hero_v2_final.py`.
-Do not commit or push without explicit authorization.
+## Unresolved / next action
 
-## Remaining visual/content decisions
+No live release artifact, Turbo checkpoint, or reference-image path was available in this sandbox, so release-positive validation, detector download, and actual generation are unrun. On the GH200, after copying the package into ComfyUI, run:
 
-- Human review of chart typography, dark-theme embedding, and final blog
-  captions is the remaining visual decision.
-- The figures deliberately do not claim statistical significance or convert
-  descriptive subset results into generalization claims.
+```bash
+cd /home/ubuntu/krea2-pose-controlnet
+PYTHONPATH="$PWD/comfyui" uv run python -m krea2_pose_control.preflight \
+  --reference-image /ABS/PATH/reference.jpg \
+  --release-artifact /ABS/PATH/krea2-pose-control-mix025.safetensors \
+  --turbo-path /ABS/PATH/krea2_turbo.safetensors \
+  --raw-path /ABS/PATH/krea2_raw.safetensors \
+  --output-condition /tmp/krea2_pose_condition.png
+```
 
-## Next recommended action
-
-Human review of `docs/blog-assets/`, including the paired full-source dataset
-montages, then write blog prose using the asset index and frozen evidence records.
-Preserve the approved architecture asset unchanged.
+Next step: end-to-end reference-image -> condition -> generation smoke test on the GH200 with verified release and Turbo files. Do not modify release/evaluation artifacts or checkpoints; do not commit or push without explicit authorization.
