@@ -2,45 +2,45 @@
 
 ## Current objective
 
-The standalone ComfyUI package now has a DWPose reference-image extractor that preserves the frozen Krea-2 PoseBridge COCO-17 conditioning contract. The next bounded action is a visual comparison of DWPose conditions for the four original reference images; do not run generation yet.
+The standalone ComfyUI package supports frozen Krea-2 Pose Control-LoRA v1. DWPose is the default reference extractor; Keypoint R-CNN remains its selectable fallback. The current bounded work added package-local standalone dependency discovery and a one-shot frozen generation smoke entry point. No generation was run from this audit shell because CUDA is not visible there.
 
 ## Frozen facts in force
 
-- Release `krea2-pose-control-mix025.safetensors`: SHA-256 `6d97e9c2e102e07928fc8864346401a0d2e6082d610ca6b037c4704102e3f8d1`; 450 tensors / 215,488,512 trainable parameters.
-- Release defaults: Krea-2 Turbo, 8 steps, CFG 0, `mu=1.15`, control scale 1.0, native/aspect geometry, no Style-LoRA.
-- Frozen renderer contract remains unchanged: COCO-17 maps to historic Body-18 by `(0,15,14,17,16,5,2,6,3,7,4,11,8,12,9,13,10)`; only shoulders synthesize its neck; 17 ordered rainbow limbs use 3px strokes; all retained endpoints are white radius-4 circles.
-- The normal host is ARM64 GH200 / 96 GB, Python 3.10.12, PyTorch 2.7.0 CUDA 12.8, cuDNN 9.8, Triton 3.3.0. Sandbox CUDA absence is not host evidence.
+- Release: `krea2-pose-control-mix025.safetensors`, SHA-256 `6d97e9c2e102e07928fc8864346401a0d2e6082d610ca6b037c4704102e3f8d1`, 450 tensors / 215,488,512 trainable parameters.
+- Release runtime: Krea-2 Turbo, 8 steps, CFG 0, `mu=1.15`, control scale 1.0, native/aspect geometry, no Style-LoRA; rank-64 control/LoRA state trained with Raw provenance.
+- Frozen PoseBridge renderer is unchanged: DWPose structured Body-18 maps to COCO-17 in `(0,15,14,17,16,5,2,6,3,7,4,11,8,12,9,13,10)` order; renderer alone synthesizes neck from shoulders; no native DWPose raster, hands, feet, or dense-face points reach Krea.
+- The validated smoke condition is `docs/comfyui/dwpose-smoke/elegant-wandering-knight-condition.png` (832×1216).
 
-## DWPose implementation
+## Standalone DWPose behavior
 
-- `Krea2PoseExtractor` now defaults to `dwpose`; `keypoint_rcnn` remains selectable fallback. Person confidence, per-keypoint confidence, and `max_people` are configurable.
-- `dwpose.py` maps DWPose structured Body-18 entries to COCO-17 in the exact required order: nose, eyes, ears, shoulders, elbows, wrists, hips, knees, ankles. It reads neither DWPose's neck nor hand, finger, foot-detail, or dense face entries.
-- The node calls the ComfyUI-ControlNet-Aux structured whole-body API at source RGB geometry, retains DWPose confidences, filters missing/weak joints before rendering, ranks people from retained body confidence, and sends each separate COCO-17 person only to the frozen renderer. No native DWPose/OpenPose raster is consumed by Krea.
-- Preflight accepts `--backend`, `--person-confidence`, `--keypoint-confidence`, `--max-people`, `--device`, and `--dwpose-model-dir`; it writes the frozen condition and reports person/joint counts without generation.
-- Dependency: install ComfyUI-ControlNet-Aux through ComfyUI Manager and restart ComfyUI. Its local checkpoint/cache root needs `yzd-v/DWPose/yolox_l.onnx` and `yzd-v/DWPose/dw-ll_ucoco_384.onnx`. `--dwpose-model-dir` is an optional local checkpoint root override; no original DWPose checkout or NFS path is required.
+- `controlnet_aux.py` first accepts an already-importable `custom_controlnet_aux.dwpose`; otherwise it checks only the custom node's sibling `comfyui_controlnet_aux/src` and explicit `custom_nodes` roots already on `sys.path`.
+- It adds just that discovered `src` path to the current process when needed. It has no hard-coded home path, no original-training-repository runtime dependency, and emits an actionable error if ControlNet-Aux is absent or incomplete.
+- No manual `comfyui_controlnet_aux/src` `PYTHONPATH` entry is required. Real import verification passed with ComfyUI’s venv and only `PYTHONPATH=/home/ubuntu/ComfyUI/custom_nodes:/home/ubuntu/krea2-pose-controlnet/comfyui`.
+- Cached DWPose ONNX files are present at `/home/ubuntu/ComfyUI/custom_nodes/comfyui_controlnet_aux/ckpts/yzd-v/DWPose/`.
 
 ## Completed / green checks
 
-- Synthetic integration coverage proves DWPose joint-order and left/right mapping, source-coordinate orientation, confidence/missing-joint omission, per-person separation/ranking, no hand/face leakage, exact frozen-renderer parity after conversion, default selector behavior, and Keypoint R-CNN fallback behavior.
-- PASS: `python -m unittest comfyui/krea2_pose_control/tests/test_integration.py` (15 tests).
+- PASS: `PYTHONPATH=./comfyui python -m unittest comfyui/krea2_pose_control/tests/test_integration.py` — 19 tests. Includes sibling-source discovery, already-importable dependency, missing-dependency error, existing DWPose normalization/renderer behavior, and pinned headless smoke invocation.
 - PASS: `python -m compileall -q comfyui/krea2_pose_control`.
-- PASS: `python -m krea2_pose_control.preflight --help` from `comfyui/`.
+- PASS: `python -m krea2_pose_control.preflight --help` under the documented two-root `PYTHONPATH`.
+- PASS: `python -m krea2_pose_control.generation_smoke --help` under the same environment.
+- PASS: real ComfyUI-vendored DWPose import via automatic sibling discovery, using `/home/ubuntu/ComfyUI/.venv/bin/python`.
+- PASS: release artifact SHA-256 matches the frozen release identity.
 - PASS: `git diff --check`.
 
-## Exact GH200 extraction-smoke invocation
+## Exact supported smoke command
 
-The original four reference files are absent from this workspace. Copy them to `docs/comfyui/dwpose-smoke/` using the four documented `*-reference.png` names, then from `ComfyUI/custom_nodes` run the commands in `comfyui/README.md` under **GH200 extraction-smoke commands (no generation)**. They are four explicit DWPose preflights for `elegant-wandering-knight`, `psychedelic-swordswoman`, `comic-fashion`, and `dark-fantasy-jester`; all output only `docs/comfyui/dwpose-smoke/*-condition.png`.
+From `/home/ubuntu/krea2-pose-controlnet/comfyui`, run the `generation_smoke` command in `comfyui/README.md`. It uses only the frozen release, Turbo, and Raw provenance artifact paths; condition `docs/comfyui/dwpose-smoke/elegant-wandering-knight-condition.png`; default prompt; seed 42; and writes exactly one image to `docs/comfyui/generation-smoke/elegant-wandering-knight-seed42.png`.
+
+## Current blocker / next action
+
+This Codex audit shell reports `torch.cuda.is_available() == False` (including the visible ComfyUI venv), so it must not execute the actual GPU generation. On the real GH200 production shell, run the exact README extraction verification command first, then the exact one-shot generation command. The command changes only the specified output image; it does not alter model/release artifacts. Inspect the result and record its path/checksum. Do not change renderer, release identity, training/evaluation artifacts, or benchmark values.
 
 ## Files changed this session
 
-- `comfyui/krea2_pose_control/dwpose.py` (new body-only normalizer)
+- `comfyui/krea2_pose_control/controlnet_aux.py` (new discovery helper)
 - `comfyui/krea2_pose_control/nodes.py`
-- `comfyui/krea2_pose_control/preflight.py`
+- `comfyui/krea2_pose_control/generation_smoke.py` (new headless smoke entry point)
 - `comfyui/krea2_pose_control/tests/test_integration.py`
-- `comfyui/workflows/krea2_pose_from_reference.json`
 - `comfyui/README.md`
 - `docs/CODEX_HANDOFF.md`
-
-## Unresolved / exact next action
-
-ComfyUI-ControlNet-Aux, its DWPose models, and the four original RGB references are not installed/present in this audit workspace, so no real DWPose extraction has been performed. On the GH200, run the four documented no-generation DWPose preflights, inspect their frozen PoseBridge rasters against the prior Keypoint R-CNN conditions, retain the JSON person/joint counts, and visually compare them. Do not change the renderer, release identity, training/evaluation artifacts, benchmark values, or checkpoints.
