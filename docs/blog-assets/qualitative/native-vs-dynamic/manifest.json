@@ -1,0 +1,73 @@
+{
+  "examples": [
+    {
+      "control_path": "docs/blog-assets/qualitative/native-vs-dynamic/example_01_control.png",
+      "control_scale": 1.0,
+      "control_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/native-vs-dynamic768/mix-025-control1-turbo-v1/controls/real_human_humanart_15000000000521.png",
+      "dynamic_768_bucket": [
+        640,
+        960
+      ],
+      "dynamic_path": "docs/blog-assets/qualitative/native-vs-dynamic/example_01_dynamic.png",
+      "dynamic_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/native-vs-dynamic768/mix-025-control1-turbo-v1/generations/real_human_humanart_15000000000521/dynamic_768_bucket/mix-025.png",
+      "id": "example_01",
+      "native_bucket": [
+        832,
+        1216
+      ],
+      "native_path": "docs/blog-assets/qualitative/native-vs-dynamic/example_01_native.png",
+      "native_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/native-vs-dynamic768/mix-025-control1-turbo-v1/generations/real_human_humanart_15000000000521/native_aspect_preserving_cached_latent_bucket/mix-025.png",
+      "prompt": "A photograph depicts a woman suspended upside down against a plain white wall, supported by lilac-colored aerial yoga silks hanging from above. She wears a white short-sleeved top and grey leggings. Her blonde hair is tied back in a low bun, pooling near the light wood floor. The background consists of a smooth, neutral wall with a soft shadow cast to the right, illuminated by bright, even lighting from the front that creates a clean and minimalist aesthetic, aerial yoga, fitness, inversion",
+      "runtime": {
+        "cfg": 0.0,
+        "control_scale": 1.0,
+        "model": "Krea-2 Turbo",
+        "mu": 1.15,
+        "steps": 8,
+        "style_lora": null
+      },
+      "seed": 1860641454841022556,
+      "selection_note": "portrait / inversion stress",
+      "source_provenance": "/lambda/nfs/adhit/krea2-pose/evaluation/native-vs-dynamic768/mix-025-control1-turbo-v1/native_dynamic_provenance.json",
+      "stem": "real_human_humanart_15000000000521"
+    },
+    {
+      "control_path": "docs/blog-assets/qualitative/native-vs-dynamic/example_02_control.png",
+      "control_scale": 1.0,
+      "control_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/native-vs-dynamic768/mix-025-control1-turbo-v1/controls/real_human_humanart_17000000002207.png",
+      "dynamic_768_bucket": [
+        960,
+        640
+      ],
+      "dynamic_path": "docs/blog-assets/qualitative/native-vs-dynamic/example_02_dynamic.png",
+      "dynamic_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/native-vs-dynamic768/mix-025-control1-turbo-v1/generations/real_human_humanart_17000000002207/dynamic_768_bucket/mix-025.png",
+      "id": "example_02",
+      "native_bucket": [
+        1216,
+        832
+      ],
+      "native_path": "docs/blog-assets/qualitative/native-vs-dynamic/example_02_native.png",
+      "native_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/native-vs-dynamic768/mix-025-control1-turbo-v1/generations/real_human_humanart_17000000002207/native_aspect_preserving_cached_latent_bucket/mix-025.png",
+      "prompt": "A photograph depicts a group of performers on a stage with a stark, black background and a bright white floor. The palette is dominated by dark clothing, neutral gray trousers, and warm skin tones, contrasted against the deep blackness of the surrounding space. High-contrast spotlights illuminate the dancers from above, creating sharp highlights on their shoulders, arms, and backs, while casting deep shadows on the floor. The camera uses a wide-angle lens from a low-angle perspective, capturing the dynamic energy of the scene, modern dance, stage lighting",
+      "runtime": {
+        "cfg": 0.0,
+        "control_scale": 1.0,
+        "model": "Krea-2 Turbo",
+        "mu": 1.15,
+        "steps": 8,
+        "style_lora": null
+      },
+      "seed": 9148705073365945888,
+      "selection_note": "multi-person stage-dance stress",
+      "source_provenance": "/lambda/nfs/adhit/krea2-pose/evaluation/native-vs-dynamic768/mix-025-control1-turbo-v1/native_dynamic_provenance.json",
+      "stem": "real_human_humanart_17000000002207"
+    }
+  ],
+  "frozen_provenance": "/lambda/nfs/adhit/krea2-pose/evaluation/native-vs-dynamic768/mix-025-control1-turbo-v1/native_dynamic_provenance.json",
+  "kind": "targeted_native_vs_dynamic_blog_examples",
+  "release_artifact": {
+    "path": "/lambda/nfs/adhit/krea2-pose/release/krea2-pose-control-lora-v1/krea2-pose-control-mix025.safetensors",
+    "sha256": "6d97e9c2e102e07928fc8864346401a0d2e6082d610ca6b037c4704102e3f8d1"
+  },
+  "reused_frozen_evaluation_generations": true
+}

@@ -1,0 +1,119 @@
+{
+  "examples": [
+    {
+      "condition_id": "06_strong_foreshortening",
+      "control_path": "docs/blog-assets/qualitative/hard-pose-single-multi/single_01_control.png",
+      "control_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/controls/coco_125590_434183.png",
+      "hard_pose_category": "single_person_hard_pose",
+      "id": "single_01",
+      "native_bucket": [
+        832,
+        1216
+      ],
+      "output_path": "docs/blog-assets/qualitative/hard-pose-single-multi/single_01_output.png",
+      "output_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/generations/06_strong_foreshortening/mix-025.png",
+      "person_count": 1,
+      "person_group": "single-person",
+      "prompt": "A photograph depicts a man with a helmet, knee pads, elbow pads, olive green shirt, and patterned shorts near a skate bowl with a skateboard above him against a twilight sky with a crescent moon, illuminated by flash photography from a low-angle perspective, with text reading \"austino\" in the lower right corner, fish-eye lens effect",
+      "runtime": {
+        "cfg": 0.0,
+        "control_scale": 1.0,
+        "model": "Krea-2 Turbo",
+        "mu": 1.15,
+        "steps": 8,
+        "style_lora": null
+      },
+      "seed": 2474376788711197263,
+      "source_provenance": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/hard_pose_provenance.json",
+      "stem": "coco_125590_434183"
+    },
+    {
+      "condition_id": "07_inversion",
+      "control_path": "docs/blog-assets/qualitative/hard-pose-single-multi/single_02_control.png",
+      "control_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/controls/real_human_humanart_15000000000521.png",
+      "hard_pose_category": "single_person_hard_pose",
+      "id": "single_02",
+      "native_bucket": [
+        832,
+        1216
+      ],
+      "output_path": "docs/blog-assets/qualitative/hard-pose-single-multi/single_02_output.png",
+      "output_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/generations/07_inversion/mix-025.png",
+      "person_count": 1,
+      "person_group": "single-person",
+      "prompt": "A photograph depicts a woman suspended upside down against a plain white wall, supported by lilac-colored aerial yoga silks hanging from above. She wears a white short-sleeved top and grey leggings. Her blonde hair is tied back in a low bun, pooling near the light wood floor. The background consists of a smooth, neutral wall with a soft shadow cast to the right, illuminated by bright, even lighting from the front that creates a clean and minimalist aesthetic, aerial yoga, fitness, inversion",
+      "runtime": {
+        "cfg": 0.0,
+        "control_scale": 1.0,
+        "model": "Krea-2 Turbo",
+        "mu": 1.15,
+        "steps": 8,
+        "style_lora": null
+      },
+      "seed": 1860641454841022556,
+      "source_provenance": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/hard_pose_provenance.json",
+      "stem": "real_human_humanart_15000000000521"
+    },
+    {
+      "condition_id": "09_two_person_interaction",
+      "control_path": "docs/blog-assets/qualitative/hard-pose-single-multi/multi_01_control.png",
+      "control_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/controls/real_human_humanart_17000000001263.png",
+      "hard_pose_category": "multi_person_stress",
+      "id": "multi_01",
+      "native_bucket": [
+        1216,
+        832
+      ],
+      "output_path": "docs/blog-assets/qualitative/hard-pose-single-multi/multi_01_output.png",
+      "output_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/generations/09_two_person_interaction/mix-025.png",
+      "person_count": 2,
+      "person_group": "multi-person",
+      "prompt": "A photograph depicts a man and a woman in brown clothing on a concrete floor with a concrete pillar in the background. The color palette consists of neutral gray tones and earthy browns. The lighting is bright and directional, casting distinct shadows on the ground. A web address \"www.itphoto.co.za\" is visible in the lower right corner, contemporary photography, dance photography",
+      "runtime": {
+        "cfg": 0.0,
+        "control_scale": 1.0,
+        "model": "Krea-2 Turbo",
+        "mu": 1.15,
+        "steps": 8,
+        "style_lora": null
+      },
+      "seed": 5918792317685775507,
+      "source_provenance": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/hard_pose_provenance.json",
+      "stem": "real_human_humanart_17000000001263"
+    },
+    {
+      "condition_id": "10_overlapping_two_person_pose",
+      "control_path": "docs/blog-assets/qualitative/hard-pose-single-multi/multi_02_control.png",
+      "control_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/controls/real_human_humanart_15000000001893.png",
+      "hard_pose_category": "multi_person_stress",
+      "id": "multi_02",
+      "native_bucket": [
+        832,
+        1216
+      ],
+      "output_path": "docs/blog-assets/qualitative/hard-pose-single-multi/multi_02_output.png",
+      "output_source_path": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/generations/10_overlapping_two_person_pose/mix-025.png",
+      "person_count": 2,
+      "person_group": "multi-person",
+      "prompt": "A photograph depicts a female gymnast wearing a white leotard adorned with purple and pink star-patterned decorations and a male base partner in a white top with purple trim and a small Belgian flag emblem on the sleeve, holding the gymnast's hands overhead in a brightly lit indoor sports arena with a blurred background showing spectators, a yellow railing, and a banner featuring the blue text \"VTB\", captured from a low angle with a telephoto lens, telephoto, sports photography",
+      "runtime": {
+        "cfg": 0.0,
+        "control_scale": 1.0,
+        "model": "Krea-2 Turbo",
+        "mu": 1.15,
+        "steps": 8,
+        "style_lora": null
+      },
+      "seed": 5745961191448260577,
+      "source_provenance": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/hard_pose_provenance.json",
+      "stem": "real_human_humanart_15000000001893"
+    }
+  ],
+  "frozen_provenance": "/lambda/nfs/adhit/krea2-pose/evaluation/hard-pose-multiperson/hard-pose-multiperson-mix-025-v1/hard_pose_provenance.json",
+  "kind": "targeted_hard_pose_single_multi_blog_examples",
+  "release_artifact": {
+    "path": "/lambda/nfs/adhit/krea2-pose/release/krea2-pose-control-lora-v1/krea2-pose-control-mix025.safetensors",
+    "sha256": "6d97e9c2e102e07928fc8864346401a0d2e6082d610ca6b037c4704102e3f8d1"
+  },
+  "reused_frozen_evaluation_generations": true
+}

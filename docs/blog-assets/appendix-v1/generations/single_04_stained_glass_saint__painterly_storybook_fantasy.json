@@ -1,0 +1,78 @@
+{
+  "candidate": {
+    "candidate_id": "mix-025",
+    "candidate_kind": "materialized_release_artifact",
+    "release_artifact": {
+      "path": "/lambda/nfs/adhit/krea2-pose/release/krea2-pose-control-lora-v1/krea2-pose-control-mix025.safetensors",
+      "serialization_format": "safetensors",
+      "sha256": "6d97e9c2e102e07928fc8864346401a0d2e6082d610ca6b037c4704102e3f8d1"
+    },
+    "release_contract": {
+      "id": "krea2-pose-control-lora-v1",
+      "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
+      "sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+    }
+  },
+  "cfg": 0.0,
+  "checkpoint_step": null,
+  "control_scale": 1.0,
+  "format_version": 1,
+  "geometry": {
+    "bucket": [
+      1024,
+      1024
+    ],
+    "crop_box": [
+      0,
+      0,
+      1024,
+      1024
+    ],
+    "resized_size": [
+      1024,
+      1024
+    ],
+    "source_size": [
+      1024,
+      1024
+    ]
+  },
+  "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
+  "height": 1024,
+  "mode": "turbo-pose-control",
+  "mu": 1.15,
+  "output_dimensions": [
+    1024,
+    1024
+  ],
+  "output_path": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/generations/single_04_stained_glass_saint__painterly_storybook_fantasy.png",
+  "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/single_04_stained_glass_saint.png",
+  "pose_image_sha256": "f194f02952408ba1b10cca70408b1f9ee676e8de16a4707317833ffc11bfdea8",
+  "pose_lora_checkpoint": null,
+  "prompt": "Painterly storybook fantasy, richly painted russet, cream, and moss-green garments, an enchanted orchard of lantern flowers and ancient stone markers, honeyed late-afternoon light, expressive brushwork, visible paper texture, warm lyrical color.",
+  "release": {
+    "id": "krea2-pose-control-lora-v1",
+    "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
+    "sha256": "9c79e714b7d61a6cbc83e0ca2ba45dde61a8124b0340c062d2462a1f57e52a2b"
+  },
+  "seed": 424653410157934802,
+  "steps": 8,
+  "style_lora": {
+    "effective_prompt": "Painterly storybook fantasy, richly painted russet, cream, and moss-green garments, an enchanted orchard of lantern flowers and ancient stone markers, honeyed late-afternoon light, expressive brushwork, visible paper texture, warm lyrical color.",
+    "name": null,
+    "path": null,
+    "sha256": null,
+    "strength": 0.0,
+    "trigger_phrase": null
+  },
+  "turbo": {
+    "cfg": 0.0,
+    "model": "Krea-2 Turbo",
+    "mu": 1.15,
+    "mu_resolution_dependent": false,
+    "schedule_source": "https://github.com/krea-ai/krea-2/blob/main/sampling.py",
+    "steps": 8
+  },
+  "turbo_checkpoint": "/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors",
+  "width": 1024
+}
