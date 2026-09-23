@@ -2,59 +2,42 @@
 
 ## Current objective
 
-Standalone ComfyUI integration for frozen Krea-2 Pose Control-LoRA v1 is implemented. It is scoped to the release's exact COCO-17 skeleton condition and canonical Krea-2 Turbo path; it adds no new training capability.
+The standalone ComfyUI integration remains scoped to frozen Krea-2 Pose Control-LoRA v1 and its exact COCO-17 PoseBridge conditioning format. The latest completed milestone audited the poor reference-image extraction smoke results before any detector replacement.
 
 ## Frozen facts in force
 
 - Release `krea2-pose-control-mix025.safetensors`: SHA-256 `6d97e9c2e102e07928fc8864346401a0d2e6082d610ca6b037c4704102e3f8d1`; 450 tensors / 215,488,512 trainable parameters.
-- Release defaults: Krea-2 Turbo, 8 steps, CFG 0, `mu=1.15`, fixed mu (no resolution-dependent shift), control scale 1.0, native/aspect geometry, no Style-LoRA.
-- Renderer contract is historic PoseBridge topology: COCO-17 mapped to unified Body-18, neck only when both shoulders exist, 17 ordered rainbow limbs with 3px strokes, white radius-4 endpoints. No hands/fingers/dense face landmarks.
-- Normal host remains ARM64 GH200 / 96 GB, Python 3.10.12, PyTorch 2.7.0 CUDA 12.8, cuDNN 9.8, Triton 3.3.0. Codex sandbox CUDA absence is not host evidence.
+- Release defaults: Krea-2 Turbo, 8 steps, CFG 0, `mu=1.15`, control scale 1.0, native/aspect geometry, and no Style-LoRA.
+- Frozen renderer contract: torchvision COCO-17 order maps to historic Body-18 by `(0,15,14,17,16,5,2,6,3,7,4,11,8,12,9,13,10)`; Body-18 index 1 is a neck synthesized only from COCO left/right shoulders (5/6). It draws the 17 ordered rainbow limbs with 3px strokes, then white radius-4 joints.
+- Normal host remains ARM64 GH200 / 96 GB, Python 3.10.12, PyTorch 2.7.0 CUDA 12.8, cuDNN 9.8, Triton 3.3.0. Sandbox CUDA absence is not host evidence.
 
-## ComfyUI delivery
+## Extraction audit result
 
-- Custom-node package: `comfyui/krea2_pose_control/`; copy directly to `ComfyUI/custom_nodes/krea2_pose_control/`.
-- Workflows: `comfyui/workflows/krea2_pose_from_reference.json` and `comfyui/workflows/krea2_pose_from_condition.json`.
-- Installation, model layout, defaults, and limitations: `comfyui/README.md`.
-- The package vendors package-relative MMDiT model surgery and Turbo sampling. It has no runtime `sys.path` mutation, no dependency on this repository path, and no NFS/checkpoint fallback.
-- `Krea2PoseExtractor` uses torchvision `KeypointRCNN_ResNet50_FPN_Weights.COCO_V1`, selects all score-qualified people (optional cap), uses only 17 body joints, preserves source canvas geometry, and never creates missing joints.
-- `Krea2PoseCondition` leaves a finite valid ComfyUI IMAGE untouched. Raster provenance cannot be inferred from pixels, so docs explicitly prohibit generic OpenPose inputs.
-- `Krea2PoseGenerate` requires local Turbo and materialized release files, supports `hf://owner/repo/filename` through the HF cache, checks SHA/tensor/parameter identity, and has no Style-LoRA or historical NFS path. Raw input is optional provenance-path validation; Turbo is the actual inference base.
-- No-generation preflight `krea2_pose_control.preflight` validates model paths/release identity, imports the nodes, then extracts/renders a condition.
+- `KeypointRCNN_ResNet50_FPN_Weights.COCO_V1` metadata confirms exact COCO order: nose; left/right eyes; left/right ears; left/right shoulders, elbows, wrists, hips, knees, ankles.
+- The ComfyUI mapping, historic `PoseBridge` reconstruction, and `reference_pose.py` agree limb-for-limb and color/order-for-color/order. The mapping is correct: left/right shoulders, elbows, wrists, hips, knees, ankles, eyes, and ears all reach their intended Body-18 indices.
+- A separate renderer-integration defect was fixed in `Krea2PoseExtractor`: torchvision's `keypoints[..., 2]` is its inference visibility marker (the installed 0.22 implementation emits `1`), not a per-joint confidence. The extractor now passes `keypoints_scores` to the frozen renderer, so its keypoint threshold can omit weak joints instead of drawing all 17 joints on each accepted box.
+- Classification is **C, both**: the unconditional per-joint rendering was a confirmed integration cause of implausible long/collapsed limbs; the observed extra jester people can only originate from separate accepted detector boxes, since the renderer creates neither people nor cross-person limbs. Actual smoke input/output files were not present in this workspace, so detector quality for each stylized image is not independently quantified.
 
-## Verification this session
+## ComfyUI delivery and completed gates
+
+- Package: `comfyui/krea2_pose_control/`; workflows and instructions remain under `comfyui/`.
+- Focused synthetic tests now assert torchvision order, all uniquely-labelled COCO-to-Body-18 assignments, shoulder-only neck synthesis, exact frozen raster parity, and extractor pass-through of `keypoints_scores` rather than the visibility column.
 
 PASS:
 
 ```bash
 uv run python -m unittest comfyui/krea2_pose_control/tests/test_integration.py
+uv run python -m unittest tests/test_reference_pose.py tests/test_keypoint_critic.py
 uv run python -m compileall -q comfyui/krea2_pose_control
-PYTHONPATH=comfyui uv run python -m krea2_pose_control.preflight --help
 git diff --check
 ```
 
-Focused tests cover exact COCO-17 topology, renderer neck/limb behavior, Comfy tensor/PIL range conversion, release SHA rejection, both workflow JSONs, and custom-node import. No full model generation was attempted.
-
 ## Files changed this session
 
-- `comfyui/krea2_pose_control/` (nodes, renderer, geometry, vendored runtime, preflight, focused tests)
-- `comfyui/workflows/krea2_pose_from_reference.json`
-- `comfyui/workflows/krea2_pose_from_condition.json`
-- `comfyui/README.md`
+- `comfyui/krea2_pose_control/nodes.py`
+- `comfyui/krea2_pose_control/tests/test_integration.py`
 - `docs/CODEX_HANDOFF.md`
 
-## Unresolved / next action
+## Exact next recommended action
 
-No live release artifact, Turbo checkpoint, or reference-image path was available in this sandbox, so release-positive validation, detector download, and actual generation are unrun. On the GH200, after copying the package into ComfyUI, run:
-
-```bash
-cd /home/ubuntu/krea2-pose-controlnet
-PYTHONPATH="$PWD/comfyui" uv run python -m krea2_pose_control.preflight \
-  --reference-image /ABS/PATH/reference.jpg \
-  --release-artifact /ABS/PATH/krea2-pose-control-mix025.safetensors \
-  --turbo-path /ABS/PATH/krea2_turbo.safetensors \
-  --raw-path /ABS/PATH/krea2_raw.safetensors \
-  --output-condition /tmp/krea2_pose_condition.png
-```
-
-Next step: end-to-end reference-image -> condition -> generation smoke test on the GH200 with verified release and Turbo files. Do not modify release/evaluation artifacts or checkpoints; do not commit or push without explicit authorization.
+Re-run the four original smoke inputs with this corrected per-joint score handoff and retain the raw person boxes plus `keypoints_scores` for review. If stylized-image failures remain, test a ComfyUI-compatible DWPose/OpenPose-style detector backend (DWPose first) behind the same COCO-17 normalization and this unchanged frozen PoseBridge renderer; do not feed its native OpenPose raster to the model and do not alter release or evaluation artifacts.
