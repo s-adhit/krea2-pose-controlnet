@@ -49,7 +49,7 @@
   "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/single_07_crouched.png",
   "pose_image_sha256": "4e87b281764962da7838ef76bbf5dfb889e76e03a5e75f5091a49d9d0a37db0f",
   "pose_lora_checkpoint": null,
-  "prompt": "Polished modern anime, sleek black-and-coral technical apparel with translucent accents, a rain-glossed neon botanical conservatory, cool cyan reflections and magenta rim light, crisp cel shading, refined linework, luminous contemporary color design.",
+  "prompt": "Polished modern anime illustration, crisp linework, vibrant accents, refined shading, stylish character design.",
   "release": {
     "id": "krea2-pose-control-lora-v1",
     "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
@@ -58,7 +58,7 @@
   "seed": 1377944064484766707,
   "steps": 8,
   "style_lora": {
-    "effective_prompt": "Polished modern anime, sleek black-and-coral technical apparel with translucent accents, a rain-glossed neon botanical conservatory, cool cyan reflections and magenta rim light, crisp cel shading, refined linework, luminous contemporary color design.",
+    "effective_prompt": "Polished modern anime illustration, crisp linework, vibrant accents, refined shading, stylish character design.",
     "name": null,
     "path": null,
     "sha256": null,

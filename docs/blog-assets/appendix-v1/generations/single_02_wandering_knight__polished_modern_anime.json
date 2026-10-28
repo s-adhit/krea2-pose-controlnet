@@ -37,7 +37,7 @@
       1216
     ]
   },
-  "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
+  "geometry_mode": "explicit",
   "height": 1216,
   "mode": "turbo-pose-control",
   "mu": 1.15,
@@ -49,7 +49,7 @@
   "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/single_02_wandering_knight.png",
   "pose_image_sha256": "9c7bf449c539fadc1d3a2b2c0f194bcc4e07245c2b09545f46d000ebfa45c773",
   "pose_lora_checkpoint": null,
-  "prompt": "Polished modern anime, sleek black-and-coral technical apparel with translucent accents, a rain-glossed neon botanical conservatory, cool cyan reflections and magenta rim light, crisp cel shading, refined linework, luminous contemporary color design.",
+  "prompt": "Polished modern anime illustration, crisp linework, vibrant accents, refined shading, stylish character design.",
   "release": {
     "id": "krea2-pose-control-lora-v1",
     "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
@@ -58,7 +58,7 @@
   "seed": 9013529906536531524,
   "steps": 8,
   "style_lora": {
-    "effective_prompt": "Polished modern anime, sleek black-and-coral technical apparel with translucent accents, a rain-glossed neon botanical conservatory, cool cyan reflections and magenta rim light, crisp cel shading, refined linework, luminous contemporary color design.",
+    "effective_prompt": "Polished modern anime illustration, crisp linework, vibrant accents, refined shading, stylish character design.",
     "name": null,
     "path": null,
     "sha256": null,

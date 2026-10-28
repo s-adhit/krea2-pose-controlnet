@@ -37,7 +37,7 @@
       1152
     ]
   },
-  "geometry_mode": "native_aspect_preserving_cached_latent_bucket",
+  "geometry_mode": "explicit",
   "height": 1152,
   "mode": "turbo-pose-control",
   "mu": 1.15,
@@ -49,7 +49,7 @@
   "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/single_01_female_warrior.png",
   "pose_image_sha256": "6f96363ad294d2b86663b48147278d9b8f8b46cb8a87351eab6fbc324841c9a6",
   "pose_lora_checkpoint": null,
-  "prompt": "Painterly storybook fantasy, richly painted russet, cream, and moss-green garments, an enchanted orchard of lantern flowers and ancient stone markers, honeyed late-afternoon light, expressive brushwork, visible paper texture, warm lyrical color.",
+  "prompt": "Painterly storybook fantasy illustration, warm palette, expressive brushwork, whimsical layered costume, textured paint.",
   "release": {
     "id": "krea2-pose-control-lora-v1",
     "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
@@ -58,7 +58,7 @@
   "seed": 6262798376865783345,
   "steps": 8,
   "style_lora": {
-    "effective_prompt": "Painterly storybook fantasy, richly painted russet, cream, and moss-green garments, an enchanted orchard of lantern flowers and ancient stone markers, honeyed late-afternoon light, expressive brushwork, visible paper texture, warm lyrical color.",
+    "effective_prompt": "Painterly storybook fantasy illustration, warm palette, expressive brushwork, whimsical layered costume, textured paint.",
     "name": null,
     "path": null,
     "sha256": null,

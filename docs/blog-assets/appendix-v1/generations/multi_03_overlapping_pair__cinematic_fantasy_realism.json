@@ -49,7 +49,7 @@
   "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/multi_03_overlapping_pair.png",
   "pose_image_sha256": "db15cf74488fcd6115adc98001121cb1fd5bf124f50df1d10b9ae823b6a21609",
   "pose_lora_checkpoint": null,
-  "prompt": "Cinematic fantasy realism, elegant emerald wool garments with aged brass filigree and midnight-blue textiles, a ruined mountain observatory at storm-softened dawn, natural skin texture, tactile fabric and metal detail, restrained jewel tones, immersive filmic atmosphere.",
+  "prompt": "Grounded cinematic fantasy realism, elegant tailored costume, realistic wool, leather, and aged metal, naturalistic soft lighting.",
   "release": {
     "id": "krea2-pose-control-lora-v1",
     "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
@@ -58,7 +58,7 @@
   "seed": 6033055981513119168,
   "steps": 8,
   "style_lora": {
-    "effective_prompt": "Cinematic fantasy realism, elegant emerald wool garments with aged brass filigree and midnight-blue textiles, a ruined mountain observatory at storm-softened dawn, natural skin texture, tactile fabric and metal detail, restrained jewel tones, immersive filmic atmosphere.",
+    "effective_prompt": "Grounded cinematic fantasy realism, elegant tailored costume, realistic wool, leather, and aged metal, naturalistic soft lighting.",
     "name": null,
     "path": null,
     "sha256": null,

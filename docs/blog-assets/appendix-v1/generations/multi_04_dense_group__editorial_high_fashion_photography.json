@@ -49,7 +49,7 @@
   "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/multi_04_dense_group.png",
   "pose_image_sha256": "e487e747fd868117073d9e3c907f085fb6a2dfaea4e0d6456fcebe0503e23f19",
   "pose_lora_checkpoint": null,
-  "prompt": "Editorial high-fashion photography, sculptural slate tailoring with silver jewelry and matte silk, a minimalist travertine gallery with sculpted light, soft directional studio illumination, premium medium-format detail, subtle film grain, quiet modern luxury.",
+  "prompt": "Premium high-fashion editorial photography, tailored styling, refined fabric and metal materials, clean studio lighting.",
   "release": {
     "id": "krea2-pose-control-lora-v1",
     "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
@@ -58,7 +58,7 @@
   "seed": 3001095550286564921,
   "steps": 8,
   "style_lora": {
-    "effective_prompt": "Editorial high-fashion photography, sculptural slate tailoring with silver jewelry and matte silk, a minimalist travertine gallery with sculpted light, soft directional studio illumination, premium medium-format detail, subtle film grain, quiet modern luxury.",
+    "effective_prompt": "Premium high-fashion editorial photography, tailored styling, refined fabric and metal materials, clean studio lighting.",
     "name": null,
     "path": null,
     "sha256": null,
