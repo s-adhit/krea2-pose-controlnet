@@ -1,180 +1,69 @@
 # Krea-2 Pose Control-LoRA
 
-Skeleton-conditioned pose control for Krea-2. The pose image controls **body geometry**; the prompt controls **identity, clothing, style, lighting, and environment**.
+Frozen pose-conditioned image generation for Krea-2 Turbo. A rendered
+PoseBridge skeleton controls spatial human geometry; the prompt controls
+compatible appearance and rendering.
 
-Training uses **Krea-2 Raw**. Inference and evaluation use **Krea-2 Turbo**.
+The released control mechanism is **not** a parallel ControlNet branch. The
+clean pose latent is spatially aligned and channel-concatenated with the noisy
+image latent before an expanded `ControlInputLayer`. Krea-2 Raw was used for
+training; the image-input backbone remains frozen while the control half of
+that layer and rank-64 LoRA adapters are trained. Frozen inference uses
+Krea-2 Turbo.
 
-## Showcase
+## Frozen release
 
-The pose condition controls broad body geometry while the prompt controls compatible identity, clothing, environment, lighting, and rendering style.
+- Artifact: `krea2-pose-control-mix025.safetensors`
+- Release identity: `krea2-pose-control-lora-v1`, candidate `mix-025`
+- SHA-256: `6d97e9c2e102e07928fc8864346401a0d2e6082d610ca6b037c4704102e3f8d1`
+- Defaults: Turbo, 8 steps, CFG 0, `mu=1.15`, control scale 1.0,
+  native/aspect-preserving geometry, no Style-LoRA
 
-<p align="center">
-  <img src="docs/showcase/final/hero-v2/final/final_generation_montage.png" alt="Krea-2 Pose Control final generations" width="100%">
-</p>
+The release decision, artifact lineage, locked runtime, and limitations are in
+[docs/evaluation/release/final_release_v1.json](docs/evaluation/release/final_release_v1.json).
 
-<p align="center">
-  <img src="docs/showcase/final/hero-v2/final/final_condition_montage.png" alt="Krea-2 Pose Control pose conditions" width="100%">
-</p>
-
-See [prompting.md](prompting.md) for prompt structure, control-strength guidance, examples, and common failure modes.
-
-## Current evaluation candidate
-
-`mix-025` is `75% parent-4000 + 25% A4300`, interpolated over trainable `state['model']` tensors only.
-
-| Candidate | PCK@0.05 | PCK@0.10 | PCK@0.20 | CLIP |
-|---|---:|---:|---:|---:|
-| parent-4000 | 0.4301 | 0.5725 | 0.7105 | 0.33649 |
-| **mix-025** | **0.4521** | **0.6043** | **0.7241** | 0.33694 |
-| mix-050 | 0.4443 | 0.5991 | 0.7131 | 0.33411 |
-| mix-075 | 0.4475 | 0.6036 | 0.7085 | 0.33542 |
-| A4300 | 0.4404 | 0.5939 | 0.7170 | **0.33698** |
-
-## How it works
-
-The pose image is VAE-encoded and spatially aligned with the noisy image latent. The two are channel-concatenated before the expanded `ControlInputLayer`:
+## Architecture
 
 ```text
-noisy image latent + pose latent
-              ↓
-      ControlInputLayer
-              ↓
-          Krea-2
+rendered skeleton -> clean pose latent
+noisy image latent + clean pose latent -> channel concat -> ControlInputLayer
+                                                     -> frozen Krea-2 + rank-64 LoRA
 ```
 
-Pretrained image-input weights are preserved; the new control portion starts from zero. The backbone stays frozen while the expanded control input and rank-64 LoRA adapters learn pose control.
+The prompt must not compete with the condition on person count, framing, or
+geometry. See [prompting.md](prompting.md) for the control/prompt contract.
 
-The control-input design was informed by [Tanmay Patil's Krea-2 ControlNet](https://github.com/Tanmaypatil123/Krea-2-controlnet), a public depth-conditioned Krea-2 ControlNet implementation. This project adapts that lineage to skeleton conditioning and provides its own pose training, evaluation, inference, and data pipeline.
+## Evidence and assets
 
-## Training objective
+Training and evaluation are complete. The primary result record is
+[docs/blog-evidence/EVALUATION_RESULTS.md](docs/blog-evidence/EVALUATION_RESULTS.md);
+methodology and caveats are beside it in `docs/blog-evidence/`. Frozen
+benchmark specifications and payloads live in [docs/evaluation](docs/evaluation).
 
-```text
-loss = flow_loss + 0.04 * pose_loss
-```
+Qualitative and blog-ready assets are indexed in
+[docs/blog-assets/BLOG_ASSET_INDEX.md](docs/blog-assets/BLOG_ASSET_INDEX.md),
+including the hero showcase, geometry comparison, hard-pose examples, and the
+appendix regeneration manifest.
 
-Flow matching uses `x_t = t * noise + (1 - t) * x0` with target `noise - x0`. Pose consistency uses a frozen Keypoint R-CNN path and normalized-coordinate Huber loss. The idea of condition-consistency feedback was inspired by [ControlNet++](https://arxiv.org/abs/2404.07987); the exact pose loss is project-specific.
+## Inference and ComfyUI
 
-| Setting | Value |
-|---|---|
-| LoRA rank / alpha | 64 / 64 |
-| Trainable parameters | ~215.5M |
-| Precision / effective batch | BF16 / 32 |
-| Optimizer / base LR | AdamW / `1e-4` |
-| Pose-loss weight / seed | `0.04` / 42 |
-| Resolution | Dynamic 768 buckets |
+Use [inference.py](inference.py) for the canonical CLI contract. It validates
+the frozen release before loading and writes an output provenance sidecar. The
+CLI defaults to native/aspect-preserving geometry; explicit dimensions must be
+positive multiples of 16.
 
-## Prompting
+[comfyui/README.md](comfyui/README.md) documents the completed standalone
+ComfyUI integration, including the DWPose-to-PoseBridge conversion path and
+frozen model paths.
 
-See the concise [prompting guide](prompting.md). The main rule is simple: **pose image = geometry; prompt = appearance, environment, and rendering**.
+## Repository status
 
-Controlled studies show that framing/count conflicts, explicit pose conflicts, and strong semantic priors can fight the pose condition.
-
-![Prompting study contact sheet](docs/evaluation/prompting-guide/results/mix-025/prompting_study_contact_sheet.png)
-
-## Style-LoRA composition
-
-Isolated runtime composition has been implemented and tested with `darkbrush`, `rainywindow`, `retroanime`, and `realism`.
-
-Official trigger phrases matter for the first three. Style-LoRA deltas stay separate from the Pose-LoRA, and a controlled strength sweep was run at `0.25`, `0.50`, `0.75`, and `1.00`.
-
-Pose retention is not monotonic with style strength, so final default strengths are still being reviewed.
-
-[Trigger-correct composition results](docs/evaluation/style-lora-composition/results/mix-025-strength-1.0-triggers) · [strength-sweep results](docs/evaluation/style-lora-composition/results/strength-sweep-v1)
-
-## Multilingual prompting
-
-A fixed-pose English / Chinese / Telugu sanity test was run using the same pose control, seed, candidate, geometry, and Turbo settings.
-
-| Language | PCK@0.05 | PCK@0.10 | PCK@0.20 | CLIP |
-|---|---:|---:|---:|---:|
-| English | **0.8824** | 0.9412 | 1.0000 | **0.30815** |
-| Chinese | 0.7647 | **1.0000** | 1.0000 | 0.23574 |
-| Telugu | 0.8235 | 0.8824 | 1.0000 | 0.22788 |
-
-All three preserved the target pose strongly in this example. This is a small sanity test, not a multilingual benchmark or a claim of language parity.
-
-## Evaluation
-
-Evaluation includes:
-
-- frozen held-out 48-condition benchmark
-- PCK@0.05 / 0.10 / 0.20
-- CLIP prompt alignment
-- authoritative pose-reference sidecar
-- semantic prompt-injection stress test
-- prompting-guide study
-- Style-LoRA composition and strength sweep
-
-The locked Turbo contract is **8 steps, CFG 0, `mu=1.15`, control scale 1.0**.
-
-The diagnostic split is used for development and checkpoint selection. Validation was held out from training but inspected during inference evaluation, so it should not be described as an untouched test set.
-
-## Inference
-
-The canonical v1 entry point defaults to frozen `mix-025` (`75%` parent-4000
-plus `25%` finish-control-a4300), validating both pinned endpoint hashes
-before it loads the model:
-
-```bash
-PYTHONPATH=. python inference.py \
-  --turbo-ckpt /path/to/turbo.safetensors \
-  --prompt "fantasy mage, ornate robes, cinematic lighting" \
-  --pose-image /path/to/pose.png \
-  --output output.png \
-  --seed 42
-```
-
-Native/aspect-preserving pose geometry is the default: the supplied pose image
-dimensions must be divisible by 16, and are recorded exactly in the output
-sidecar. Use `--dynamic-768-bucket` only to opt into the alternate dynamic-768
-bucket policy; `--width W --height H` is an explicit fixed-output mode. The
-locked runtime is 8 steps, CFG 0, `mu=1.15`, and control scale 1.0. Stronger
-control remains explicit via `--control-scale 1.25` through `1.50`.
-
-For one reversible Style-LoRA, use a frozen name such as
-`--style-name darkbrush` (its default strength is 0.75), optionally with
-`--style-strength`; a custom `--style-lora PATH` must declare one known
-`--style-name` so its namespace can be validated. One adapter maximum is
-enforced. The prompt is never rewritten with hidden trigger phrases. Historical
-single-checkpoint inference remains available with `--pose-lora-ckpt PATH`.
-Each output includes a JSON sidecar with the release/candidate, interpolation,
-geometry, control, Style-LoRA, prompt, seed, and runtime provenance.
-
-## Repository
-
-```text
-.
-├── inference.py
-├── prompting.md
-├── pose_controlnet/
-│   ├── production_training.py
-│   ├── turbo_runtime.py
-│   └── style_lora.py
-├── scripts/
-│   ├── final_val_turbo_benchmark.py
-│   ├── frozen_prompt_turbo.py
-│   ├── prompting_guide_study.py
-│   ├── multilingual_prompt_smoke.py
-│   └── style_lora_composition.py
-├── docs/
-│   ├── CODEX_HANDOFF.md
-│   └── evaluation/
-└── tests/
-```
-
-For GH200 development/restart setup, see [`scripts/bootstrap_gh200.sh`](scripts/bootstrap_gh200.sh).
+Model development, training, evaluation, frozen release, and ComfyUI
+integration are complete. The repository is in its blog/documentation and
+evidence-archive phase; it does not have a future adapter roadmap.
 
 ## References
 
-* [Krea-2](https://github.com/krea-ai/krea-2) — [Technical Report](https://www.krea.ai/blog/krea-2-technical-report)
-* [Tanmay Patil — Krea-2 ControlNet](https://github.com/Tanmaypatil123/Krea-2-controlnet)
-* [ControlNet](https://arxiv.org/abs/2302.05543)
-* [ControlNet++](https://arxiv.org/abs/2404.07987)
-* [LoRA](https://arxiv.org/abs/2106.09685)
-* [Flow Matching](https://arxiv.org/abs/2210.02747)
-* [Rectified Flow](https://arxiv.org/abs/2209.03003)
-* [COCO](https://arxiv.org/abs/1405.0312)
-* [Human-Art](https://arxiv.org/abs/2303.02760)
-* [A Recipe for Training Neural Networks](https://karpathy.github.io/2019/04/25/recipe/)
-* [CLIP](https://arxiv.org/abs/2103.00020)
-* [Mask R-CNN](https://arxiv.org/abs/1703.06870)
+- [Krea-2](https://github.com/krea-ai/krea-2) and its [technical report](https://www.krea.ai/blog/krea-2-technical-report)
+- [Tanmay Patil's Krea-2 ControlNet](https://github.com/Tanmaypatil123/Krea-2-controlnet), an architectural reference only
+- [LoRA](https://arxiv.org/abs/2106.09685), [Flow Matching](https://arxiv.org/abs/2210.02747), and [ControlNet++](https://arxiv.org/abs/2404.07987)

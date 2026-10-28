@@ -1,51 +1,57 @@
-# Project handoff
+# Final pre-archive handoff
 
-## Current objective
+## Project state
 
-Materialize the 48-image qualitative appendix on the CUDA-visible GH200 shell
-before archival. The appendix now uses the frozen native/aspect-preserving
-bucket policy for every copied control; do not alter release identity,
-checkpoints, prompts, seeds, renderer, metrics, or Turbo runtime defaults.
-The audit shell has no visible CUDA.
+Training, evaluation, release selection, and ComfyUI integration are complete.
+The frozen release is `krea2-pose-control-lora-v1`, materialized artifact
+`krea2-pose-control-mix025.safetensors`, SHA-256
+`6d97e9c2e102e07928fc8864346401a0d2e6082d610ca6b037c4704102e3f8d1`.
+Krea-2 Raw is training provenance; frozen inference is Krea-2 Turbo. The
+targeted native-vs-dynamic and hard-pose blog comparison assets are complete
+frozen evaluation outputs and must not be regenerated.
 
-## Frozen execution contract
+The architecture is a clean rendered-skeleton latent channel-concatenated with
+the noisy image latent before `ControlInputLayer`; it is not a parallel
+ControlNet branch. Trainable components are the control input and rank-64
+LoRA. The frozen inference contract is 8 steps, CFG 0, `mu=1.15`, control
+scale 1.0, native/aspect-preserving geometry, and no Style-LoRA.
 
-- Release: `/lambda/nfs/adhit/krea2-pose/release/krea2-pose-control-lora-v1/krea2-pose-control-mix025.safetensors`, SHA-256 `6d97e9c2e102e07928fc8864346401a0d2e6082d610ca6b037c4704102e3f8d1`.
-- Base sampler: Krea-2 Turbo at `/lambda/nfs/adhit/krea2-pose/models/krea-2-turbo/turbo.safetensors`; Raw provenance remains `/lambda/nfs/adhit/krea2-pose/models/krea-2-raw/raw.safetensors`.
-- Runtime: 8 steps, CFG 0, `mu=1.15`, control scale 1.0, no Style-LoRA, deterministic per-row seed, native/aspect-preserving geometry.
-- Prompting: consult `prompting.md`; new prompts never narrate pose/body geometry. The control is authoritative for count, framing, and anatomy.
-- Geometry resolver: `choose_bucket(source_size, REFERENCE_KREA_BUCKETS)` from
-  `pose_controlnet.paired_preprocessing`, selecting the nearest log-aspect
-  frozen native bucket (not dynamic-768 or a forced square). Generation passes
-  that resolved width and height explicitly to `inference.py`.
+## Appendix v1
 
-## Prepared / green
+The appendix is prepared for a fresh 48-image regeneration: 12 frozen controls
+× four short, geometry-neutral visual families. It resolves every copied
+control through `choose_bucket(source_size, REFERENCE_KREA_BUCKETS)` and
+records the resulting positive, 16-divisible width and height. Seeds remain
+deterministic. Preparation validates the release SHA, control PNGs, all output
+paths, and prompt neutrality without loading a model.
 
-- `scripts/prepare_qualitative_appendix.py` validates the frozen release SHA, every source control/output, output-path uniqueness, and a geometry-word prompt linter before any model load. `--generate-appendix` requires CUDA and reuses one inference runtime for the 48 planned samples. It stops on a generation exception; no silent retries occur.
-- `docs/blog-assets/appendix-v1/manifest.json` contains exactly 48 deterministic rows: 12 controls (8 single, 4 duo/multi) × four appearance families. It now records source dimensions plus the resolved generation `width`/`height`; all are positive and divisible by 16.
-- Twenty existing appendix images are valid at their resolved native buckets and will be retained. Four old `single_06_seated` 640×640 appendix outputs are classified as stale and will be replaced only during the explicit CUDA generation, together with the 24 missing rows. Frozen blog examples are not touched.
-- Reused (not regenerated) eight frozen evaluation outputs and their controls:
-  - `docs/blog-assets/qualitative/native-vs-dynamic/`: inversion portrait and multi-person stage example, with native/dynamic triptych sheet.
-  - `docs/blog-assets/qualitative/hard-pose-single-multi/`: strong-foreshortening and inversion singles; two-person interaction and overlapping-pair multis, with labelled sheet.
-- `docs/blog-assets/SHA256SUMS.txt` covers all currently materialized target assets and will be rewritten after appendix completion.
-- Visual inspection passed for both targeted comparison sheets; images are letterboxed (never cropped) and labels identify the comparison classes.
+Old appendix images whose sidecars contain the prior prompts are classified as
+stale rather than reused. The next CUDA generation replaces each stale or
+missing row, fails loudly on an error, and writes the contact sheet only after
+all 48 rows succeed. The rebuilt sheet has rows `row label | control |
+cinematic_fantasy_realism | painterly_storybook_fantasy |
+polished_modern_anime | editorial_high_fashion_photography`; thumbnails are
+letterboxed, never cropped.
 
-## Exact checks run
+## Verified this session
 
-- PASS: `uv run python -m unittest tests.test_prepare_qualitative_appendix tests.test_inference tests.test_paired_preprocessing` — 23 tests, including non-divisible square, portrait, landscape, already-valid native bucket, all-48 manifest resolution, and stale appendix classification.
-- PASS: `python scripts/prepare_qualitative_appendix.py` — 48 manifest rows validate without model load; 20 success, 28 `pending_cuda`; eight frozen evaluation outputs reused.
-- PASS: `git diff --check`.
-- INFO: `uv run python -c 'import torch; print(torch.cuda.is_available())'` reported `False`; no appendix generation was launched in this shell.
+- PASS: `uv run python -m unittest tests.test_prepare_qualitative_appendix tests.test_inference tests.test_paired_preprocessing` — 27 tests.
+- PASS: `python scripts/prepare_qualitative_appendix.py` — 48 rows planned,
+  0 current-prompt successes, 48 pending CUDA; eight targeted evaluation
+  outputs reused unchanged.
+- INFO: `uv run python -c 'import torch; print(torch.cuda.is_available())'`
+  reported `False`; no CUDA generation was launched in this audit shell.
 
 ## Files changed this session
 
 - `scripts/prepare_qualitative_appendix.py`
 - `tests/test_prepare_qualitative_appendix.py`
-- `docs/blog-assets/appendix-v1/` (manifest, README, 12 copied controls; samples pending)
-- `docs/blog-assets/qualitative/native-vs-dynamic/` (2 frozen triptychs and manifest)
-- `docs/blog-assets/qualitative/hard-pose-single-multi/` (4 frozen pairs and manifest)
-- `docs/blog-assets/SHA256SUMS.txt`
+- `README.md`
+- `comfyui/README.md`
+- `docs/blog-assets/appendix-v1/README.md`
+- `docs/blog-assets/appendix-v1/manifest.json`
 - `docs/blog-assets/BLOG_ASSET_INDEX.md`
+- `docs/blog-assets/SHA256SUMS.txt`
 - `docs/CODEX_HANDOFF.md`
 
 ## Exact next action
@@ -55,7 +61,9 @@ cd /home/ubuntu/krea2-pose-controlnet
 uv run python scripts/prepare_qualitative_appendix.py --generate-appendix
 ```
 
-This keeps the 20 valid appendix images, replaces the four stale 640×640
-appendix images at 1024×1024, and generates the other 24 pending images. On
-success, inspect `docs/blog-assets/appendix-v1/contact_sheet.png`, rerun
-`git diff --check`, and do not commit or push unless explicitly authorized.
+After that command succeeds, inspect the five-column appendix contact sheet,
+run the appendix preparation command again, run `git diff --check`, and review
+the generated manifest/checksums. Then make the README/docs commit, archive
+evidence, verify the remote copy, clean NFS/GH200 working artifacts, and move
+to the blog-only phase. Do not train, change release identity, alter frozen
+metrics/runtime defaults, or regenerate targeted comparison assets.

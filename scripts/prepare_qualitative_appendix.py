@@ -39,26 +39,23 @@ NATIVE_GEOMETRY = "native_aspect_preserving_cached_latent_bucket"
 # authoritative for count, framing, and body geometry in every family.
 STYLE_PROMPTS = {
     "cinematic_fantasy_realism": (
-        "Cinematic fantasy realism, elegant emerald wool garments with aged brass filigree "
-        "and midnight-blue textiles, a ruined mountain observatory at storm-softened dawn, "
-        "natural skin texture, tactile fabric and metal detail, restrained jewel tones, immersive filmic atmosphere."
+        "Grounded cinematic fantasy realism, elegant tailored costume, realistic wool, leather, "
+        "and aged metal, naturalistic soft lighting."
     ),
     "painterly_storybook_fantasy": (
-        "Painterly storybook fantasy, richly painted russet, cream, and moss-green garments, "
-        "an enchanted orchard of lantern flowers and ancient stone markers, honeyed late-afternoon light, "
-        "expressive brushwork, visible paper texture, warm lyrical color."
+        "Painterly storybook fantasy illustration, warm palette, expressive brushwork, whimsical layered "
+        "costume, textured paint."
     ),
     "polished_modern_anime": (
-        "Polished modern anime, sleek black-and-coral technical apparel with translucent accents, "
-        "a rain-glossed neon botanical conservatory, cool cyan reflections and magenta rim light, "
-        "crisp cel shading, refined linework, luminous contemporary color design."
+        "Polished modern anime illustration, crisp linework, vibrant accents, refined shading, stylish "
+        "character design."
     ),
     "editorial_high_fashion_photography": (
-        "Editorial high-fashion photography, sculptural slate tailoring with silver jewelry and matte silk, "
-        "a minimalist travertine gallery with sculpted light, soft directional studio illumination, "
-        "premium medium-format detail, subtle film grain, quiet modern luxury."
+        "Premium high-fashion editorial photography, tailored styling, refined fabric and metal materials, "
+        "clean studio lighting."
     ),
 }
+APPENDIX_SHEET_LABELS = ("control", *STYLE_PROMPTS)
 
 # Eight singles: varied hero controls plus seated/crouched/arm-articulation
 # frozen hard-pose controls.  Four multi/duo controls include two clean hero
@@ -112,9 +109,11 @@ HARD_SELECTIONS = (
 # evaluation prompts retained verbatim in frozen B/C manifests are historical
 # source evidence, not new appendix prompting.
 POSE_WORDS = re.compile(
-    r"\b(stand(?:ing)?|walk(?:ing)?|sit(?:ting)?|seated|kneel(?:ing)?|crouch(?:ing)?|"
+    r"\b(full\s+body|arms\s+raised|seated|crouched|standing|walking|pose|stance|"
+    r"hands?\s+framing|one\s+leg\s+bent|body\s+orientation|exact\s+pose|"
+    r"centered\s+composition|framing|person\s+count|body\s+(?:position|geometry)|"
     r"lean(?:ing)?|arm|arms|leg|legs|hand|hands|foot|feet|limb|limbs|joint|joints|"
-    r"pose|body\s+(?:position|geometry)|overhead|inversion|airborne)\b", re.I)
+    r"overhead|inversion|airborne)\b", re.I)
 
 
 class AppendixError(ValueError):
@@ -223,7 +222,7 @@ def appendix_records() -> list[dict[str, Any]]:
                 raise AppendixError(f"Duplicate output path: {relative}")
             seen_outputs.add(relative)
             completed = output.is_file()
-            stale_geometry = None
+            stale_reason = None
             if completed:
                 actual_size = verify_png(output)
                 if actual_size != size:
@@ -234,7 +233,22 @@ def appendix_records() -> list[dict[str, Any]]:
                     # them.  Frozen evaluation/blog assets are not in this
                     # output tree and are never regenerated here.
                     completed = False
-                    stale_geometry = f"stale appendix output geometry {actual_size}; expected {size}"
+                    stale_reason = f"stale appendix output geometry {actual_size}; expected {size}"
+                else:
+                    sidecar = output.with_suffix(".json")
+                    if not sidecar.is_file():
+                        completed = False
+                        stale_reason = "stale appendix output provenance: missing sidecar"
+                    else:
+                        output_provenance = read_json(sidecar)
+                        expected = {"prompt": prompt, "seed": stable_seed(control_id, family),
+                                    "width": size[0], "height": size[1], "steps": RUNTIME["steps"],
+                                    "cfg": RUNTIME["cfg"], "mu": RUNTIME["mu"],
+                                    "control_scale": RUNTIME["control_scale"]}
+                        mismatches = [name for name, value in expected.items() if output_provenance.get(name) != value]
+                        if mismatches:
+                            completed = False
+                            stale_reason = "stale appendix output provenance: " + ", ".join(mismatches)
             records.append({
                 "id": f"{control_id}__{family}", "control_id": control_id,
                 "control_type": control_type, "control_source_path": str(source),
@@ -247,7 +261,7 @@ def appendix_records() -> list[dict[str, Any]]:
                 "release_artifact": {"path": str(RELEASE), "sha256": RELEASE_SHA256},
                 "raw_provenance_path": str(RAW), "output_path": relative,
                 "success": True if completed else None,
-                "failure": stale_geometry, "retry_of": None,
+                "failure": stale_reason, "retry_of": None,
                 "status": "success" if completed else "pending_cuda",
             })
     if len(records) != 48:
@@ -256,9 +270,9 @@ def appendix_records() -> list[dict[str, Any]]:
 
 
 def discard_stale_appendix_output(output: Path, row: dict[str, Any]) -> None:
-    """Remove only a known wrong-geometry appendix output before replacement."""
-    if not row["failure"] or not row["failure"].startswith("stale appendix output geometry"):
-        raise AppendixError(f"Refusing to replace appendix output without stale-geometry proof: {output}")
+    """Remove only a proven obsolete appendix artifact before replacement."""
+    if not row["failure"] or not row["failure"].startswith("stale appendix output "):
+        raise AppendixError(f"Refusing to replace appendix output without stale-output proof: {output}")
     output.unlink()
     output.with_suffix(".json").unlink(missing_ok=True)
 
@@ -266,26 +280,32 @@ def discard_stale_appendix_output(output: Path, row: dict[str, Any]) -> None:
 def build_sheet(rows: list[tuple[str, list[Path]]], destination: Path, labels: tuple[str, ...],
                 title: str, thumb: tuple[int, int] = (240, 240)) -> None:
     """Create a labelled letterbox contact sheet without cropping images."""
-    font = ImageFont.load_default()
-    margin, header, row_label, label_height = 24, 42, 240, 28
+    try:
+        title_font = ImageFont.truetype("DejaVuSans.ttf", 18)
+        header_font = ImageFont.truetype("DejaVuSans.ttf", 14)
+        row_font = ImageFont.truetype("DejaVuSans.ttf", 14)
+    except OSError:
+        title_font = header_font = row_font = ImageFont.load_default()
+    margin, header, row_label, label_height = 24, 100, 250, 32
     cols = len(labels)
     width = margin * 2 + row_label + cols * thumb[0] + (cols - 1) * margin
     height = header + margin + len(rows) * (thumb[1] + label_height + margin)
     sheet = Image.new("RGB", (width, height), "#101017")
     draw = ImageDraw.Draw(sheet)
-    draw.text((margin, 13), title, fill="#f3eeff", font=font)
+    draw.text((margin, 18), title, fill="#f3eeff", font=title_font)
     for col, label in enumerate(labels):
         x = margin + row_label + col * (thumb[0] + margin)
-        draw.text((x, header), label, fill="#d9ccff", font=font)
+        draw.multiline_text((x, header - 48), label.replace("_", "\n"), fill="#d9ccff", font=header_font, spacing=2)
     for row, (name, images) in enumerate(rows):
         y = header + margin + row * (thumb[1] + label_height + margin)
-        draw.text((margin, y + 8), name, fill="#f3eeff", font=font)
+        draw.multiline_text((margin, y + 8), name.replace("_", "\n"), fill="#f3eeff", font=row_font, spacing=3)
         for col, path in enumerate(images):
             with Image.open(path) as source:
                 image = source.convert("RGB")
             image.thumbnail(thumb, Image.Resampling.LANCZOS)
             x = margin + row_label + col * (thumb[0] + margin) + (thumb[0] - image.width) // 2
             iy = y + (thumb[1] - image.height) // 2
+            draw.rectangle((x - 1, iy - 1, x + image.width, iy + image.height), outline="#4f4765")
             sheet.paste(image, (x, iy))
     destination.parent.mkdir(parents=True, exist_ok=True)
     sheet.save(destination)
@@ -313,8 +333,10 @@ def native_assets() -> int:
                               "native_bucket": condition["native_bucket"], "dynamic_768_bucket": condition["dynamic_768_bucket"],
                               "control_scale": 1.0, "runtime": RUNTIME,
                               "source_provenance": str(NATIVE / "native_dynamic_provenance.json")})
-    build_sheet(rows, output / "comparison_sheet.png", ("control", "native", "dynamic-768"),
-                "Native cached geometry vs dynamic-768")
+    sheet = output / "comparison_sheet.png"
+    if not sheet.is_file():
+        build_sheet(rows, sheet, ("control", "native", "dynamic-768"),
+                    "Native cached geometry vs dynamic-768")
     write_json(output / "manifest.json", {"kind": "targeted_native_vs_dynamic_blog_examples", "reused_frozen_evaluation_generations": True,
                                             "frozen_provenance": str(NATIVE / "native_dynamic_provenance.json"),
                                             "release_artifact": {"path": str(RELEASE), "sha256": RELEASE_SHA256}, "examples": manifest_rows})
@@ -341,8 +363,10 @@ def hard_assets() -> int:
                               "control_path": str(destinations[0].relative_to(ROOT)), "output_path": str(destinations[1].relative_to(ROOT)),
                               "native_bucket": condition["native_bucket"], "runtime": RUNTIME,
                               "source_provenance": str(HARD / "hard_pose_provenance.json")})
-    build_sheet(rows, output / "comparison_sheet.png", ("control", "generated"),
-                "Hard pose: rows 1–2 single-person | rows 3–4 multi-person")
+    sheet = output / "comparison_sheet.png"
+    if not sheet.is_file():
+        build_sheet(rows, sheet, ("control", "generated"),
+                    "Hard pose: rows 1–2 single-person | rows 3–4 multi-person")
     write_json(output / "manifest.json", {"kind": "targeted_hard_pose_single_multi_blog_examples", "reused_frozen_evaluation_generations": True,
                                             "frozen_provenance": str(HARD / "hard_pose_provenance.json"),
                                             "release_artifact": {"path": str(RELEASE), "sha256": RELEASE_SHA256}, "examples": manifest_rows})
@@ -358,14 +382,18 @@ def appendix_manifest(records: list[dict[str, Any]]) -> None:
     write_json(APPENDIX / "manifest.json", payload)
     readme = """# Appendix v1
 
-Twelve validated project controls × four geometry-neutral appearance families.
-The skeleton is the sole body-geometry source; prompts only specify visual
-treatment.  The frozen runtime is Krea-2 Turbo, 8 steps, CFG 0, mu 1.15,
-control scale 1.0, no Style-LoRA, and native/aspect-preserving geometry.
+Twelve validated project controls × four short, geometry-neutral appearance
+families (48 planned generations). The skeleton is the sole body-geometry
+source; prompts specify only visual treatment. The frozen runtime is Krea-2
+Turbo, 8 steps, CFG 0, mu 1.15, control scale 1.0, no Style-LoRA, and
+native/aspect-preserving geometry selected with
+`choose_bucket(source_size, REFERENCE_KREA_BUCKETS)`.
 
 `manifest.json` is the source of reproducibility facts.  A `pending_cuda`
 record has been validated but requires execution from a CUDA-visible GH200
-shell; it is not an implicit retry or a completed generation.
+shell; it is not an implicit retry or a completed generation. Once all rows
+succeed, `contact_sheet.png` has one row per control and five image columns:
+`control`, then the four style families. Images are letterboxed, never cropped.
 """
     (APPENDIX / "README.md").write_text(readme, encoding="utf-8")
 
@@ -413,10 +441,13 @@ def appendix_sheet(records: list[dict[str, Any]]) -> None:
     if any(row["status"] != "success" for row in records): return
     grouped = []
     for control_id, _, _, _, _ in APPENDIX_CONTROLS:
-        images = [ROOT / next(row["output_path"] for row in records if row["control_id"] == control_id and row["style_family"] == family)
-                  for family in STYLE_PROMPTS]
+        control = ROOT / next(row["copied_control_path"] for row in records if row["control_id"] == control_id)
+        images = [control, *(ROOT / next(row["output_path"] for row in records
+                  if row["control_id"] == control_id and row["style_family"] == family)
+                  for family in STYLE_PROMPTS)]
         grouped.append((control_id, images))
-    build_sheet(grouped, APPENDIX / "contact_sheet.png", tuple(STYLE_PROMPTS), "Appendix v1: control transfer across four appearance families", thumb=(190, 190))
+    build_sheet(grouped, APPENDIX / "contact_sheet.png", APPENDIX_SHEET_LABELS,
+                "Appendix v1: control transfer across four appearance families", thumb=(190, 190))
 
 
 def write_checksums() -> None:
