@@ -49,7 +49,7 @@
   "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/multi_01_gothic_duo.png",
   "pose_image_sha256": "0bc4632b4aff77a8c5683dd3053c5e8bd4678633081e672b51586c4ee9eaf8ed",
   "pose_lora_checkpoint": null,
-  "prompt": "Grounded cinematic fantasy realism, elegant tailored costume, realistic wool, leather, and aged metal, naturalistic soft lighting.",
+  "prompt": "Grounded cinematic fantasy character imagery, realistic materials, elegant costume design, naturalistic lighting, restrained atmosphere.",
   "release": {
     "id": "krea2-pose-control-lora-v1",
     "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
@@ -58,7 +58,7 @@
   "seed": 8346863858218122968,
   "steps": 8,
   "style_lora": {
-    "effective_prompt": "Grounded cinematic fantasy realism, elegant tailored costume, realistic wool, leather, and aged metal, naturalistic soft lighting.",
+    "effective_prompt": "Grounded cinematic fantasy character imagery, realistic materials, elegant costume design, naturalistic lighting, restrained atmosphere.",
     "name": null,
     "path": null,
     "sha256": null,

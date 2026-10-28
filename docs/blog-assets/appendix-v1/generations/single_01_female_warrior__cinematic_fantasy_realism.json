@@ -49,7 +49,7 @@
   "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/single_01_female_warrior.png",
   "pose_image_sha256": "6f96363ad294d2b86663b48147278d9b8f8b46cb8a87351eab6fbc324841c9a6",
   "pose_lora_checkpoint": null,
-  "prompt": "Grounded cinematic fantasy realism, elegant tailored costume, realistic wool, leather, and aged metal, naturalistic soft lighting.",
+  "prompt": "Grounded cinematic fantasy character imagery, realistic materials, elegant costume design, naturalistic lighting, restrained atmosphere.",
   "release": {
     "id": "krea2-pose-control-lora-v1",
     "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
@@ -58,7 +58,7 @@
   "seed": 7414154873850431992,
   "steps": 8,
   "style_lora": {
-    "effective_prompt": "Grounded cinematic fantasy realism, elegant tailored costume, realistic wool, leather, and aged metal, naturalistic soft lighting.",
+    "effective_prompt": "Grounded cinematic fantasy character imagery, realistic materials, elegant costume design, naturalistic lighting, restrained atmosphere.",
     "name": null,
     "path": null,
     "sha256": null,

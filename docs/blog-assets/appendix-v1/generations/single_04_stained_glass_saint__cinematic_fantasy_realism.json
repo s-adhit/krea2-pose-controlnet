@@ -49,7 +49,7 @@
   "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/single_04_stained_glass_saint.png",
   "pose_image_sha256": "f194f02952408ba1b10cca70408b1f9ee676e8de16a4707317833ffc11bfdea8",
   "pose_lora_checkpoint": null,
-  "prompt": "Grounded cinematic fantasy realism, elegant tailored costume, realistic wool, leather, and aged metal, naturalistic soft lighting.",
+  "prompt": "Grounded cinematic fantasy character imagery, realistic materials, elegant costume design, naturalistic lighting, restrained atmosphere.",
   "release": {
     "id": "krea2-pose-control-lora-v1",
     "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
@@ -58,7 +58,7 @@
   "seed": 600794484705044508,
   "steps": 8,
   "style_lora": {
-    "effective_prompt": "Grounded cinematic fantasy realism, elegant tailored costume, realistic wool, leather, and aged metal, naturalistic soft lighting.",
+    "effective_prompt": "Grounded cinematic fantasy character imagery, realistic materials, elegant costume design, naturalistic lighting, restrained atmosphere.",
     "name": null,
     "path": null,
     "sha256": null,

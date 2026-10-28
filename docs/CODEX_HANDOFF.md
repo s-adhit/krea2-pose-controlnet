@@ -13,56 +13,52 @@ comparison assets, change release identity, or train.
 
 ## Appendix v1
 
-The appendix is now an 8-control × 3-style, 24-generation plan. Retained
+The complete appendix archive is successful and intact: eight controls ×
+three style families = 24 generation PNGs, with their sidecars and immutable
+`manifest.json`. `contact_sheet.png` remains the full archive sheet. Its
 controls are `single_01_female_warrior`, `single_02_wandering_knight`,
 `single_03_floral_oracle`, `single_04_stained_glass_saint`,
 `single_07_crouched`, `single_08_overhead_arms`, `multi_01_gothic_duo`, and
-`multi_04_dense_group`. It has six single-person and two multi-person rows.
-The style families are `cinematic_fantasy_realism`,
+`multi_04_dense_group`; its styles are `cinematic_fantasy_realism`,
 `painterly_storybook_fantasy`, and `classical_oil_painting`.
 
-Preparation validates release provenance, source/copy control rasters, prompt
-neutrality, native bucket dimensions, unique outputs, and full relevant
-sidecar runtime/control/release metadata without loading the model. A retained
-output is reusable only if that metadata and its prompt match the current row.
-The current plan has 0 valid reuses; the 16 old retained cinematic/painterly
-outputs are stale due to changed prompts, and the 8 classical-oil outputs are
-absent. All 24 are therefore pending CUDA. The stale `contact_sheet.png` was
-removed; successful materialization will make an eight-row sheet with columns
-`control | cinematic_fantasy_realism | painterly_storybook_fantasy |
-classical_oil_painting`, preserving aspect ratio by letterboxing.
+This session created the presentation-only
+`curated_contact_sheet.png`: six rows (`single_01_female_warrior`,
+`single_02_wandering_knight`, `single_03_floral_oracle`,
+`single_04_stained_glass_saint`, `single_07_crouched`,
+`multi_01_gothic_duo`) × two styles (`cinematic_fantasy_realism`,
+`painterly_storybook_fantasy`). It must use only the existing successful
+PNGs, preserve aspect ratio with letterboxing, and never run inference or
+modify generation results. Omitted examples remain supplementary/limitations
+material; `single_08_overhead_arms` and dense multi-person cases are omitted
+from the curated figure because pose adherence is weaker.
 
-Appendix-only cleanup removed the four dropped control rasters, 64 dropped
-control/style PNG and JSON artifacts, and the old contact sheet. Retained
-control rasters, source provenance, deterministic seeds, source dimensions,
-resolved native buckets, frozen runtime, and comparison assets were preserved.
+## Current session verification
 
-## Verified this session
-
-- PASS: `uv run python -m unittest tests.test_prepare_qualitative_appendix tests.test_inference tests.test_paired_preprocessing` — 29 tests.
-- PASS: `python scripts/prepare_qualitative_appendix.py` — 24 planned, 0 valid/reused, 24 pending/stale (16 stale), and 8 targeted frozen evaluation outputs reused unchanged.
-- INFO: `uv run python -c 'import torch; print(torch.cuda.is_available())'` reported `False`; no generation was launched in this Codex shell.
+- PASS: the manifest has 24 successful records; all 12 selected outputs and
+  all six selected controls opened successfully with Pillow verification/load.
+- PASS: `curated_contact_sheet.png` exists, opens, and is 1246 × 2260 px. It
+  was composed through the existing `build_sheet` compositor, which uses
+  `thumbnail` and centered placement, so it letterboxes rather than crops.
+- PASS: the curated sheet checksum is recorded and matched in
+  `docs/blog-assets/SHA256SUMS.txt`; `sha256sum --check --status` passed.
+- PASS: the full `contact_sheet.png` remains present and all 24 generation
+  PNGs remain present. No inference or generation function was invoked.
+- PASS: `git diff --check`.
 
 ## Files changed this session
 
-- `scripts/prepare_qualitative_appendix.py`
-- `tests/test_prepare_qualitative_appendix.py`
+- `docs/blog-assets/appendix-v1/curated_contact_sheet.png`
 - `docs/blog-assets/appendix-v1/README.md`
-- `docs/blog-assets/appendix-v1/manifest.json`
-- `docs/blog-assets/appendix-v1/` obsolete files removed as described above
 - `docs/blog-assets/BLOG_ASSET_INDEX.md`
 - `docs/blog-assets/SHA256SUMS.txt`
 - `docs/CODEX_HANDOFF.md`
 
+The appendix manifest and generation PNG/JSON worktree changes that already
+existed at session start were not modified by this curation task. Frozen
+native-vs-dynamic and hard-pose comparison assets remain untouched.
+
 ## Exact next action
 
-Only from a CUDA-visible GH200 shell:
-
-```bash
-cd /home/ubuntu/krea2-pose-controlnet
-uv run python scripts/prepare_qualitative_appendix.py --generate-appendix
-```
-
-Then rerun `python scripts/prepare_qualitative_appendix.py`, inspect the
-four-column image layout, run the targeted test command above, and run
-`git diff --check`. Do not commit or push without explicit authorization.
+Review and stage the intended documentation, checksum, and curated figure
+changes. Do not commit or push without explicit authorization.

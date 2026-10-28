@@ -49,7 +49,7 @@
   "pose_image": "/home/ubuntu/krea2-pose-controlnet/docs/blog-assets/appendix-v1/controls/single_08_overhead_arms.png",
   "pose_image_sha256": "70b533c7feaf5897ecebe5db4ffb26af0dc45f2c06332ac66a3aa15d3eb7a5ed",
   "pose_lora_checkpoint": null,
-  "prompt": "Painterly storybook fantasy illustration, warm palette, expressive brushwork, whimsical layered costume, textured paint.",
+  "prompt": "Painterly fantasy illustration, warm palette, expressive brushwork, whimsical costume treatment, rich hand-painted texture.",
   "release": {
     "id": "krea2-pose-control-lora-v1",
     "path": "/home/ubuntu/krea2-pose-controlnet/docs/evaluation/release/final_release_v1.json",
@@ -58,7 +58,7 @@
   "seed": 3287211803645151214,
   "steps": 8,
   "style_lora": {
-    "effective_prompt": "Painterly storybook fantasy illustration, warm palette, expressive brushwork, whimsical layered costume, textured paint.",
+    "effective_prompt": "Painterly fantasy illustration, warm palette, expressive brushwork, whimsical costume treatment, rich hand-painted texture.",
     "name": null,
     "path": null,
     "sha256": null,
