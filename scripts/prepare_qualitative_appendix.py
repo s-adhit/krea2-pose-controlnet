@@ -2,7 +2,7 @@
 
 The script deliberately has two phases.  ``--prepare-only`` validates pinned
 inputs, copies immutable frozen-evaluation selections, and writes manifests.
-``--generate-appendix`` additionally runs exactly the 48 planned native-geometry
+``--generate-appendix`` additionally runs exactly the 24 planned native-geometry
 appendix samples using the canonical public inference entrypoint.
 """
 from __future__ import annotations
@@ -39,27 +39,22 @@ NATIVE_GEOMETRY = "native_aspect_preserving_cached_latent_bucket"
 # authoritative for count, framing, and body geometry in every family.
 STYLE_PROMPTS = {
     "cinematic_fantasy_realism": (
-        "Grounded cinematic fantasy realism, elegant tailored costume, realistic wool, leather, "
-        "and aged metal, naturalistic soft lighting."
+        "Grounded cinematic fantasy character imagery, realistic materials, elegant costume design, "
+        "naturalistic lighting, restrained atmosphere."
     ),
     "painterly_storybook_fantasy": (
-        "Painterly storybook fantasy illustration, warm palette, expressive brushwork, whimsical layered "
-        "costume, textured paint."
+        "Painterly fantasy illustration, warm palette, expressive brushwork, whimsical costume treatment, "
+        "rich hand-painted texture."
     ),
-    "polished_modern_anime": (
-        "Polished modern anime illustration, crisp linework, vibrant accents, refined shading, stylish "
-        "character design."
-    ),
-    "editorial_high_fashion_photography": (
-        "Premium high-fashion editorial photography, tailored styling, refined fabric and metal materials, "
-        "clean studio lighting."
+    "classical_oil_painting": (
+        "Classical oil painting, refined costume design, naturalistic skin tones, rich fabric textures, "
+        "subtle chiaroscuro, restrained colors, finely rendered details."
     ),
 }
 APPENDIX_SHEET_LABELS = ("control", *STYLE_PROMPTS)
 
-# Eight singles: varied hero controls plus seated/crouched/arm-articulation
-# frozen hard-pose controls.  Four multi/duo controls include two clean hero
-# duos and two deliberately difficult frozen stress examples.
+# Six single-person and two multi-person controls prioritize clear,
+# interpretable transfer.  Their source/provenance records remain immutable.
 APPENDIX_CONTROLS = (
     ("single_01_female_warrior", "single", 1,
      ROOT / "docs/showcase/final/hero-v2/generations/canonical-v1/controls/realistic-female-warrior.png",
@@ -73,11 +68,6 @@ APPENDIX_CONTROLS = (
     ("single_04_stained_glass_saint", "single", 1,
      ROOT / "docs/showcase/final/hero-v2/generations/canonical-v1/controls/stained-glass-saint-celestial-figure.png",
      "hero-v2 canonical-v1 / stained-glass saint"),
-    ("single_05_editorial", "single", 1,
-     ROOT / "docs/showcase/final/hero-v2/generations/canonical-v1/controls/realistic-fashion-editorial-portrait.png",
-     "hero-v2 canonical-v1 / realistic fashion editorial"),
-    ("single_06_seated", "single", 1, HARD / "controls/coco_268556_2203816.png",
-     "hard-pose-multiperson-mix-025-v1 / 01_seated"),
     ("single_07_crouched", "single", 1, HARD / "controls/real_human_humanart_15000000000477.png",
      "hard-pose-multiperson-mix-025-v1 / 02_crouched"),
     ("single_08_overhead_arms", "single", 1, HARD / "controls/coco_104715_474045.png",
@@ -85,11 +75,6 @@ APPENDIX_CONTROLS = (
     ("multi_01_gothic_duo", "duo", 2,
      ROOT / "docs/showcase/final/hero-v2/generations/canonical-v1/controls/gothic-masked-noble-with-attendant.png",
      "hero-v2 canonical-v1 / gothic masked noble with attendant"),
-    ("multi_02_mythic_duo", "duo", 2,
-     ROOT / "docs/showcase/final/hero-v2/generations/canonical-v1/controls/painterly-mythic-companions.png",
-     "hero-v2 canonical-v1 / painterly mythic companions"),
-    ("multi_03_overlapping_pair", "multi", 2, HARD / "controls/real_human_humanart_15000000001893.png",
-     "hard-pose-multiperson-mix-025-v1 / 10_overlapping_two_person_pose"),
     ("multi_04_dense_group", "multi", 7, HARD / "controls/coco_374270_crowd.png",
      "hard-pose-multiperson-mix-025-v1 / 12_crowd_dense_group"),
 )
@@ -112,7 +97,7 @@ POSE_WORDS = re.compile(
     r"\b(full\s+body|arms\s+raised|seated|crouched|standing|walking|pose|stance|"
     r"hands?\s+framing|one\s+leg\s+bent|body\s+orientation|exact\s+pose|"
     r"centered\s+composition|framing|person\s+count|body\s+(?:position|geometry)|"
-    r"lean(?:ing)?|arm|arms|leg|legs|hand|hands|foot|feet|limb|limbs|joint|joints|"
+    r"lean(?:ing)?|arm|arms|leg|legs|hands|foot|feet|limb|limbs|joint|joints|"
     r"overhead|inversion|airborne)\b", re.I)
 
 
@@ -185,6 +170,62 @@ def resolve_native_appendix_dimensions(source_size: tuple[int, int]) -> tuple[in
         raise AppendixError(f"Invalid appendix control dimensions: {source_size!r}") from exc
 
 
+def sidecar_mismatches(sidecar: dict[str, Any], *, prompt: str, seed: int,
+                       size: tuple[int, int], control: Path, output: Path) -> list[str]:
+    """Return provenance fields that prevent safe appendix output reuse.
+
+    A prior PNG is reusable only if its prompt and the frozen Turbo runtime,
+    release, control raster, and resolved geometry agree with the current row.
+    This intentionally treats missing metadata as stale rather than assuming a
+    visually plausible file came from the current appendix contract.
+    """
+    width, height = size
+    expected = {
+        "format_version": 1,
+        "mode": "turbo-pose-control",
+        "prompt": prompt,
+        "seed": seed,
+        "width": width,
+        "height": height,
+        "steps": RUNTIME["steps"],
+        "cfg": RUNTIME["cfg"],
+        "mu": RUNTIME["mu"],
+        "control_scale": RUNTIME["control_scale"],
+        "turbo_checkpoint": str(TURBO),
+        "pose_lora_checkpoint": None,
+        "checkpoint_step": None,
+        "pose_image": str(control.resolve()),
+        "pose_image_sha256": sha256(control),
+        # Explicit dimensions implement the frozen native bucket selected for
+        # this copied source control; they are not dynamic-768 dimensions.
+        "geometry_mode": "explicit",
+        "output_dimensions": [width, height],
+        "output_path": str(output.resolve()),
+    }
+    mismatches = [name for name, value in expected.items() if sidecar.get(name) != value]
+    geometry = sidecar.get("geometry")
+    if not isinstance(geometry, dict) or geometry.get("bucket") != [width, height]:
+        mismatches.append("geometry.bucket")
+    turbo = sidecar.get("turbo")
+    if not isinstance(turbo, dict) or any(turbo.get(name) != value for name, value in {
+        "model": RUNTIME["model"], "steps": RUNTIME["steps"], "cfg": RUNTIME["cfg"], "mu": RUNTIME["mu"],
+    }.items()):
+        mismatches.append("turbo")
+    style = sidecar.get("style_lora")
+    if not isinstance(style, dict) or any(style.get(name) != value for name, value in {
+        "name": None, "path": None, "sha256": None, "strength": 0.0,
+        "trigger_phrase": None, "effective_prompt": prompt,
+    }.items()):
+        mismatches.append("style_lora")
+    candidate = sidecar.get("candidate")
+    artifact = candidate.get("release_artifact") if isinstance(candidate, dict) else None
+    if (not isinstance(candidate, dict) or candidate.get("candidate_id") != "mix-025"
+            or not isinstance(artifact, dict) or artifact.get("path") != str(RELEASE)
+            or artifact.get("sha256") != RELEASE_SHA256):
+        mismatches.append("candidate.release_artifact")
+    return mismatches
+
+
 def validate_inputs() -> None:
     for source in (RELEASE, TURBO, RAW, NATIVE / "native_dynamic_provenance.json",
                    NATIVE / "generation_results.json", NATIVE / "pck_clip_results.json",
@@ -195,10 +236,10 @@ def validate_inputs() -> None:
             raise FileNotFoundError(f"Required frozen input is missing: {source}")
     if sha256(RELEASE) != RELEASE_SHA256:
         raise AppendixError("Release artifact SHA-256 differs from the frozen v1 release")
-    if len(APPENDIX_CONTROLS) != 12 or sum(row[2] == 1 for row in APPENDIX_CONTROLS) != 8:
-        raise AppendixError("Appendix selection must be exactly 8 single and 4 multi/duo controls")
-    if sum(row[2] > 1 for row in APPENDIX_CONTROLS) != 4:
-        raise AppendixError("Appendix selection must have exactly 4 multi/duo controls")
+    if len(APPENDIX_CONTROLS) != 8 or sum(row[2] == 1 for row in APPENDIX_CONTROLS) != 6:
+        raise AppendixError("Appendix selection must be exactly 6 single and 2 multi/duo controls")
+    if sum(row[2] > 1 for row in APPENDIX_CONTROLS) != 2:
+        raise AppendixError("Appendix selection must have exactly 2 multi/duo controls")
     for prompt in STYLE_PROMPTS.values():
         match = POSE_WORDS.search(prompt)
         if match:
@@ -241,11 +282,10 @@ def appendix_records() -> list[dict[str, Any]]:
                         stale_reason = "stale appendix output provenance: missing sidecar"
                     else:
                         output_provenance = read_json(sidecar)
-                        expected = {"prompt": prompt, "seed": stable_seed(control_id, family),
-                                    "width": size[0], "height": size[1], "steps": RUNTIME["steps"],
-                                    "cfg": RUNTIME["cfg"], "mu": RUNTIME["mu"],
-                                    "control_scale": RUNTIME["control_scale"]}
-                        mismatches = [name for name, value in expected.items() if output_provenance.get(name) != value]
+                        mismatches = sidecar_mismatches(
+                            output_provenance, prompt=prompt, seed=stable_seed(control_id, family),
+                            size=size, control=copied, output=output,
+                        )
                         if mismatches:
                             completed = False
                             stale_reason = "stale appendix output provenance: " + ", ".join(mismatches)
@@ -264,8 +304,8 @@ def appendix_records() -> list[dict[str, Any]]:
                 "failure": stale_reason, "retry_of": None,
                 "status": "success" if completed else "pending_cuda",
             })
-    if len(records) != 48:
-        raise AppendixError("Appendix plan must be exactly 12 controls x 4 families")
+    if len(records) != 24:
+        raise AppendixError("Appendix plan must be exactly 8 controls x 3 families")
     return records
 
 
@@ -374,16 +414,16 @@ def hard_assets() -> int:
 
 
 def appendix_manifest(records: list[dict[str, Any]]) -> None:
-    payload = {"kind": "appendix_v1_pose_transfer", "generation_count": 48,
-               "selected_control_count": 12, "single_person_control_count": 8, "multi_duo_control_count": 4,
+    payload = {"kind": "appendix_v1_pose_transfer", "generation_count": 24,
+               "selected_control_count": 8, "single_person_control_count": 6, "multi_duo_control_count": 2,
                "style_prompts": STYLE_PROMPTS, "runtime": RUNTIME, "geometry_mode": NATIVE_GEOMETRY,
                "release_artifact": {"path": str(RELEASE), "sha256": RELEASE_SHA256}, "raw_provenance_path": str(RAW),
                "records": records}
     write_json(APPENDIX / "manifest.json", payload)
     readme = """# Appendix v1
 
-Twelve validated project controls × four short, geometry-neutral appearance
-families (48 planned generations). The skeleton is the sole body-geometry
+Eight validated project controls × three short, geometry-neutral appearance
+families (24 planned generations). The skeleton is the sole body-geometry
 source; prompts specify only visual treatment. The frozen runtime is Krea-2
 Turbo, 8 steps, CFG 0, mu 1.15, control scale 1.0, no Style-LoRA, and
 native/aspect-preserving geometry selected with
@@ -392,8 +432,8 @@ native/aspect-preserving geometry selected with
 `manifest.json` is the source of reproducibility facts.  A `pending_cuda`
 record has been validated but requires execution from a CUDA-visible GH200
 shell; it is not an implicit retry or a completed generation. Once all rows
-succeed, `contact_sheet.png` has one row per control and five image columns:
-`control`, then the four style families. Images are letterboxed, never cropped.
+succeed, `contact_sheet.png` has one row per control and four image columns:
+`control`, then the three style families. Images are letterboxed, never cropped.
 """
     (APPENDIX / "README.md").write_text(readme, encoding="utf-8")
 
@@ -404,7 +444,10 @@ def generate_appendix(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         raise RuntimeError("Appendix generation requires the CUDA-visible GH200 host shell")
     from inference import (CANONICAL_CANDIDATE, NATIVE_GEOMETRY as INFERENCE_NATIVE, PoseInferenceRequest,
                            generate_pose, load_inference_runtime, resolve_pose_candidate)
-    first = next(row for row in records if row["status"] != "success")
+    pending = [row for row in records if row["status"] != "success"]
+    if not pending:
+        return records
+    first = pending[0]
     request = PoseInferenceRequest(turbo_checkpoint=TURBO, pose_lora_checkpoint=None, release_artifact=RELEASE,
                                   candidate=CANONICAL_CANDIDATE, prompt=first["prompt"],
                                   pose_image=ROOT / first["copied_control_path"], output=ROOT / first["output_path"],
@@ -447,7 +490,7 @@ def appendix_sheet(records: list[dict[str, Any]]) -> None:
                   for family in STYLE_PROMPTS)]
         grouped.append((control_id, images))
     build_sheet(grouped, APPENDIX / "contact_sheet.png", APPENDIX_SHEET_LABELS,
-                "Appendix v1: control transfer across four appearance families", thumb=(190, 190))
+                "Appendix v1: control transfer across three appearance families", thumb=(210, 210))
 
 
 def write_checksums() -> None:
@@ -459,7 +502,7 @@ def write_checksums() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--generate-appendix", action="store_true", help="run the 48 CUDA generations after preparation")
+    parser.add_argument("--generate-appendix", action="store_true", help="run the 24 CUDA generations after preparation")
     args = parser.parse_args()
     validate_inputs()
     records = appendix_records()
@@ -469,8 +512,10 @@ def main() -> None:
         records = generate_appendix(records)
     appendix_sheet(records)
     write_checksums()
-    print(json.dumps({"appendix_success": sum(row["status"] == "success" for row in records),
-                      "appendix_pending": sum(row["status"] == "pending_cuda" for row in records),
+    print(json.dumps({"appendix_planned_rows": len(records),
+                      "appendix_valid_reused": sum(row["status"] == "success" for row in records),
+                      "appendix_pending_or_stale": sum(row["status"] == "pending_cuda" for row in records),
+                      "appendix_stale": sum(bool(row["failure"]) for row in records),
                       "reused_evaluation_outputs": reused, "appendix": str(APPENDIX), "qualitative": str(QUAL)}, indent=2))
 
 
